@@ -24,7 +24,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
     
     onUpdate({
       title: editTitle,
-      description: editDescription || undefined,
+      description: editDescription, // Always send description, even if empty
       assignees: editAssignees
     });
     setIsEditing(false);

@@ -28,15 +28,34 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     const { id } = req.params;
     const { column_id, title, description, assignees, position } = req.body;
 
+    // Build update query dynamically to handle optional fields correctly
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+
+    if (column_id !== undefined) {
+      updates.push(`column_id = $${paramCount++}`);
+      values.push(column_id);
+    }
+    if (title !== undefined) {
+      updates.push(`title = $${paramCount++}`);
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      values.push(description || null); // Empty string becomes null
+    }
+    if (position !== undefined) {
+      updates.push(`position = $${paramCount++}`);
+      values.push(position);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
     const result = await pool.query(
-      `UPDATE cards SET
-        column_id = COALESCE($1, column_id),
-        title = COALESCE($2, title),
-        description = COALESCE($3, description),
-        position = COALESCE($4, position),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5 RETURNING *`,
-      [column_id, title, description, position, id]
+      `UPDATE cards SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
     );
 
     if (result.rows.length === 0) {
