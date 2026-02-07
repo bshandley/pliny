@@ -177,7 +177,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       await api.createColumn(boardId, newColumnName, position);
       setNewColumnName('');
       setShowNewColumn(false);
-      loadBoard();
+      await loadBoard(); // Wait for reload
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to create column: ' + error.message);
@@ -194,7 +194,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       await api.createCard(columnId, newCardTitle, position);
       setNewCardTitle('');
       setShowNewCard(null);
-      loadBoard();
+      await loadBoard(); // Wait for reload
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to create card: ' + error.message);
@@ -206,7 +206,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
     try {
       await api.deleteCard(cardId);
-      loadBoard();
+      await loadBoard(); // Wait for reload
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to delete card: ' + error.message);
@@ -216,7 +216,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const handleUpdateCard = async (cardId: string, updates: Partial<Card>) => {
     try {
       await api.updateCard(cardId, updates);
-      loadBoard();
+      await loadBoard(); // Wait for reload
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to update card: ' + error.message);
@@ -228,7 +228,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
     try {
       await api.deleteColumn(columnId);
-      loadBoard();
+      await loadBoard(); // Wait for reload before continuing
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to delete column: ' + error.message);
