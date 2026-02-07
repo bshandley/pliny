@@ -18,6 +18,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [assignees, setAssignees] = useState<{ id: string; name: string }[]>([]);
   const [showNewColumn, setShowNewColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [showNewCard, setShowNewCard] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
   useEffect(() => {
     loadBoard();
+    loadAssignees();
 
     // Setup WebSocket
     const newSocket = io('/');
@@ -36,6 +38,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
     newSocket.on('board-updated', () => {
       loadBoard();
+      loadAssignees();
     });
 
     setSocket(newSocket);
@@ -55,6 +58,15 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       alert('Failed to load board');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAssignees = async () => {
+    try {
+      const data = await api.getBoardAssignees(boardId);
+      setAssignees(data);
+    } catch (error) {
+      console.error('Failed to load assignees:', error);
     }
   };
 
@@ -319,6 +331,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                       canWrite={isAdmin}
                                       onDelete={() => handleDeleteCard(card.id)}
                                       onUpdate={(updates) => handleUpdateCard(card.id, updates)}
+                                      assignees={assignees}
                                     />
                                   </div>
                                 )}
