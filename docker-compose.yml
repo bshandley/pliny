@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wiz_kanban
+      POSTGRES_USER: wiz
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wizkanban2024}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wiz -d wiz_kanban"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3001"
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: wiz_kanban
+      DB_USER: wiz
+      DB_PASSWORD: ${DB_PASSWORD:-wizkanban2024}
+      DATABASE_URL: postgres://wiz:${DB_PASSWORD:-wizkanban2024}@db:5432/wiz_kanban
+      JWT_SECRET: ${JWT_SECRET:-wiz-kanban-jwt-secret-change-in-production}
+      PORT: 3001
+      CLIENT_URL: http://localhost:5174
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3003
+        VITE_WS_URL: http://localhost:3003
+    ports:
+      - "5174:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  pgdata:

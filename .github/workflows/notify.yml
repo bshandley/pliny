@@ -1,0 +1,19 @@
+name: Notify Wharf of Changes
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Trigger Wharf Deployment
+      run: |
+        echo "✅ Code pushed to GitHub"
+        echo "Wharf will auto-pull and deploy via webhook or polling"
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
