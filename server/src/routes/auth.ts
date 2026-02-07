@@ -47,6 +47,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Get current user (restore session)
+router.get('/me', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const user = req.user!;
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Register (ADMIN users can create new users)
 router.post('/register', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {

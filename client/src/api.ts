@@ -55,6 +55,10 @@ class ApiClient {
     return data.user;
   }
 
+  async me(): Promise<User> {
+    return this.fetch('/auth/me');
+  }
+
   async register(username: string, password: string, role: 'READ' | 'ADMIN') {
     return this.fetch('/auth/register', {
       method: 'POST',

@@ -17,8 +17,9 @@ function App() {
   useEffect(() => {
     const token = api.getToken();
     if (token) {
-      api.getBoards()
-        .then(() => {
+      api.me()
+        .then((userData) => {
+          setUser(userData);
           setLoading(false);
         })
         .catch(() => {
