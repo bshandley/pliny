@@ -416,7 +416,10 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       {showAssignees && (
         <BoardAssignees
           boardId={boardId}
-          onClose={() => setShowAssignees(false)}
+          onClose={() => {
+            setShowAssignees(false);
+            loadAssignees();
+          }}
         />
       )}
     </div>
