@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
-import { Board } from '../types';
+import { Board, Card } from '../types';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 
@@ -213,6 +213,16 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleUpdateCard = async (cardId: string, updates: Partial<Card>) => {
+    try {
+      await api.updateCard(cardId, updates);
+      loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert('Failed to update card: ' + error.message);
+    }
+  };
+
   const handleDeleteColumn = async (columnId: string, columnName: string) => {
     if (!confirm(`Delete column "${columnName}" and all its cards?`)) return;
 
@@ -303,6 +313,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                       card={card}
                                       canWrite={isAdmin}
                                       onDelete={() => handleDeleteCard(card.id)}
+                                      onUpdate={(updates) => handleUpdateCard(card.id, updates)}
                                     />
                                   </div>
                                 )}
@@ -326,7 +337,10 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                             />
                             <div className="form-actions">
                               <button type="submit" className="btn-primary btn-sm">Add</button>
-                              <button type="button" onClick={() => setShowNewCard(null)} className="btn-secondary btn-sm">Cancel</button>
+                              <button type="button" onClick={() => {
+                                setShowNewCard(null);
+                                setNewCardTitle('');
+                              }} className="btn-secondary btn-sm">Cancel</button>
                             </div>
                           </form>
                         ) : (

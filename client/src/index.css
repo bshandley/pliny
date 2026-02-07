@@ -201,10 +201,14 @@ button:disabled {
 }
 
 .btn-delete {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
   color: #ef4444;
   font-size: 1.5rem;
   line-height: 1;
-  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
 .btn-delete:hover {
@@ -212,17 +216,10 @@ button:disabled {
   color: #dc2626;
 }
 
-.btn-delete {
-  padding: 0.25rem 0.5rem;
-  background: transparent;
-  color: var(--danger);
-  font-size: 1.5rem;
-  line-height: 1;
-  border-radius: 4px;
-}
-
-.btn-delete:hover {
-  background: #ffe6e6;
+/* Show delete buttons on hover */
+.kanban-card:hover .card-delete,
+.column-header:hover .btn-delete {
+  opacity: 1;
 }
 
 /* Board List */
@@ -408,6 +405,38 @@ button:disabled {
 
 .kanban-card:active {
   cursor: grabbing;
+}
+
+.kanban-card.editing {
+  cursor: default;
+  box-shadow: var(--shadow);
+  border-color: var(--primary);
+}
+
+.card-edit-title {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.card-edit-description {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  resize: vertical;
+  margin-bottom: 0.5rem;
+  font-family: inherit;
+}
+
+.card-edit-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .card-header {
