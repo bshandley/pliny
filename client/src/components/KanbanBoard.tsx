@@ -213,6 +213,18 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleDeleteColumn = async (columnId: string, columnName: string) => {
+    if (!confirm(`Delete column "${columnName}" and all its cards?`)) return;
+
+    try {
+      await api.deleteColumn(columnId);
+      loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert('Failed to delete column: ' + error.message);
+    }
+  };
+
   if (loading) {
     return <div className="loading"><div className="spinner"></div></div>;
   }
@@ -259,7 +271,21 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                     >
                       <div className="column-header" {...provided.dragHandleProps}>
                         <h3>{column.name}</h3>
-                        <span className="card-count">{column.cards?.length || 0}</span>
+                        <div className="column-header-actions">
+                          <span className="card-count">{column.cards?.length || 0}</span>
+                          {isAdmin && (
+                            <button
+                              className="btn-icon btn-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteColumn(column.id, column.name);
+                              }}
+                              title="Delete column"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin}>
