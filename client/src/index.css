@@ -20,6 +20,22 @@
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+[data-theme="dark"] {
+  --primary: #4da6ff;
+  --primary-hover: #66b3ff;
+  --secondary: #8b95a0;
+  --danger: #ff6b6b;
+  --danger-hover: #ff5252;
+  --success: #51cf66;
+  --bg: #1a1d23;
+  --card-bg: #25282e;
+  --border: #373a40;
+  --text: #e4e6eb;
+  --text-secondary: #b0b3b8;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: var(--bg);
@@ -181,6 +197,34 @@ button:disabled {
 
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-hover);
+}
+
+.theme-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
 }
 
 .btn-sm {

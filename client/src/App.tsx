@@ -13,6 +13,10 @@ function App() {
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('boards');
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return (saved as 'light' | 'dark') || 'light';
+  });
 
   useEffect(() => {
     const token = api.getToken();
@@ -30,6 +34,15 @@ function App() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const handleLogin = async (username: string, password: string) => {
     try {
@@ -70,38 +83,63 @@ function App() {
     );
   }
 
+  const ThemeToggle = () => (
+    <button
+      className="theme-toggle"
+      onClick={toggleTheme}
+      aria-label="Toggle theme"
+      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+    >
+      {theme === 'light' ? '🌙' : '☀️'}
+    </button>
+  );
+
   if (!user && !api.getToken()) {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <>
+        <Login onLogin={handleLogin} />
+        <ThemeToggle />
+      </>
+    );
   }
 
   if (page === 'board' && currentBoardId) {
     return (
-      <KanbanBoard
-        boardId={currentBoardId}
-        onBack={handleBackToBoards}
-        onLogout={handleLogout}
-        userRole={user?.role || 'READ'}
-      />
+      <>
+        <KanbanBoard
+          boardId={currentBoardId}
+          onBack={handleBackToBoards}
+          onLogout={handleLogout}
+          userRole={user?.role || 'READ'}
+        />
+        <ThemeToggle />
+      </>
     );
   }
 
   if (page === 'users' && user?.role === 'ADMIN') {
     return (
-      <UserManagement
-        onBack={handleBackToBoards}
-        onLogout={handleLogout}
-        currentUser={user}
-      />
+      <>
+        <UserManagement
+          onBack={handleBackToBoards}
+          onLogout={handleLogout}
+          currentUser={user}
+        />
+        <ThemeToggle />
+      </>
     );
   }
 
   return (
-    <BoardList
-      onSelectBoard={handleSelectBoard}
-      onLogout={handleLogout}
-      onGoToUsers={handleGoToUsers}
-      user={user}
-    />
+    <>
+      <BoardList
+        onSelectBoard={handleSelectBoard}
+        onLogout={handleLogout}
+        onGoToUsers={handleGoToUsers}
+        user={user}
+      />
+      <ThemeToggle />
+    </>
   );
 }
 
