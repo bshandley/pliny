@@ -37,7 +37,8 @@ export interface Card {
   column_id: string;
   title: string;
   description?: string;
-  assignee?: string;
+  assignee?: string; // Deprecated, use assignees
+  assignees?: string[];
   position: number;
   created_at: string;
   updated_at: string;

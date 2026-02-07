@@ -72,9 +72,31 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
+    // Fetch assignees for all cards
+    const assigneesResult = await pool.query(
+      `SELECT ca.card_id, ca.assignee_name
+       FROM card_assignees ca
+       INNER JOIN cards c ON ca.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1`,
+      [id]
+    );
+
+    // Group assignees by card_id
+    const assigneesByCard: Record<string, string[]> = {};
+    assigneesResult.rows.forEach(row => {
+      if (!assigneesByCard[row.card_id]) {
+        assigneesByCard[row.card_id] = [];
+      }
+      assigneesByCard[row.card_id].push(row.assignee_name);
+    });
+
     const board = boardResult.rows[0];
     const columns = columnsResult.rows;
-    const cards = cardsResult.rows;
+    const cards = cardsResult.rows.map(card => ({
+      ...card,
+      assignees: assigneesByCard[card.id] || []
+    }));
 
     res.json({
       ...board,

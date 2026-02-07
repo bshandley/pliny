@@ -49,10 +49,18 @@ CREATE TABLE IF NOT EXISTS cards (
   column_id UUID NOT NULL REFERENCES columns(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  assignee VARCHAR(255),
+  assignee VARCHAR(255), -- Deprecated, use card_assignees table
   position INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Card assignees (multiple assignees per card)
+CREATE TABLE IF NOT EXISTS card_assignees (
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  assignee_name VARCHAR(100) NOT NULL,
+  added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (card_id, assignee_name)
 );
 
 -- Create indexes
@@ -62,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_boards_created_by ON boards(created_by);
 CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
 CREATE INDEX IF NOT EXISTS idx_board_assignees_board_id ON board_assignees(board_id);
+CREATE INDEX IF NOT EXISTS idx_card_assignees_card_id ON card_assignees(card_id);
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (username, password_hash, role)

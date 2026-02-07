@@ -26,25 +26,49 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { column_id, title, description, assignee, position } = req.body;
+    const { column_id, title, description, assignees, position } = req.body;
 
     const result = await pool.query(
       `UPDATE cards SET
         column_id = COALESCE($1, column_id),
         title = COALESCE($2, title),
         description = COALESCE($3, description),
-        assignee = COALESCE($4, assignee),
-        position = COALESCE($5, position),
+        position = COALESCE($4, position),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6 RETURNING *`,
-      [column_id, title, description, assignee, position, id]
+      WHERE id = $5 RETURNING *`,
+      [column_id, title, description, position, id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
-    res.json(result.rows[0]);
+    // Update assignees if provided
+    if (assignees !== undefined) {
+      // Clear existing assignees
+      await pool.query('DELETE FROM card_assignees WHERE card_id = $1', [id]);
+      
+      // Add new assignees
+      if (Array.isArray(assignees) && assignees.length > 0) {
+        const values = assignees.map((name, i) => `($1, $${i + 2})`).join(', ');
+        const params = [id, ...assignees];
+        await pool.query(
+          `INSERT INTO card_assignees (card_id, assignee_name) VALUES ${values}`,
+          params
+        );
+      }
+    }
+
+    // Fetch updated assignees
+    const assigneesResult = await pool.query(
+      'SELECT assignee_name FROM card_assignees WHERE card_id = $1',
+      [id]
+    );
+
+    res.json({
+      ...result.rows[0],
+      assignees: assigneesResult.rows.map(r => r.assignee_name)
+    });
   } catch (error) {
     console.error('Update card error:', error);
     res.status(500).json({ error: 'Internal server error' });
