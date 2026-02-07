@@ -5,6 +5,7 @@ import { api } from '../api';
 import { Board, Card } from '../types';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
+import BoardAssignees from './BoardAssignees';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -22,6 +23,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [showNewCard, setShowNewCard] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [showMembers, setShowMembers] = useState(false);
+  const [showAssignees, setShowAssignees] = useState(false);
 
   const isAdmin = userRole === 'ADMIN';
 
@@ -256,6 +258,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
               <button onClick={() => setShowMembers(true)} className="btn-secondary btn-sm">
                 Members
               </button>
+              <button onClick={() => setShowAssignees(true)} className="btn-secondary btn-sm">
+                Assignees
+              </button>
               <button onClick={() => setShowNewColumn(true)} className="btn-primary">
                 + Column
               </button>
@@ -392,6 +397,13 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
         <BoardMembers
           boardId={boardId}
           onClose={() => setShowMembers(false)}
+        />
+      )}
+
+      {showAssignees && (
+        <BoardAssignees
+          boardId={boardId}
+          onClose={() => setShowAssignees(false)}
         />
       )}
     </div>

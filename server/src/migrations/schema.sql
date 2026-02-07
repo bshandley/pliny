@@ -25,6 +25,14 @@ CREATE TABLE IF NOT EXISTS board_members (
   PRIMARY KEY (board_id, user_id)
 );
 
+-- Board assignees (names that can be assigned to cards)
+CREATE TABLE IF NOT EXISTS board_assignees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Columns table
 CREATE TABLE IF NOT EXISTS columns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_cards_column_id ON cards(column_id);
 CREATE INDEX IF NOT EXISTS idx_boards_created_by ON boards(created_by);
 CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_assignees_board_id ON board_assignees(board_id);
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (username, password_hash, role)

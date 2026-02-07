@@ -164,6 +164,24 @@ class ApiClient {
   async deleteCard(id: string): Promise<void> {
     return this.fetch(`/cards/${id}`, { method: 'DELETE' });
   }
+
+  // Assignees
+  async getBoardAssignees(boardId: string): Promise<{ id: string; name: string; created_at: string }[]> {
+    return this.fetch(`/boards/${boardId}/assignees`);
+  }
+
+  async addBoardAssignee(boardId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
+    return this.fetch(`/boards/${boardId}/assignees`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void> {
+    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const api = new ApiClient();
