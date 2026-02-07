@@ -18,6 +18,7 @@
   --text-secondary: #586069;
   --shadow: 0 1px 3px rgba(0,0,0,0.12);
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+  --delete-hover-bg: #fef2f2;
 }
 
 [data-theme="dark"] {
@@ -34,6 +35,7 @@
   --text-secondary: #b0b3b8;
   --shadow: 0 1px 3px rgba(0,0,0,0.3);
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+  --delete-hover-bg: rgba(255, 107, 107, 0.15);
 }
 
 body {
@@ -256,8 +258,8 @@ button:disabled {
 }
 
 .btn-delete:hover {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--delete-hover-bg);
+  color: var(--danger);
 }
 
 /* Show delete buttons on hover */
@@ -465,6 +467,8 @@ button:disabled {
   font-size: 0.95rem;
   font-weight: 500;
   margin-bottom: 0.5rem;
+  background: var(--card-bg);
+  color: var(--text);
 }
 
 .card-edit-description {
@@ -476,6 +480,8 @@ button:disabled {
   resize: vertical;
   margin-bottom: 0.5rem;
   font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text);
 }
 
 .card-edit-actions {
@@ -545,6 +551,8 @@ button:disabled {
   padding: 0.5rem;
   border: 1px solid var(--border);
   border-radius: 4px;
+  background: var(--card-bg);
+  color: var(--text);
 }
 
 .form-actions {
