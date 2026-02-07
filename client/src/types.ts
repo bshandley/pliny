@@ -1,7 +1,8 @@
 export interface User {
   id: string;
   username: string;
-  role: 'READ' | 'WRITE';
+  role: 'READ' | 'ADMIN';
+  created_at?: string;
 }
 
 export interface Board {
@@ -12,6 +13,13 @@ export interface Board {
   created_at: string;
   updated_at: string;
   columns?: Column[];
+}
+
+export interface BoardMember {
+  id: string;
+  username: string;
+  role: 'READ' | 'ADMIN';
+  added_at: string;
 }
 
 export interface Column {

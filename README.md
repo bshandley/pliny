@@ -4,12 +4,13 @@ A production-ready Kanban project management application built with React, TypeS
 
 ## Features
 
-- 🎯 **Full Kanban board** with drag-and-drop (desktop & mobile)
-- 📱 **Mobile-responsive** design with touch-friendly UI
-- 🔐 **Simple RBAC** - READ (view-only) and WRITE (full access) roles
-- 🔄 **Real-time updates** via WebSocket
-- 🐳 **Docker-ready** deployment
-- 💪 **TypeScript** throughout (type-safe)
+- **Full Kanban board** with drag-and-drop (desktop & mobile)
+- **Mobile-responsive** design with touch-friendly UI
+- **User management** - ADMIN (full access) and READ (view-only) roles
+- **Board-level permissions** - READ users only see boards they're assigned to
+- **Real-time updates** via WebSocket
+- **Docker-ready** deployment
+- **TypeScript** throughout (type-safe)
 
 ## Quick Start
 
@@ -49,9 +50,9 @@ docker-compose exec server npm run migrate
 
 - **Username:** admin
 - **Password:** admin123
-- **Role:** WRITE
+- **Role:** ADMIN
 
-⚠️ **Change this immediately in production!**
+**Change this immediately in production!**
 
 ## Architecture
 
@@ -59,7 +60,7 @@ docker-compose exec server npm run migrate
 wiz-kanban/
 ├── server/           # Express + TypeScript backend
 │   ├── src/
-│   │   ├── routes/   # API routes (auth, boards, columns, cards)
+│   │   ├── routes/   # API routes (auth, boards, columns, cards, users)
 │   │   ├── middleware/ # Auth & RBAC
 │   │   ├── migrations/ # Database schema
 │   │   └── index.ts  # Main server + WebSocket
@@ -78,29 +79,39 @@ wiz-kanban/
 
 ### Authentication
 - `POST /api/auth/login` - Login (returns JWT)
-- `POST /api/auth/register` - Register new user (WRITE role required)
+- `POST /api/auth/register` - Register new user (ADMIN role required)
+
+### Users (ADMIN only)
+- `GET /api/users` - List all users
+- `PUT /api/users/:id` - Update user (username, password, role)
+- `DELETE /api/users/:id` - Delete user
 
 ### Boards
-- `GET /api/boards` - List all boards
+- `GET /api/boards` - List boards (ADMIN: all, READ: only assigned)
 - `GET /api/boards/:id` - Get board with columns & cards
-- `POST /api/boards` - Create board (WRITE)
-- `PUT /api/boards/:id` - Update board (WRITE)
-- `DELETE /api/boards/:id` - Delete board (WRITE)
+- `POST /api/boards` - Create board (ADMIN)
+- `PUT /api/boards/:id` - Update board (ADMIN)
+- `DELETE /api/boards/:id` - Delete board (ADMIN)
+
+### Board Members (ADMIN only)
+- `GET /api/boards/:id/members` - List board members
+- `POST /api/boards/:id/members` - Add member to board
+- `DELETE /api/boards/:id/members/:userId` - Remove member from board
 
 ### Columns
-- `POST /api/columns` - Create column (WRITE)
-- `PUT /api/columns/:id` - Update column (WRITE)
-- `DELETE /api/columns/:id` - Delete column (WRITE)
+- `POST /api/columns` - Create column (ADMIN)
+- `PUT /api/columns/:id` - Update column (ADMIN)
+- `DELETE /api/columns/:id` - Delete column (ADMIN)
 
 ### Cards
-- `POST /api/cards` - Create card (WRITE)
-- `PUT /api/cards/:id` - Update card (WRITE)
-- `DELETE /api/cards/:id` - Delete card (WRITE)
+- `POST /api/cards` - Create card (ADMIN)
+- `PUT /api/cards/:id` - Update card (ADMIN)
+- `DELETE /api/cards/:id` - Delete card (ADMIN)
 
-## RBAC
+## RBAC & Permissions
 
-- **READ role:** Can view boards, columns, and cards. Cannot create/edit/delete.
-- **WRITE role:** Full access to all operations.
+- **ADMIN role:** Full access to all operations. Can manage users, boards, columns, and cards. Can add/remove READ users from boards.
+- **READ role:** View-only access to assigned boards only. Must be added to boards by an admin. Cannot see boards they are not assigned to.
 
 Authentication required for all endpoints (except login).
 

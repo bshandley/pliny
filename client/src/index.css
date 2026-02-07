@@ -9,6 +9,8 @@
   --primary-hover: #0052a3;
   --secondary: #6c757d;
   --danger: #dc3545;
+  --danger-hover: #c82333;
+  --success: #28a745;
   --bg: #f5f7fa;
   --card-bg: #ffffff;
   --border: #e1e4e8;
@@ -38,6 +40,12 @@ body {
   justify-content: center;
   min-height: 100vh;
   gap: 1rem;
+}
+
+.loading-inline {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
 }
 
 .spinner {
@@ -90,19 +98,36 @@ body {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
+  font-family: inherit;
   transition: border-color 0.2s;
+  background: var(--card-bg);
+  color: var(--text);
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+.form-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .error {
@@ -147,6 +172,15 @@ button:disabled {
 
 .btn-secondary:hover:not(:disabled) {
   background: #5a6268;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
 }
 
 .btn-sm {
@@ -453,7 +487,18 @@ button:disabled {
   overflow-y: auto;
 }
 
+.modal-wide {
+  max-width: 600px;
+}
+
 .modal h2 {
+  margin-bottom: 1.5rem;
+}
+
+.modal-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: -1rem;
   margin-bottom: 1.5rem;
 }
 
@@ -462,6 +507,132 @@ button:disabled {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+/* Role badges */
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.role-admin {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.role-read {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+/* Users Table */
+.users-table-container {
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.users-table thead {
+  background: var(--bg);
+}
+
+.users-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.users-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.users-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.users-table tbody tr:hover {
+  background: var(--bg);
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Board Members */
+.add-member-section {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.member-select {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.member-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.member-name {
+  font-weight: 500;
+}
+
+.empty-members {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 /* Mobile optimizations */
@@ -501,6 +672,38 @@ button:disabled {
     padding: 0.5rem;
     font-size: 1.25rem;
   }
+
+  /* Users table responsive */
+  .users-table th,
+  .users-table td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .actions-cell {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .actions-cell .btn-sm {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Board members responsive */
+  .add-member-section {
+    flex-direction: column;
+  }
+
+  .member-select {
+    width: 100%;
+  }
+
+  .member-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
 }
 
 /* Small phones */
@@ -524,6 +727,41 @@ button:disabled {
 
   .column {
     min-width: calc(100vw - 2rem);
+  }
+
+  /* Stack table on very small screens */
+  .users-table thead {
+    display: none;
+  }
+
+  .users-table,
+  .users-table tbody,
+  .users-table tr,
+  .users-table td {
+    display: block;
+  }
+
+  .users-table tr {
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .users-table td {
+    padding: 0.25rem 0;
+    border-bottom: none;
+  }
+
+  .users-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-right: 0.5rem;
+  }
+
+  .actions-cell {
+    flex-direction: row;
+    margin-top: 0.5rem;
   }
 }
 

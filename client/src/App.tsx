@@ -4,24 +4,24 @@ import { User } from './types';
 import Login from './components/Login';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
+import UserManagement from './components/UserManagement';
+
+type Page = 'boards' | 'users' | 'board';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>('boards');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing token
     const token = api.getToken();
     if (token) {
-      // Token exists, but we need to verify it by making a request
       api.getBoards()
         .then(() => {
-          // Token is valid, we'll get user info from first successful request
           setLoading(false);
         })
         .catch(() => {
-          // Token invalid
           api.setToken(null);
           setLoading(false);
         });
@@ -43,14 +43,21 @@ function App() {
     api.setToken(null);
     setUser(null);
     setCurrentBoardId(null);
+    setPage('boards');
   };
 
   const handleSelectBoard = (boardId: string) => {
     setCurrentBoardId(boardId);
+    setPage('board');
   };
 
   const handleBackToBoards = () => {
     setCurrentBoardId(null);
+    setPage('boards');
+  };
+
+  const handleGoToUsers = () => {
+    setPage('users');
   };
 
   if (loading) {
@@ -66,7 +73,7 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  if (currentBoardId) {
+  if (page === 'board' && currentBoardId) {
     return (
       <KanbanBoard
         boardId={currentBoardId}
@@ -77,10 +84,21 @@ function App() {
     );
   }
 
+  if (page === 'users' && user?.role === 'ADMIN') {
+    return (
+      <UserManagement
+        onBack={handleBackToBoards}
+        onLogout={handleLogout}
+        currentUser={user}
+      />
+    );
+  }
+
   return (
     <BoardList
       onSelectBoard={handleSelectBoard}
       onLogout={handleLogout}
+      onGoToUsers={handleGoToUsers}
       user={user}
     />
   );

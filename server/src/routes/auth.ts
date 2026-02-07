@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import pool from '../db';
-import { generateToken } from '../middleware/auth';
+import { authenticate, requireAdmin, generateToken } from '../middleware/auth';
+import { AuthRequest } from '../types';
 
 const router = Router();
 
@@ -46,8 +47,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register (WRITE users can create new users)
-router.post('/register', async (req, res) => {
+// Register (ADMIN users can create new users)
+router.post('/register', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { username, password, role } = req.body;
 
@@ -55,14 +56,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (!['READ', 'WRITE'].includes(role)) {
+    if (!['READ', 'ADMIN'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
     const hash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role, created_at',
       [username, hash, role]
     );
 
@@ -72,7 +73,8 @@ router.post('/register', async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        created_at: user.created_at
       }
     });
   } catch (error: any) {

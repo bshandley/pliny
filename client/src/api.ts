@@ -1,4 +1,4 @@
-import { Board, Column, Card } from './types';
+import { Board, Column, Card, User, BoardMember } from './types';
 
 const API_URL = '/api';
 
@@ -55,11 +55,27 @@ class ApiClient {
     return data.user;
   }
 
-  async register(username: string, password: string, role: 'READ' | 'WRITE') {
+  async register(username: string, password: string, role: 'READ' | 'ADMIN') {
     return this.fetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password, role }),
     });
+  }
+
+  // Users
+  async getUsers(): Promise<User[]> {
+    return this.fetch('/users');
+  }
+
+  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'ADMIN' }): Promise<User> {
+    return this.fetch(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    return this.fetch(`/users/${id}`, { method: 'DELETE' });
   }
 
   // Boards
@@ -87,6 +103,24 @@ class ApiClient {
 
   async deleteBoard(id: string): Promise<void> {
     return this.fetch(`/boards/${id}`, { method: 'DELETE' });
+  }
+
+  // Board Members
+  async getBoardMembers(boardId: string): Promise<BoardMember[]> {
+    return this.fetch(`/boards/${boardId}/members`);
+  }
+
+  async addBoardMember(boardId: string, userId: string): Promise<void> {
+    return this.fetch(`/boards/${boardId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
+
+  async removeBoardMember(boardId: string, userId: string): Promise<void> {
+    return this.fetch(`/boards/${boardId}/members/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Columns

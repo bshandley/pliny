@@ -4,16 +4,24 @@ import pool from '../db';
 
 async function runMigrations() {
   try {
-    const sql = fs.readFileSync(
+    // Run base schema
+    const schema = fs.readFileSync(
       path.join(__dirname, 'schema.sql'),
       'utf-8'
     );
-    
-    await pool.query(sql);
-    console.log('✅ Migrations completed successfully');
+    await pool.query(schema);
+
+    // Run upgrade migration (idempotent)
+    const upgrade = fs.readFileSync(
+      path.join(__dirname, '002-user-management.sql'),
+      'utf-8'
+    );
+    await pool.query(upgrade);
+
+    console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error('Migration failed:', error);
     process.exit(1);
   }
 }

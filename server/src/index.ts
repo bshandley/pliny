@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import boardRoutes from './routes/boards';
 import columnRoutes from './routes/columns';
 import cardRoutes from './routes/cards';
+import userRoutes from './routes/users';
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

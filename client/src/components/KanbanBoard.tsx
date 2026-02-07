@@ -4,12 +4,13 @@ import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board } from '../types';
 import KanbanCard from './KanbanCard';
+import BoardMembers from './BoardMembers';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   onLogout: () => void;
-  userRole: 'READ' | 'WRITE';
+  userRole: 'READ' | 'ADMIN';
 }
 
 export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: KanbanBoardProps) {
@@ -20,8 +21,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [newColumnName, setNewColumnName] = useState('');
   const [showNewCard, setShowNewCard] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
 
-  const canWrite = userRole === 'WRITE';
+  const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
     loadBoard();
@@ -29,7 +31,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     // Setup WebSocket
     const newSocket = io('/');
     newSocket.emit('join-board', boardId);
-    
+
     newSocket.on('board-updated', () => {
       loadBoard();
     });
@@ -55,7 +57,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   };
 
   const handleDragEnd = async (result: DropResult) => {
-    if (!canWrite || !board) return;
+    if (!isAdmin || !board) return;
 
     const { destination, source, type } = result;
 
@@ -127,7 +129,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
         const sourceCards = Array.from(sourceColumn.cards || []);
         const destCards = Array.from(destColumn.cards || []);
         const [removed] = sourceCards.splice(source.index, 1);
-        
+
         removed.column_id = destColumn.id;
         destCards.splice(destination.index, 0, removed);
 
@@ -153,7 +155,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
         try {
           await Promise.all([
             ...updatedSourceColumn.cards!.map(card => api.updateCard(card.id, { position: card.position })),
-            ...updatedDestColumn.cards!.map(card => 
+            ...updatedDestColumn.cards!.map(card =>
               api.updateCard(card.id, { position: card.position, column_id: destColumn.id })
             )
           ]);
@@ -227,10 +229,15 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           <h1>{board.name}</h1>
         </div>
         <div className="header-actions">
-          {canWrite && (
-            <button onClick={() => setShowNewColumn(true)} className="btn-primary">
-              + Column
-            </button>
+          {isAdmin && (
+            <>
+              <button onClick={() => setShowMembers(true)} className="btn-secondary btn-sm">
+                Members
+              </button>
+              <button onClick={() => setShowNewColumn(true)} className="btn-primary">
+                + Column
+              </button>
+            </>
           )}
           <button onClick={onLogout} className="btn-secondary">
             Logout
@@ -239,11 +246,11 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       </header>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!canWrite}>
+        <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
           {(provided) => (
             <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
               {board.columns?.map((column, index) => (
-                <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!canWrite}>
+                <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
                   {(provided) => (
                     <div
                       className="column"
@@ -255,11 +262,11 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                         <span className="card-count">{column.cards?.length || 0}</span>
                       </div>
 
-                      <Droppable droppableId={column.id} type="CARD" isDropDisabled={!canWrite}>
+                      <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin}>
                         {(provided) => (
                           <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
                             {column.cards?.map((card, cardIndex) => (
-                              <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canWrite}>
+                              <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin}>
                                 {(provided) => (
                                   <div
                                     ref={provided.innerRef}
@@ -268,7 +275,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                   >
                                     <KanbanCard
                                       card={card}
-                                      canWrite={canWrite}
+                                      canWrite={isAdmin}
                                       onDelete={() => handleDeleteCard(card.id)}
                                     />
                                   </div>
@@ -280,7 +287,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                         )}
                       </Droppable>
 
-                      {canWrite && (
+                      {isAdmin && (
                         showNewCard === column.id ? (
                           <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
                             <input
@@ -339,6 +346,13 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
             </form>
           </div>
         </div>
+      )}
+
+      {showMembers && (
+        <BoardMembers
+          boardId={boardId}
+          onClose={() => setShowMembers(false)}
+        />
       )}
     </div>
   );

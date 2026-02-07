@@ -5,17 +5,18 @@ import { Board, User } from '../types';
 interface BoardListProps {
   onSelectBoard: (boardId: string) => void;
   onLogout: () => void;
+  onGoToUsers: () => void;
   user: User | null;
 }
 
-export default function BoardList({ onSelectBoard, onLogout, user }: BoardListProps) {
+export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }: BoardListProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBoardName, setNewBoardName] = useState('');
   const [newBoardDesc, setNewBoardDesc] = useState('');
 
-  const canWrite = user?.role === 'WRITE';
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     loadBoards();
@@ -54,10 +55,15 @@ export default function BoardList({ onSelectBoard, onLogout, user }: BoardListPr
       <header className="board-list-header">
         <h1>Wiz Kanban Boards</h1>
         <div className="header-actions">
-          {canWrite && (
-            <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-              + New Board
-            </button>
+          {isAdmin && (
+            <>
+              <button onClick={onGoToUsers} className="btn-secondary">
+                Users
+              </button>
+              <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+                + New Board
+              </button>
+            </>
           )}
           <button onClick={onLogout} className="btn-secondary">
             Logout
@@ -69,7 +75,8 @@ export default function BoardList({ onSelectBoard, onLogout, user }: BoardListPr
         {boards.length === 0 ? (
           <div className="empty-state">
             <p>No boards yet.</p>
-            {canWrite && <p>Create your first board to get started!</p>}
+            {isAdmin && <p>Create your first board to get started!</p>}
+            {!isAdmin && <p>Ask an admin to add you to a board.</p>}
           </div>
         ) : (
           boards.map((board) => (

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireWrite } from '../middleware/auth';
+import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
 
 // Create card
-router.post('/', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { column_id, title, description, assignee, position } = req.body;
 
@@ -23,19 +23,19 @@ router.post('/', authenticate, requireWrite, async (req: AuthRequest, res) => {
 });
 
 // Update card
-router.put('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { column_id, title, description, assignee, position } = req.body;
 
     const result = await pool.query(
-      `UPDATE cards SET 
+      `UPDATE cards SET
         column_id = COALESCE($1, column_id),
         title = COALESCE($2, title),
         description = COALESCE($3, description),
         assignee = COALESCE($4, assignee),
         position = COALESCE($5, position),
-        updated_at = CURRENT_TIMESTAMP 
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $6 RETURNING *`,
       [column_id, title, description, assignee, position, id]
     );
@@ -52,7 +52,7 @@ router.put('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => 
 });
 
 // Delete card
-router.delete('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 

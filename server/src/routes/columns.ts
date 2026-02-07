@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireWrite } from '../middleware/auth';
+import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
 
 // Create column
-router.post('/', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { board_id, name, position } = req.body;
 
@@ -23,7 +23,7 @@ router.post('/', authenticate, requireWrite, async (req: AuthRequest, res) => {
 });
 
 // Update column
-router.put('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, position } = req.body;
@@ -45,7 +45,7 @@ router.put('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => 
 });
 
 // Delete column
-router.delete('/:id', authenticate, requireWrite, async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
