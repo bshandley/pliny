@@ -1,0 +1,50 @@
+name: Deploy to Wharf
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.WHARF_SSH_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -H 10.0.0.102 >> ~/.ssh/known_hosts
+        
+    - name: Deploy to Wharf
+      env:
+        WHARF_HOST: ${{ secrets.WHARF_HOST }}
+        WHARF_USER: ${{ secrets.WHARF_USER }}
+      run: |
+        # Create deployment archive
+        tar czf wiz-kanban-deploy.tar.gz \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='.github' \
+          .
+        
+        # Copy to Wharf
+        scp -i ~/.ssh/id_ed25519 wiz-kanban-deploy.tar.gz ${WHARF_USER}@${WHARF_HOST}:/tmp/
+        
+        # Deploy on Wharf
+        ssh -i ~/.ssh/id_ed25519 ${WHARF_USER}@${WHARF_HOST} << 'ENDSSH'
+          set -e
+          cd /tmp
+          tar xzf wiz-kanban-deploy.tar.gz
+          sudo rm -rf /opt/stacks/wiz-kanban
+          sudo mv wiz-kanban /opt/stacks/
+          sudo chown -R bradley:bradley /opt/stacks/wiz-kanban
+          cd /opt/stacks/wiz-kanban
+          docker compose down || true
+          docker compose up -d --build
+          echo "✅ Deployment complete"
+ENDSSH
