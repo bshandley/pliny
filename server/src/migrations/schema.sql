@@ -32,8 +32,7 @@ CREATE TABLE IF NOT EXISTS columns (
   name VARCHAR(255) NOT NULL,
   position INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(board_id, position)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Cards table
@@ -45,8 +44,7 @@ CREATE TABLE IF NOT EXISTS cards (
   assignee VARCHAR(255),
   position INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(column_id, position)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes
