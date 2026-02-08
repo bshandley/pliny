@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 interface BoardAssigneesProps {
   boardId: string;
@@ -13,6 +14,7 @@ interface Assignee {
 }
 
 export default function BoardAssignees({ boardId, onClose }: BoardAssigneesProps) {
+  const confirm = useConfirm();
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
@@ -46,7 +48,7 @@ export default function BoardAssignees({ boardId, onClose }: BoardAssigneesProps
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Remove "${name}" from assignees?`)) return;
+    if (!await confirm(`Remove "${name}" from assignees?`, { confirmLabel: 'Remove' })) return;
 
     try {
       await api.deleteBoardAssignee(boardId, id);

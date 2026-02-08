@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { User, BoardMember } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 interface BoardMembersProps {
   boardId: string;
@@ -8,6 +9,7 @@ interface BoardMembersProps {
 }
 
 export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
+  const confirm = useConfirm();
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
   };
 
   const handleRemoveMember = async (userId: string, username: string) => {
-    if (!confirm(`Remove "${username}" from this board?`)) return;
+    if (!await confirm(`Remove "${username}" from this board?`, { confirmLabel: 'Remove' })) return;
 
     try {
       await api.removeBoardMember(boardId, userId);

@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board, Card } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
@@ -26,6 +27,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [showMembers, setShowMembers] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
 
+  const confirm = useConfirm();
   const isAdmin = userRole === 'ADMIN';
 
   useEffect(() => {
@@ -216,7 +218,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   };
 
   const handleDeleteCard = async (cardId: string) => {
-    if (!confirm('Delete this card?')) return;
+    if (!await confirm('Delete this card?', { confirmLabel: 'Delete' })) return;
 
     try {
       await api.deleteCard(cardId);
@@ -251,7 +253,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   };
 
   const handleDeleteColumn = async (columnId: string, columnName: string) => {
-    if (!confirm(`Delete column "${columnName}" and all its cards?`)) return;
+    if (!await confirm(`Delete column "${columnName}" and all its cards?`, { confirmLabel: 'Delete' })) return;
 
     try {
       await api.deleteColumn(columnId);

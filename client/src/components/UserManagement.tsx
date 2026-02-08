@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { User } from '../types';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -9,6 +10,7 @@ interface UserManagementProps {
 }
 
 export default function UserManagement({ onBack, onLogout, currentUser }: UserManagementProps) {
+  const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -76,7 +78,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`Delete user "${user.username}"? This cannot be undone.`)) return;
+    if (!await confirm(`Delete user "${user.username}"? This cannot be undone.`, { confirmLabel: 'Delete' })) return;
 
     try {
       await api.deleteUser(user.id);
