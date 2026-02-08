@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '../types';
 
 interface KanbanCardProps {
@@ -54,6 +54,14 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state when card changes
+  useEffect(() => {
+    setEditTitle(card.title);
+    setEditDescription(card.description || '');
+    setEditDueDate(card.due_date ? card.due_date.split(' ')[0] : '');
+    setEditAssignees(card.assignees || []);
+  }, [card.title, card.description, card.due_date, card.assignees]);
 
   const handleSave = () => {
     if (!editTitle.trim()) return;
