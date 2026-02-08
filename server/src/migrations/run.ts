@@ -25,6 +25,13 @@ async function runMigrations() {
     );
     await pool.query(dueDates);
 
+    // Add labels, comments, checklists, archive
+    const features = fs.readFileSync(
+      path.join(__dirname, '004-labels-comments-checklists-archive.sql'),
+      'utf-8'
+    );
+    await pool.query(features);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

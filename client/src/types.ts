@@ -32,6 +32,29 @@ export interface Column {
   cards?: Card[];
 }
 
+export interface Label {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Comment {
+  id: string;
+  card_id: string;
+  user_id: string;
+  username: string;
+  text: string;
+  created_at: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  card_id: string;
+  text: string;
+  checked: boolean;
+  position: number;
+}
+
 export interface Card {
   id: string;
   column_id: string;
@@ -39,7 +62,10 @@ export interface Card {
   description?: string;
   assignee?: string; // Deprecated, use assignees
   assignees?: string[];
+  labels?: Label[];
   due_date?: string | null;
+  archived?: boolean;
+  checklist?: { total: number; checked: number } | null;
   position: number;
   created_at: string;
   updated_at: string;

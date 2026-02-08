@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem } from './types';
 
 const API_URL = '/api';
 
@@ -181,6 +181,68 @@ class ApiClient {
     return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Labels
+  async getBoardLabels(boardId: string): Promise<Label[]> {
+    return this.fetch(`/boards/${boardId}/labels`);
+  }
+
+  async createLabel(boardId: string, name: string, color: string): Promise<Label> {
+    return this.fetch(`/boards/${boardId}/labels`, {
+      method: 'POST',
+      body: JSON.stringify({ name, color }),
+    });
+  }
+
+  async updateLabel(id: string, name: string, color: string): Promise<Label> {
+    return this.fetch(`/labels/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, color }),
+    });
+  }
+
+  async deleteLabel(id: string): Promise<void> {
+    return this.fetch(`/labels/${id}`, { method: 'DELETE' });
+  }
+
+  // Comments
+  async getCardComments(cardId: string): Promise<Comment[]> {
+    return this.fetch(`/cards/${cardId}/comments`);
+  }
+
+  async addCardComment(cardId: string, text: string): Promise<Comment> {
+    return this.fetch(`/cards/${cardId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async deleteComment(id: string): Promise<void> {
+    return this.fetch(`/comments/${id}`, { method: 'DELETE' });
+  }
+
+  // Checklists
+  async getCardChecklist(cardId: string): Promise<ChecklistItem[]> {
+    return this.fetch(`/cards/${cardId}/checklist`);
+  }
+
+  async addChecklistItem(cardId: string, text: string): Promise<ChecklistItem> {
+    return this.fetch(`/cards/${cardId}/checklist`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async updateChecklistItem(id: string, updates: Partial<ChecklistItem>): Promise<ChecklistItem> {
+    return this.fetch(`/checklist/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteChecklistItem(id: string): Promise<void> {
+    return this.fetch(`/checklist/${id}`, { method: 'DELETE' });
   }
 }
 

@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS cards (
   description TEXT,
   assignee VARCHAR(255), -- Deprecated, use card_assignees table
   due_date DATE,
+  archived BOOLEAN NOT NULL DEFAULT false,
   position INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -64,6 +65,41 @@ CREATE TABLE IF NOT EXISTS card_assignees (
   PRIMARY KEY (card_id, assignee_name)
 );
 
+-- Board labels (colored tags)
+CREATE TABLE IF NOT EXISTS board_labels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  name VARCHAR(50) NOT NULL,
+  color VARCHAR(7) NOT NULL DEFAULT '#6b7280',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Card-label junction (many-to-many)
+CREATE TABLE IF NOT EXISTS card_labels (
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  label_id UUID NOT NULL REFERENCES board_labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (card_id, label_id)
+);
+
+-- Card comments
+CREATE TABLE IF NOT EXISTS card_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Card checklist items
+CREATE TABLE IF NOT EXISTS card_checklist_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  text VARCHAR(500) NOT NULL,
+  checked BOOLEAN NOT NULL DEFAULT false,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_columns_board_id ON columns(board_id);
 CREATE INDEX IF NOT EXISTS idx_cards_column_id ON cards(column_id);
@@ -72,6 +108,11 @@ CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
 CREATE INDEX IF NOT EXISTS idx_board_assignees_board_id ON board_assignees(board_id);
 CREATE INDEX IF NOT EXISTS idx_card_assignees_card_id ON card_assignees(card_id);
+CREATE INDEX IF NOT EXISTS idx_board_labels_board_id ON board_labels(board_id);
+CREATE INDEX IF NOT EXISTS idx_card_labels_card_id ON card_labels(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_labels_label_id ON card_labels(label_id);
+CREATE INDEX IF NOT EXISTS idx_card_comments_card_id ON card_comments(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_checklist_items_card_id ON card_checklist_items(card_id);
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (username, password_hash, role)

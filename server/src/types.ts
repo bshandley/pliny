@@ -39,9 +39,36 @@ export interface Card {
   description?: string;
   assignee?: string;
   due_date?: string;
+  archived: boolean;
   position: number;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface Label {
+  id: string;
+  board_id: string;
+  name: string;
+  color: string;
+  created_at: Date;
+}
+
+export interface Comment {
+  id: string;
+  card_id: string;
+  user_id: string;
+  username?: string;
+  text: string;
+  created_at: Date;
+}
+
+export interface ChecklistItem {
+  id: string;
+  card_id: string;
+  text: string;
+  checked: boolean;
+  position: number;
+  created_at: Date;
 }
 
 export interface AuthRequest extends Request {

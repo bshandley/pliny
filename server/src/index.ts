@@ -8,6 +8,9 @@ import columnRoutes from './routes/columns';
 import cardRoutes from './routes/cards';
 import userRoutes from './routes/users';
 import assigneeRoutes from './routes/assignees';
+import labelRoutes from './routes/labels';
+import commentRoutes from './routes/comments';
+import checklistRoutes from './routes/checklists';
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,6 +32,9 @@ app.use('/api/columns', columnRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api', assigneeRoutes);
+app.use('/api', labelRoutes);
+app.use('/api', commentRoutes);
+app.use('/api', checklistRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

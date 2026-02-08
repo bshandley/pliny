@@ -53,6 +53,13 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       updates.push(`due_date = $${paramCount++}`);
       values.push(due_date || null); // Empty string or null clears the date
     }
+    if (req.body.archived !== undefined) {
+      updates.push(`archived = $${paramCount++}`);
+      values.push(req.body.archived);
+    }
+    if (req.body.labels !== undefined) {
+      // Labels handled after the main update
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
@@ -68,29 +75,45 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 
     // Update assignees if provided
     if (assignees !== undefined) {
-      // Clear existing assignees
       await pool.query('DELETE FROM card_assignees WHERE card_id = $1', [id]);
-      
-      // Add new assignees
       if (Array.isArray(assignees) && assignees.length > 0) {
-        const values = assignees.map((name, i) => `($1, $${i + 2})`).join(', ');
-        const params = [id, ...assignees];
+        const vals = assignees.map((_name: string, i: number) => `($1, $${i + 2})`).join(', ');
         await pool.query(
-          `INSERT INTO card_assignees (card_id, assignee_name) VALUES ${values}`,
-          params
+          `INSERT INTO card_assignees (card_id, assignee_name) VALUES ${vals}`,
+          [id, ...assignees]
         );
       }
     }
 
-    // Fetch updated assignees
+    // Update labels if provided
+    if (req.body.labels !== undefined) {
+      await pool.query('DELETE FROM card_labels WHERE card_id = $1', [id]);
+      const labels = req.body.labels;
+      if (Array.isArray(labels) && labels.length > 0) {
+        const vals = labels.map((_id: string, i: number) => `($1, $${i + 2})`).join(', ');
+        await pool.query(
+          `INSERT INTO card_labels (card_id, label_id) VALUES ${vals}`,
+          [id, ...labels]
+        );
+      }
+    }
+
+    // Fetch updated assignees and labels
     const assigneesResult = await pool.query(
       'SELECT assignee_name FROM card_assignees WHERE card_id = $1',
+      [id]
+    );
+    const labelsResult = await pool.query(
+      `SELECT bl.id, bl.name, bl.color FROM card_labels cl
+       JOIN board_labels bl ON cl.label_id = bl.id
+       WHERE cl.card_id = $1`,
       [id]
     );
 
     res.json({
       ...result.rows[0],
-      assignees: assigneesResult.rows.map(r => r.assignee_name)
+      assignees: assigneesResult.rows.map(r => r.assignee_name),
+      labels: labelsResult.rows
     });
   } catch (error) {
     console.error('Update card error:', error);

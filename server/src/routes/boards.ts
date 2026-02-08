@@ -82,6 +82,30 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
+    // Fetch labels for all cards
+    const cardLabelsResult = await pool.query(
+      `SELECT cl.card_id, bl.id, bl.name, bl.color
+       FROM card_labels cl
+       INNER JOIN board_labels bl ON cl.label_id = bl.id
+       INNER JOIN cards c ON cl.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1`,
+      [id]
+    );
+
+    // Fetch checklist counts for all cards
+    const checklistResult = await pool.query(
+      `SELECT ci.card_id,
+              COUNT(*)::int as total,
+              COUNT(*) FILTER (WHERE ci.checked)::int as checked
+       FROM card_checklist_items ci
+       INNER JOIN cards c ON ci.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1
+       GROUP BY ci.card_id`,
+      [id]
+    );
+
     // Group assignees by card_id
     const assigneesByCard: Record<string, string[]> = {};
     assigneesResult.rows.forEach(row => {
@@ -91,11 +115,28 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       assigneesByCard[row.card_id].push(row.assignee_name);
     });
 
+    // Group labels by card_id
+    const labelsByCard: Record<string, { id: string; name: string; color: string }[]> = {};
+    cardLabelsResult.rows.forEach(row => {
+      if (!labelsByCard[row.card_id]) {
+        labelsByCard[row.card_id] = [];
+      }
+      labelsByCard[row.card_id].push({ id: row.id, name: row.name, color: row.color });
+    });
+
+    // Group checklist counts by card_id
+    const checklistByCard: Record<string, { total: number; checked: number }> = {};
+    checklistResult.rows.forEach(row => {
+      checklistByCard[row.card_id] = { total: row.total, checked: row.checked };
+    });
+
     const board = boardResult.rows[0];
     const columns = columnsResult.rows;
     const cards = cardsResult.rows.map(card => ({
       ...card,
-      assignees: assigneesByCard[card.id] || []
+      assignees: assigneesByCard[card.id] || [],
+      labels: labelsByCard[card.id] || [],
+      checklist: checklistByCard[card.id] || null
     }));
 
     res.json({
