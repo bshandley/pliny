@@ -1530,6 +1530,14 @@ button:disabled {
   opacity: 0.8;
 }
 
+.label-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .label-rename-input {
   font-size: 0.8rem;
   font-weight: 600;
@@ -1539,6 +1547,17 @@ button:disabled {
   outline: none;
   background: var(--bg);
   color: var(--text);
+}
+
+.color-picker-inline {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.label-item-editing {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 /* ---- Role Badges ---- */
