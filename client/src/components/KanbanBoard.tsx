@@ -239,8 +239,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
   const handleAddAssignee = async (name: string): Promise<boolean> => {
     try {
-      await api.addBoardAssignee(boardId, name);
-      await loadAssignees(); // Reload assignees list
+      const newAssignee = await api.addBoardAssignee(boardId, name);
+      // Optimistically update local state immediately
+      setAssignees(prev => [...prev, newAssignee]);
       socket?.emit('board-updated', boardId);
       return true;
     } catch (error: any) {
