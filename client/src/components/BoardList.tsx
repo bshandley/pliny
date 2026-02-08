@@ -3,7 +3,7 @@ import { api } from '../api';
 import { Board, User } from '../types';
 
 interface BoardListProps {
-  onSelectBoard: (boardId: string) => void;
+  onSelectBoard: (boardId: string, boardName: string) => void;
   onLogout: () => void;
   onGoToUsers: () => void;
   user: User | null;
@@ -83,7 +83,7 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
             <div
               key={board.id}
               className="board-card"
-              onClick={() => onSelectBoard(board.id)}
+              onClick={() => onSelectBoard(board.id, board.name)}
             >
               <h3>{board.name}</h3>
               {board.description && <p>{board.description}</p>}

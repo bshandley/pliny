@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
 import { User } from './types';
 import Login from './components/Login';
@@ -7,6 +7,20 @@ import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
 
 type Page = 'boards' | 'users' | 'board';
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function getPathSlug(): string {
+  return window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+}
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -18,12 +32,55 @@ function App() {
     return (saved as 'light' | 'dark') || 'light';
   });
 
+  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string) => {
+    setPage(newPage);
+    setCurrentBoardId(boardId ?? null);
+
+    let path = '/';
+    if (newPage === 'users') {
+      path = '/admin';
+    } else if (newPage === 'board' && boardName) {
+      path = '/' + slugify(boardName);
+    }
+
+    if (window.location.pathname !== path) {
+      window.history.pushState({ page: newPage, boardId, boardName }, '', path);
+    }
+  }, []);
+
+  // Resolve URL path to page state after auth
+  const resolveUrlRoute = useCallback(async (authenticatedUser: User) => {
+    const slug = getPathSlug();
+
+    if (!slug) return; // root → board list (default)
+
+    if (slug === 'admin') {
+      if (authenticatedUser.role === 'ADMIN') {
+        setPage('users');
+      }
+      return;
+    }
+
+    // Try to match slug to a board name
+    try {
+      const boards = await api.getBoards();
+      const match = boards.find((b: any) => slugify(b.name) === slug);
+      if (match) {
+        setCurrentBoardId(match.id);
+        setPage('board');
+      }
+    } catch {
+      // Couldn't load boards, stay on board list
+    }
+  }, []);
+
   useEffect(() => {
     const token = api.getToken();
     if (token) {
       api.me()
-        .then((userData) => {
+        .then(async (userData) => {
           setUser(userData);
+          await resolveUrlRoute(userData);
           setLoading(false);
         })
         .catch(() => {
@@ -33,6 +90,32 @@ function App() {
     } else {
       setLoading(false);
     }
+  }, [resolveUrlRoute]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      if (state) {
+        setPage(state.page || 'boards');
+        setCurrentBoardId(state.boardId || null);
+      } else {
+        // No state (e.g. initial entry) — resolve from URL
+        const slug = getPathSlug();
+        if (!slug) {
+          setPage('boards');
+          setCurrentBoardId(null);
+        } else if (slug === 'admin') {
+          setPage('users');
+          setCurrentBoardId(null);
+        }
+        // For board slugs without state, we'd need to re-resolve,
+        // but popstate with no state is rare after initial navigation
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
@@ -48,6 +131,7 @@ function App() {
     try {
       const userData = await api.login(username, password);
       setUser(userData);
+      await resolveUrlRoute(userData);
     } catch (error: any) {
       throw error;
     }
@@ -58,20 +142,19 @@ function App() {
     setUser(null);
     setCurrentBoardId(null);
     setPage('boards');
+    window.history.pushState(null, '', '/');
   };
 
-  const handleSelectBoard = (boardId: string) => {
-    setCurrentBoardId(boardId);
-    setPage('board');
+  const handleSelectBoard = (boardId: string, boardName: string) => {
+    navigateTo('board', boardId, boardName);
   };
 
   const handleBackToBoards = () => {
-    setCurrentBoardId(null);
-    setPage('boards');
+    navigateTo('boards');
   };
 
   const handleGoToUsers = () => {
-    setPage('users');
+    navigateTo('users');
   };
 
   if (loading) {
