@@ -391,6 +391,10 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
         <div className="card-edit-actions">
           <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
           <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
+          <div className="card-edit-actions-right">
+            <button onClick={() => { onEditEnd(); onArchive(); }} className="btn-secondary btn-sm btn-archive" title="Archive card">Archive</button>
+            <button onClick={() => { onEditEnd(); onDelete(); }} className="btn-danger btn-sm" title="Delete card">Delete</button>
+          </div>
         </div>
       </div>
     );
@@ -415,11 +419,11 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
         {canWrite && (
           <button
             onClick={(e) => { e.stopPropagation(); onArchive(); }}
-            className="btn-delete card-delete"
+            className="btn-delete card-archive"
             aria-label="Archive card"
             title="Archive"
           >
-            ×
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
           </button>
         )}
       </div>

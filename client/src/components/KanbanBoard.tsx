@@ -311,29 +311,33 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           </button>
           <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
             {isAdmin && (
-              <>
-                <div className="board-settings">
-                  <button
-                    onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                    className="board-settings-trigger btn-secondary btn-sm"
-                  >
-                    Board ▾
+              <div className="board-settings">
+                <button
+                  onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                  className="board-settings-trigger btn-secondary btn-sm"
+                >
+                  Board ▾
+                </button>
+                <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
+                  <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
+                  <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
+                    {showArchived ? 'Show Active' : 'Archived'}
                   </button>
-                  <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
-                    <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Members</button>
-                    <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Assignees</button>
-                    <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Labels</button>
-                  </div>
+                  <div className="board-settings-divider" />
+                  <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
+                  <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
+                  <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
                 </div>
-                <button onClick={() => { setShowNewColumn(true); setMobileMenuOpen(false); }} className="btn-primary btn-sm">+ Column</button>
-              </>
+              </div>
             )}
-            <button
-              onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
-              className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
-            >
-              {showArchived ? 'Show Active' : 'Archived'}
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
+                className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+              >
+                {showArchived ? 'Show Active' : 'Archived'}
+              </button>
+            )}
             <button onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Logout</button>
           </div>
         </div>

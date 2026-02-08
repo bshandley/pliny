@@ -375,9 +375,19 @@ button:disabled {
   color: var(--danger);
 }
 
-.kanban-card:hover .card-delete,
+.kanban-card:hover .card-archive,
 .column-header:hover .btn-delete {
   opacity: 1;
+}
+
+.card-archive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-archive svg {
+  pointer-events: none;
 }
 
 /* Theme Toggle */
@@ -904,6 +914,17 @@ button:disabled {
   display: flex;
   gap: 0.375rem;
   padding-top: 0.25rem;
+  align-items: center;
+}
+
+.card-edit-actions-right {
+  display: flex;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.btn-archive {
+  color: var(--text-secondary);
 }
 
 /* ---- Card Face ---- */
@@ -1762,6 +1783,17 @@ button:disabled {
   background: var(--bg-raised);
 }
 
+.board-settings-menu button.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.board-settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
 .settings-backdrop {
   position: fixed;
   inset: 0;
@@ -1837,6 +1869,10 @@ button:disabled {
 
   .board-settings-menu {
     display: contents !important;
+  }
+
+  .board-settings-divider {
+    display: none;
   }
 
   .settings-backdrop {
@@ -2005,7 +2041,8 @@ button:disabled {
   }
 
   /* Always show interactive controls (no hover on touch) */
-  .btn-delete {
+  .btn-delete,
+  .card-archive {
     opacity: 1;
   }
 
