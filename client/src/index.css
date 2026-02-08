@@ -692,6 +692,7 @@ button:disabled {
   box-shadow: var(--shadow-lg);
   border-color: var(--primary);
   transform: none;
+  touch-action: auto;
 }
 
 .card-edit-title {
@@ -1654,49 +1655,249 @@ button:disabled {
   transform: rotate(2deg);
 }
 
+/* ---- Mobile Support ---- */
+
+.mobile-only {
+  display: none !important;
+}
+
+.header-actions-menu {
+  display: contents;
+}
+
+.mobile-backdrop {
+  display: none;
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 /* ---- Mobile ---- */
 
 @media (max-width: 768px) {
-  .board-list-header h1 {
-    font-size: 1.35rem;
+  /* Disable tap highlight */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .boards-grid {
-    grid-template-columns: 1fr;
+  /* Prevent iOS input zoom */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Show mobile-only controls */
+  .mobile-only {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .mobile-active {
+    color: var(--primary);
+    background: var(--primary-subtle);
+  }
+
+  /* Active filter indicator dot */
+  .has-filters::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    border: 2px solid var(--card-bg);
+  }
+
+  /* Mobile menu dropdown */
+  .kanban-header {
+    position: relative;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .header-actions-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 0.25rem;
+    flex-direction: column;
+    min-width: 180px;
+    z-index: 200;
+    animation: fadeIn 0.1s var(--ease);
+  }
+
+  .header-actions-menu.open {
+    display: flex;
+  }
+
+  .header-actions-menu > button {
+    background: transparent;
+    color: var(--text);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    text-align: left;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .header-actions-menu > button:active {
+    background: var(--bg-raised);
+  }
+
+  .header-actions-menu > button.btn-primary {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .header-actions-menu > .active-filter {
+    color: var(--primary) !important;
+    background: var(--primary-subtle) !important;
+  }
+
+  /* Mobile backdrop */
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+  }
+
+  /* Collapsible filter bar */
+  .filter-bar {
+    display: none;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .filter-bar.mobile-open {
+    display: flex;
+  }
+
+  .filter-input {
+    min-width: unset;
+    max-width: none;
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  /* Scroll-snap columns */
+  .columns-container {
+    scroll-snap-type: x mandatory;
+    padding: 0.75rem;
+    gap: 0.75rem;
+    scroll-padding: 0.75rem;
+  }
+
+  .column {
+    scroll-snap-align: start;
+    min-width: calc(100vw - 1.5rem);
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100vh - 110px);
+    max-height: calc(100dvh - 110px);
+  }
+
+  /* Bottom sheet modals */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-width: none;
+    width: 100%;
+    max-height: 85vh;
+    max-height: 85dvh;
+    padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    animation: slideUpSheet 0.3s var(--ease-spring);
+    overscroll-behavior: contain;
+  }
+
+  .modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border-hover);
+    border-radius: 2px;
+    margin: 0 auto 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .modal h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Typography */
+  .board-list-header h1 {
+    font-size: 1.35rem;
   }
 
   .kanban-header h1 {
     font-size: 1.1rem;
   }
 
-  .header-actions button {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
+  /* Board list */
+  .boards-grid {
+    grid-template-columns: 1fr;
   }
 
-  .column {
-    min-width: 270px;
+  /* Touch targets — 44px minimum for primary actions */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    min-height: 44px;
   }
 
-  .modal {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
+  .btn-sm {
+    min-height: 38px;
   }
 
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Always show interactive controls (no hover on touch) */
+  .btn-delete {
+    opacity: 1;
+  }
+
+  .checklist-delete {
+    opacity: 1;
+  }
+
+  .comment-delete {
+    opacity: 1;
+  }
+
+  /* Cards */
   .kanban-card {
     padding: 0.875rem;
     margin-bottom: 0.625rem;
   }
 
-  .btn-delete {
-    padding: 0.375rem;
-    font-size: 1.1rem;
-  }
-
+  /* Users table */
   .users-table th,
   .users-table td {
     padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
   .actions-cell {
@@ -1709,6 +1910,7 @@ button:disabled {
     text-align: center;
   }
 
+  /* Members modal */
   .add-member-section {
     flex-direction: column;
   }
@@ -1723,14 +1925,16 @@ button:disabled {
     align-items: flex-start;
   }
 
-  .filter-bar {
-    padding: 0.5rem 0.75rem;
+  /* Safe areas */
+  .theme-toggle {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    right: calc(1.25rem + env(safe-area-inset-right, 0px));
   }
 
-  .filter-input {
-    min-width: 120px;
-    max-width: none;
-    flex: 1 1 100%;
+  /* Kanban container */
+  .kanban-container {
+    height: 100dvh;
+    overscroll-behavior: none;
   }
 }
 
@@ -1753,18 +1957,15 @@ button:disabled {
     align-items: stretch;
   }
 
-  .header-actions {
+  .board-list-header .header-actions {
     justify-content: stretch;
   }
 
-  .header-actions button {
+  .board-list-header .header-actions button {
     flex: 1;
   }
 
-  .column {
-    min-width: calc(100vw - 2.5rem);
-  }
-
+  /* Users table card layout */
   .users-table thead {
     display: none;
   }

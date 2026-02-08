@@ -31,6 +31,8 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [showLabels, setShowLabels] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -289,26 +291,45 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           <h1>{board.name}</h1>
         </div>
         <div className="header-actions">
-          {isAdmin && (
-            <>
-              <button onClick={() => setShowMembers(true)} className="btn-secondary btn-sm">Members</button>
-              <button onClick={() => setShowAssignees(true)} className="btn-secondary btn-sm">Assignees</button>
-              <button onClick={() => setShowLabels(true)} className="btn-secondary btn-sm">Labels</button>
-              <button onClick={() => setShowNewColumn(true)} className="btn-primary">+ Column</button>
-            </>
-          )}
           <button
-            onClick={() => setShowArchived(!showArchived)}
-            className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+            className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
+            title="Filters"
           >
-            {showArchived ? 'Show Active' : 'Archived'}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
           </button>
-          <button onClick={onLogout} className="btn-secondary">Logout</button>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`btn-icon mobile-only${mobileMenuOpen ? ' mobile-active' : ''}`}
+            title="Menu"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
+          <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
+            {isAdmin && (
+              <>
+                <button onClick={() => { setShowMembers(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Members</button>
+                <button onClick={() => { setShowAssignees(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Assignees</button>
+                <button onClick={() => { setShowLabels(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Labels</button>
+                <button onClick={() => { setShowNewColumn(true); setMobileMenuOpen(false); }} className="btn-primary btn-sm">+ Column</button>
+              </>
+            )}
+            <button
+              onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
+              className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+            >
+              {showArchived ? 'Show Active' : 'Archived'}
+            </button>
+            <button onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Logout</button>
+          </div>
         </div>
       </header>
 
+      {/* Mobile menu backdrop */}
+      {mobileMenuOpen && <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)} />}
+
       {/* Filter bar */}
-      <div className="filter-bar">
+      <div className={`filter-bar${mobileFiltersOpen ? ' mobile-open' : ''}`}>
         <input
           type="text"
           value={filterText}
