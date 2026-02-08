@@ -16,31 +16,35 @@ function getDueBadge(dueDateStr: string): { label: string; className: string } |
     return null;
   }
   
+  // Extract just the YYYY-MM-DD part to avoid timezone issues
+  const dateOnly = dueDateStr.split(' ')[0].split('T')[0];
+  const parts = dateOnly.split('-');
+  if (parts.length !== 3) return null;
+  
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]) - 1; // 0-indexed
+  const day = parseInt(parts[2]);
+  
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  
+  // Create dates at noon local time to avoid DST/timezone edge cases
+  const due = new Date(year, month, day, 12, 0, 0);
   const now = new Date();
-  // Parse date - handle both YYYY-MM-DD and full timestamp formats
-  const due = new Date(dueDateStr.includes('T') ? dueDateStr : dueDateStr.replace(' ', 'T'));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
   
-  // Check if date is valid
-  if (isNaN(due.getTime())) {
-    return null;
-  }
+  const daysDiff = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   
-  const msLeft = due.getTime() - now.getTime();
-  const hoursLeft = msLeft / (1000 * 60 * 60);
-
-  if (hoursLeft < -24) {
+  if (daysDiff < 0) {
     return { label: 'Overdue', className: 'due-badge due-overdue' };
   }
-  if (hoursLeft < 0) {
-    return { label: 'Overdue', className: 'due-badge due-overdue' };
+  if (daysDiff === 0) {
+    return { label: 'Today', className: 'due-badge due-soon' };
   }
-  if (hoursLeft < 24) {
-    const isToday = due.toDateString() === now.toDateString();
-    return { label: isToday ? 'Today' : 'Tomorrow', className: 'due-badge due-soon' };
+  if (daysDiff === 1) {
+    return { label: 'Tomorrow', className: 'due-badge due-soon' };
   }
-  const month = due.toLocaleString('en-US', { month: 'short' });
-  const day = due.getDate();
-  return { label: `${month} ${day}`, className: 'due-badge' };
+  const monthStr = due.toLocaleString('en-US', { month: 'short' });
+  return { label: `${monthStr} ${day}`, className: 'due-badge' };
 }
 
 export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assignees = [], boardId, onAddAssignee }: KanbanCardProps) {
