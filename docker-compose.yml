@@ -4,15 +4,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: wiz_kanban
-      POSTGRES_USER: wiz
+      POSTGRES_DB: plank
+      POSTGRES_USER: plank
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wiz -d wiz_kanban"]
+      test: ["CMD-SHELL", "pg_isready -U plank -d plank"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -27,10 +27,10 @@ services:
       NODE_ENV: production
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: wiz_kanban
-      DB_USER: wiz
+      DB_NAME: plank
+      DB_USER: plank
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
-      DATABASE_URL: postgres://wiz:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/wiz_kanban
+      DATABASE_URL: postgres://plank:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/plank
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       PORT: 3001
       CLIENT_URL: http://localhost:5174

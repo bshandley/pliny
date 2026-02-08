@@ -5,7 +5,7 @@
 ```
 Developer
     ↓ git push
-GitHub (bshandley/wiz-kanban)
+GitHub (bshandley/plank)
     ↓ pull (manual or automated)
 Wharf (10.0.0.102)
     ↓ docker compose up --build
@@ -20,7 +20,7 @@ SSH to Wharf and run:
 
 ```bash
 ssh bradley@10.0.0.102
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 ./deploy-from-github.sh
 ```
 
@@ -34,14 +34,14 @@ This script:
 From your local machine:
 
 ```bash
-ssh bradley@10.0.0.102 'cd /opt/stacks/wiz-kanban && ./deploy-from-github.sh'
+ssh bradley@10.0.0.102 'cd /opt/stacks/plank && ./deploy-from-github.sh'
 ```
 
 ### Option 3: Deploy via OpenClaw/Rye
 
 Ask Rye to deploy:
 ```
-"Deploy the latest wiz-kanban changes to Wharf"
+"Deploy the latest Plank changes to Wharf"
 ```
 
 ## Development Workflow
@@ -64,7 +64,7 @@ Ask Rye to deploy:
 
 ## Repository
 
-- **GitHub:** https://github.com/bshandley/wiz-kanban
+- **GitHub:** https://github.com/bshandley/plank
 - **Visibility:** Private
 - **Branch:** master
 
@@ -81,7 +81,7 @@ To enable automatic deployment on every push, you can:
 
 1. **Set up a cron job on Wharf** to poll for changes every 5 minutes:
    ```bash
-   */5 * * * * cd /opt/stacks/wiz-kanban && ./deploy-from-github.sh >> /var/log/wiz-kanban-deploy.log 2>&1
+   */5 * * * * cd /opt/stacks/plank && ./deploy-from-github.sh >> /var/log/plank-deploy.log 2>&1
    ```
 
 2. **Use GitHub webhooks** (requires exposing Wharf to the internet or using a relay)
@@ -96,7 +96,7 @@ To rollback to a previous version:
 
 ```bash
 ssh bradley@10.0.0.102
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 git log --oneline  # Find the commit hash
 git reset --hard <commit-hash>
 docker compose up -d --build
@@ -107,7 +107,7 @@ docker compose up -d --build
 View logs:
 ```bash
 ssh bradley@10.0.0.102
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 docker compose logs -f          # All containers
 docker compose logs -f server   # Backend only
 docker compose logs -f client   # Frontend only
@@ -124,14 +124,14 @@ docker compose ps
 **Deployment fails:**
 ```bash
 ssh bradley@10.0.0.102
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 docker compose down
 docker compose up -d --build
 ```
 
 **Database issues:**
 ```bash
-docker compose exec db psql -U wiz -d wiz_kanban
+docker compose exec db psql -U plank -d plank
 ```
 
 **Clear everything and redeploy:**
@@ -139,5 +139,5 @@ docker compose exec db psql -U wiz -d wiz_kanban
 docker compose down -v  # WARNING: Deletes database!
 git pull
 docker compose up -d --build
-docker compose exec -T db psql -U wiz -d wiz_kanban -f server/src/migrations/schema.sql
+docker compose exec -T db psql -U plank -d plank -f server/src/migrations/schema.sql
 ```

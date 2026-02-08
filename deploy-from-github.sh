@@ -3,7 +3,7 @@ set -e
 
 echo "🔄 Pulling latest changes from GitHub..."
 
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 
 # Fetch latest
 git fetch origin master

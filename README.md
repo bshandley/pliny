@@ -1,4 +1,4 @@
-# Wiz Kanban
+# Plank
 
 A production-ready Kanban project management application built with React, TypeScript, Express, and PostgreSQL.
 
@@ -24,7 +24,6 @@ A production-ready Kanban project management application built with React, TypeS
 1. **Clone and configure:**
 
 ```bash
-cd /tmp/wiz-kanban
 cp .env.example .env
 # Edit .env with your settings
 ```
@@ -57,7 +56,7 @@ docker-compose exec server npm run migrate
 ## Architecture
 
 ```
-wiz-kanban/
+plank/
 ├── server/           # Express + TypeScript backend
 │   ├── src/
 │   │   ├── routes/   # API routes (auth, boards, columns, cards, users)
@@ -154,9 +153,9 @@ npm run dev
 ```bash
 # Use local PostgreSQL or Docker:
 docker run -d -p 5432:5432 \
-  -e POSTGRES_DB=kanban \
-  -e POSTGRES_USER=kanban \
-  -e POSTGRES_PASSWORD=kanban123 \
+  -e POSTGRES_DB=plank \
+  -e POSTGRES_USER=plank \
+  -e POSTGRES_PASSWORD=changeme \
   postgres:16
 ```
 
@@ -165,14 +164,14 @@ docker run -d -p 5432:5432 \
 1. **Copy project to Wharf:**
 
 ```bash
-scp -r /tmp/wiz-kanban bradley@10.0.0.102:/opt/stacks/
+scp -r . bradley@10.0.0.102:/opt/stacks/plank
 ```
 
 2. **SSH to Wharf and deploy:**
 
 ```bash
 ssh bradley@10.0.0.102
-cd /opt/stacks/wiz-kanban
+cd /opt/stacks/plank
 docker-compose up -d
 docker-compose exec server npm run migrate
 ```

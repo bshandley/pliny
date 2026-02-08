@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Deploying Wiz Kanban to Wharf (10.0.0.102)..."
+echo "🚀 Deploying Plank to Wharf (10.0.0.102)..."
 
 # Check if .env exists
 if [ ! -f .env ]; then
