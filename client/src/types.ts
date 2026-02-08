@@ -9,6 +9,7 @@ export interface Board {
   id: string;
   name: string;
   description?: string;
+  archived?: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;

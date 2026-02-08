@@ -1726,6 +1726,258 @@ button:disabled {
   font-style: italic;
 }
 
+/* ---- Kebab Menu (shared) ---- */
+
+.btn-kebab {
+  padding: 0.25rem 0.375rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s var(--ease);
+  opacity: 0;
+}
+
+.btn-kebab:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.board-card:hover .btn-kebab {
+  opacity: 1;
+}
+
+.board-card-menu {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+}
+
+.kebab-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem;
+  min-width: 140px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.1s var(--ease);
+}
+
+.kebab-dropdown button {
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.kebab-dropdown button:hover {
+  background: var(--bg-raised);
+}
+
+.kebab-danger {
+  color: var(--danger) !important;
+}
+
+.kebab-danger:hover {
+  background: var(--danger-subtle) !important;
+}
+
+.kebab-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+/* ---- Column Kebab ---- */
+
+.column-kebab {
+  position: relative;
+}
+
+.btn-column-kebab {
+  padding: 0.125rem 0.25rem !important;
+  opacity: 0;
+  transition: all 0.15s var(--ease);
+}
+
+.column-header:hover .btn-column-kebab {
+  opacity: 1;
+}
+
+.column-kebab-dropdown {
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 120px;
+}
+
+/* ---- Column Rename Input ---- */
+
+.column-rename-input {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.375rem;
+  width: 100%;
+  min-width: 0;
+  font-family: var(--font-ui);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.column-rename-input:focus {
+  outline: none;
+}
+
+/* ---- Archived Boards Section ---- */
+
+.archived-boards-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.archived-boards-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  font-family: var(--font-ui);
+  transition: color 0.15s var(--ease);
+}
+
+.archived-boards-toggle:hover {
+  color: var(--text);
+}
+
+.archived-count {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 0.05rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.archived-grid .board-card.archived {
+  opacity: 0.65;
+  border-style: dashed;
+  cursor: default;
+}
+
+.archived-grid .board-card.archived:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.archived-grid .board-card.archived::before {
+  display: none;
+}
+
+/* ---- Label Filter Dropdown ---- */
+
+.label-filter-dropdown {
+  position: relative;
+}
+
+.label-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  padding-right: 1.5rem;
+  position: relative;
+  white-space: nowrap;
+}
+
+.label-filter-trigger .filter-chevron {
+  position: absolute;
+  right: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.label-filter-active {
+  border-color: var(--primary);
+}
+
+.label-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.label-filter-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem;
+  min-width: 180px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.1s var(--ease);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.label-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.label-filter-option:hover {
+  background: var(--bg-raised);
+}
+
+.label-filter-option.selected {
+  background: var(--primary-subtle);
+  font-weight: 600;
+}
+
 /* ---- Dragging States ---- */
 
 .column.dragging {
@@ -2041,6 +2293,8 @@ button:disabled {
   }
 
   /* Always show interactive controls (no hover on touch) */
+  .btn-kebab,
+  .btn-column-kebab,
   .btn-delete,
   .card-archive {
     opacity: 1;

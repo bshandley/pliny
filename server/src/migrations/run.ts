@@ -32,6 +32,13 @@ async function runMigrations() {
     );
     await pool.query(features);
 
+    // Add board archiving
+    const boardArchive = fs.readFileSync(
+      path.join(__dirname, '005-board-archive.sql'),
+      'utf-8'
+    );
+    await pool.query(boardArchive);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

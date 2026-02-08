@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
@@ -35,6 +35,12 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [columnMenuId, setColumnMenuId] = useState<string | null>(null);
+  const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
+  const [renameColumnValue, setRenameColumnValue] = useState('');
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -66,13 +72,43 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     };
   }, [boardId]);
 
+  // Close column kebab menu on outside click
+  useEffect(() => {
+    if (!columnMenuId) return;
+    const handleClick = (e: MouseEvent) => {
+      if (columnMenuRef.current && !columnMenuRef.current.contains(e.target as Node)) {
+        setColumnMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [columnMenuId]);
+
+  // Close label dropdown on outside click
+  useEffect(() => {
+    if (!labelDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (labelDropdownRef.current && !labelDropdownRef.current.contains(e.target as Node)) {
+        setLabelDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [labelDropdownOpen]);
+
   const loadBoard = async () => {
     try {
       const data = await api.getBoard(boardId);
+      if (data.archived) {
+        onBack();
+        return;
+      }
       setBoard(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load board:', error);
-      alert('Failed to load board');
+      // Board was deleted or we lost access — go back to board list
+      onBack();
+      return;
     } finally {
       setLoading(false);
     }
@@ -273,6 +309,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   };
 
   const handleDeleteColumn = async (columnId: string, columnName: string) => {
+    setColumnMenuId(null);
     if (!await confirm(`Delete column "${columnName}" and all its cards?`, { confirmLabel: 'Delete' })) return;
     try {
       await api.deleteColumn(columnId);
@@ -280,6 +317,23 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       socket?.emit('board-updated', boardId);
     } catch (error: any) {
       alert('Failed to delete column: ' + error.message);
+    }
+  };
+
+  const handleRenameColumn = async (columnId: string) => {
+    const trimmed = renameColumnValue.trim();
+    if (!trimmed) {
+      setRenamingColumnId(null);
+      return;
+    }
+    try {
+      await api.updateColumn(columnId, { name: trimmed });
+      setRenamingColumnId(null);
+      setRenameColumnValue('');
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert('Failed to rename column: ' + error.message);
     }
   };
 
@@ -361,10 +415,41 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           {assignees.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
         </select>
         {boardLabels.length > 0 && (
-          <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className="filter-select">
-            <option value="">All labels</option>
-            {boardLabels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+          <div className="label-filter-dropdown" ref={labelDropdownRef}>
+            <button
+              className={`filter-select label-filter-trigger${filterLabel ? ' label-filter-active' : ''}`}
+              onClick={() => setLabelDropdownOpen(!labelDropdownOpen)}
+              type="button"
+            >
+              {filterLabel ? (
+                <>
+                  <span className="label-dot" style={{ background: boardLabels.find(l => l.id === filterLabel)?.color }} />
+                  {boardLabels.find(l => l.id === filterLabel)?.name}
+                </>
+              ) : 'All labels'}
+              <span className="filter-chevron">▾</span>
+            </button>
+            {labelDropdownOpen && (
+              <div className="label-filter-menu">
+                <button
+                  className={`label-filter-option${!filterLabel ? ' selected' : ''}`}
+                  onClick={() => { setFilterLabel(''); setLabelDropdownOpen(false); }}
+                >
+                  All labels
+                </button>
+                {boardLabels.map(l => (
+                  <button
+                    key={l.id}
+                    className={`label-filter-option${filterLabel === l.id ? ' selected' : ''}`}
+                    onClick={() => { setFilterLabel(l.id); setLabelDropdownOpen(false); }}
+                  >
+                    <span className="label-dot" style={{ background: l.color }} />
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         <select value={filterDue} onChange={(e) => setFilterDue(e.target.value)} className="filter-select">
           <option value="">All dates</option>
@@ -390,15 +475,46 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                     {(provided) => (
                       <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
                         <div className="column-header" {...provided.dragHandleProps}>
-                          <h3>{column.name}</h3>
+                          {renamingColumnId === column.id ? (
+                            <input
+                              className="column-rename-input"
+                              value={renameColumnValue}
+                              onChange={(e) => setRenameColumnValue(e.target.value)}
+                              onBlur={() => handleRenameColumn(column.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameColumn(column.id);
+                                if (e.key === 'Escape') { setRenamingColumnId(null); setRenameColumnValue(''); }
+                              }}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <h3>{column.name}</h3>
+                          )}
                           <div className="column-header-actions">
                             <span className="card-count">{visibleCards.length}</span>
                             {isAdmin && (
-                              <button
-                                className="btn-icon btn-delete"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}
-                                title="Delete column"
-                              >×</button>
+                              <div className="column-kebab" ref={columnMenuId === column.id ? columnMenuRef : undefined}>
+                                <button
+                                  className="btn-icon btn-column-kebab"
+                                  onClick={(e) => { e.stopPropagation(); setColumnMenuId(columnMenuId === column.id ? null : column.id); }}
+                                  title="Column actions"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                </button>
+                                {columnMenuId === column.id && (
+                                  <div className="kebab-dropdown column-kebab-dropdown">
+                                    <button onClick={(e) => {
+                                      e.stopPropagation();
+                                      setColumnMenuId(null);
+                                      setRenameColumnValue(column.name);
+                                      setRenamingColumnId(column.id);
+                                    }}>Rename</button>
+                                    <div className="kebab-divider" />
+                                    <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}>Delete</button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>

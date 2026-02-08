@@ -98,10 +98,10 @@ class ApiClient {
     });
   }
 
-  async updateBoard(id: string, name: string, description?: string): Promise<Board> {
+  async updateBoard(id: string, updates: Partial<Board>): Promise<Board> {
     return this.fetch(`/boards/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify(updates),
     });
   }
 

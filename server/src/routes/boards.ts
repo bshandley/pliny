@@ -173,11 +173,26 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, archived } = req.body;
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
+    if (description !== undefined) { fields.push(`description = $${idx++}`); values.push(description); }
+    if (archived !== undefined) { fields.push(`archived = $${idx++}`); values.push(archived); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
 
     const result = await pool.query(
-      'UPDATE boards SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
-      [name, description, id]
+      `UPDATE boards SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
     );
 
     if (result.rows.length === 0) {
