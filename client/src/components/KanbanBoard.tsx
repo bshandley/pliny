@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board, Card, Label } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
@@ -49,6 +50,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [filterDue, setFilterDue] = useState('');
 
   const confirm = useConfirm();
+  const isMobile = useIsMobile();
   const isAdmin = userRole === 'ADMIN';
   const hasFilters = filterText || filterAssignee || filterLabel || filterDue;
 
@@ -337,6 +339,20 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleMoveToColumn = async (cardId: string, columnId: string) => {
+    try {
+      const targetColumn = board?.columns?.find(c => c.id === columnId);
+      const position = targetColumn?.cards?.length || 0;
+      await api.updateCard(cardId, { column_id: columnId, position });
+      setEditingCardId(null);
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      console.error('Failed to move card:', error);
+      await loadBoard();
+    }
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!board) return <div>Board not found</div>;
 
@@ -523,7 +539,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                           {(provided) => (
                             <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
                               {visibleCards.map((card, cardIndex) => (
-                                <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived}>
+                                <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
                                   {(provided) => (
                                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                                       {showArchived ? (
@@ -552,6 +568,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                           boardLabels={boardLabels}
                                           boardId={boardId}
                                           onAddAssignee={handleAddAssignee}
+                                          isMobile={isMobile}
+                                          columns={board?.columns}
+                                          onMoveToColumn={handleMoveToColumn}
                                         />
                                       )}
                                     </div>

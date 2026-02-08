@@ -1726,6 +1726,135 @@ button:disabled {
   font-style: italic;
 }
 
+/* ---- Fullscreen Card Editor (Mobile) ---- */
+
+.card-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s var(--ease);
+}
+
+.card-fullscreen-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.card-fullscreen-header h2 {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.card-fullscreen-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.card-fullscreen-body .card-edit-title {
+  font-size: 1.1rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.card-fullscreen-body .card-edit-description {
+  font-size: 0.9375rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  min-height: 100px;
+}
+
+.card-fullscreen-body .assignee-input {
+  padding: 0.625rem 0.75rem;
+}
+
+.card-fullscreen-body .checklist-input,
+.card-fullscreen-body .comment-input {
+  padding: 0.5rem 0.75rem;
+}
+
+.card-fullscreen-body .label-picker {
+  margin-bottom: 0.75rem;
+}
+
+.card-fullscreen-body .label-toggle {
+  padding: 0.3rem 0.625rem;
+  font-size: 0.8rem;
+}
+
+.card-fullscreen-body .checklist-section,
+.card-fullscreen-body .comments-section {
+  margin-bottom: 0.75rem;
+}
+
+.card-fullscreen-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.card-fullscreen-actions .btn-archive {
+  flex: 1;
+}
+
+.card-fullscreen-actions .btn-danger {
+  flex: 1;
+}
+
+/* ---- Move to Column (Mobile) ---- */
+
+.card-move-to {
+  margin-bottom: 0.75rem;
+}
+
+.card-move-to label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.01em;
+}
+
+.move-to-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease);
+}
+
+.move-to-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
 /* ---- Kebab Menu (shared) ---- */
 
 .btn-kebab {

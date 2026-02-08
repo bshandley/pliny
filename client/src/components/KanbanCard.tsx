@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, Label, Comment, ChecklistItem } from '../types';
+import { createPortal } from 'react-dom';
+import { Card, Column, Label, Comment, ChecklistItem } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 
@@ -16,6 +17,9 @@ interface KanbanCardProps {
   boardLabels?: Label[];
   boardId: string;
   onAddAssignee: (name: string) => Promise<boolean>;
+  isMobile?: boolean;
+  columns?: Column[];
+  onMoveToColumn?: (cardId: string, columnId: string) => void;
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
@@ -51,7 +55,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee }: KanbanCardProps) {
+export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn }: KanbanCardProps) {
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
@@ -239,155 +243,204 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     }
   };
 
-  if (isEditing && canWrite) {
-    return (
-      <div className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
-        <input
-          type="text"
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          className="card-edit-title"
-          placeholder="Card title"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); handleSave(); }
-            else if (e.key === 'Escape') handleCancel();
-          }}
-        />
+  // Shared edit form fields (used by both inline and fullscreen)
+  const renderEditFields = () => (
+    <>
+      <input
+        type="text"
+        value={editTitle}
+        onChange={(e) => setEditTitle(e.target.value)}
+        className="card-edit-title"
+        placeholder="Card title"
+        autoFocus={!isMobile}
+        onKeyDown={(e) => {
+          if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); handleSave(); }
+          else if (!isMobile && e.key === 'Escape') handleCancel();
+        }}
+      />
 
-        {/* Labels */}
-        {boardLabels.length > 0 && (
-          <div className="label-picker">
-            {boardLabels.map(label => (
-              <button
-                key={label.id}
-                type="button"
-                className={`label-toggle ${editLabels.includes(label.id) ? 'selected' : ''}`}
-                style={{ '--label-color': label.color } as React.CSSProperties}
-                onClick={() => toggleLabel(label.id)}
-              >
-                {label.name}
-              </button>
+      {/* Labels */}
+      {boardLabels.length > 0 && (
+        <div className="label-picker">
+          {boardLabels.map(label => (
+            <button
+              key={label.id}
+              type="button"
+              className={`label-toggle ${editLabels.includes(label.id) ? 'selected' : ''}`}
+              style={{ '--label-color': label.color } as React.CSSProperties}
+              onClick={() => toggleLabel(label.id)}
+            >
+              {label.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Assignees */}
+      <div className="assignee-picker">
+        {editAssignees.length > 0 && (
+          <div className="assignee-chips">
+            {editAssignees.map((name, index) => (
+              <div key={index} className="assignee-chip">
+                <span className="chip-name">@{name}</span>
+                <button type="button" onClick={() => removeAssignee(name)} className="chip-remove" aria-label="Remove assignee">×</button>
+              </div>
             ))}
           </div>
         )}
-
-        {/* Assignees */}
-        <div className="assignee-picker">
-          {editAssignees.length > 0 && (
-            <div className="assignee-chips">
-              {editAssignees.map((name, index) => (
-                <div key={index} className="assignee-chip">
-                  <span className="chip-name">@{name}</span>
-                  <button type="button" onClick={() => removeAssignee(name)} className="chip-remove" aria-label="Remove assignee">×</button>
-                </div>
+        <div className="assignee-input-wrapper">
+          <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" />
+          {showAutocomplete && filteredAssignees.length > 0 && (
+            <div className="mention-autocomplete">
+              {filteredAssignees.map((assignee, index) => (
+                <div key={assignee.id} className={`mention-item ${index === selectedIndex ? 'selected' : ''}`} onClick={() => selectAssignee(assignee.name)} onMouseEnter={() => setSelectedIndex(index)}>@{assignee.name}</div>
               ))}
             </div>
           )}
-          <div className="assignee-input-wrapper">
-            <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" />
-            {showAutocomplete && filteredAssignees.length > 0 && (
-              <div className="mention-autocomplete">
-                {filteredAssignees.map((assignee, index) => (
-                  <div key={assignee.id} className={`mention-item ${index === selectedIndex ? 'selected' : ''}`} onClick={() => selectAssignee(assignee.name)} onMouseEnter={() => setSelectedIndex(index)}>@{assignee.name}</div>
-                ))}
+        </div>
+      </div>
+
+      {/* Move to column (mobile only) */}
+      {isMobile && columns.length > 1 && onMoveToColumn && (
+        <div className="card-move-to">
+          <label htmlFor={`move-to-${card.id}`}>Move to</label>
+          <select
+            id={`move-to-${card.id}`}
+            value={card.column_id}
+            onChange={(e) => {
+              if (e.target.value !== card.column_id) {
+                onMoveToColumn(card.id, e.target.value);
+              }
+            }}
+            className="move-to-select"
+          >
+            {columns.map(col => (
+              <option key={col.id} value={col.id}>{col.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} />
+
+      <div className="due-date-picker">
+        <label htmlFor={`due-date-${card.id}`}>Due date</label>
+        <div className="due-date-input-row">
+          <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
+          {editDueDate && (
+            <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
+          )}
+        </div>
+      </div>
+
+      {/* Checklist */}
+      <div className="checklist-section">
+        <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
+          <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
+          <strong>Checklist</strong>
+          {checklistItems.length > 0 && (
+            <span className="checklist-progress-text">
+              {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
+            </span>
+          )}
+        </button>
+        {showChecklist && (
+          loadingChecklist ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              {checklistItems.map(item => (
+                <div key={item.id} className="checklist-item">
+                  <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
+                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                  <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                </div>
+              ))}
+              <div className="checklist-add">
+                <input
+                  type="text"
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  placeholder="Add item..."
+                  className="checklist-input"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(); } }}
+                />
+                <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
               </div>
-            )}
-          </div>
-        </div>
+            </>
+          )
+        )}
+      </div>
 
-        <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} />
-
-        <div className="due-date-picker">
-          <label htmlFor={`due-date-${card.id}`}>Due date</label>
-          <div className="due-date-input-row">
-            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
-            {editDueDate && (
-              <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
-            )}
-          </div>
-        </div>
-
-        {/* Checklist */}
-        <div className="checklist-section">
-          <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
-            <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
-            <strong>Checklist</strong>
-            {checklistItems.length > 0 && (
-              <span className="checklist-progress-text">
-                {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
-              </span>
-            )}
-          </button>
-          {showChecklist && (
-            loadingChecklist ? (
-              <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
-            ) : (
-              <>
-                {checklistItems.map(item => (
-                  <div key={item.id} className="checklist-item">
-                    <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
-                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
-                    <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
-                  </div>
-                ))}
-                <div className="checklist-add">
-                  <input
-                    type="text"
-                    value={newChecklistItem}
-                    onChange={(e) => setNewChecklistItem(e.target.value)}
-                    placeholder="Add item..."
-                    className="checklist-input"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(); } }}
-                  />
-                  <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
-                </div>
-              </>
-            )
+      {/* Comments */}
+      <div className="comments-section">
+        <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
+          <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
+          <strong>Comments</strong>
+          {comments.length > 0 && (
+            <span className="section-toggle-count">{comments.length}</span>
           )}
-        </div>
-
-        {/* Comments */}
-        <div className="comments-section">
-          <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
-            <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
-            <strong>Comments</strong>
-            {comments.length > 0 && (
-              <span className="section-toggle-count">{comments.length}</span>
-            )}
-          </button>
-          {showComments && (
-            loadingComments ? (
-              <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
-            ) : (
-              <>
-                {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
-                {comments.map(comment => (
-                  <div key={comment.id} className="comment-item">
-                    <div className="comment-header">
-                      <strong>{comment.username}</strong>
-                      <span className="comment-time">{timeAgo(comment.created_at)}</span>
-                      <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
-                    </div>
-                    <p className="comment-text">{comment.text}</p>
+        </button>
+        {showComments && (
+          loadingComments ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
+              {comments.map(comment => (
+                <div key={comment.id} className="comment-item">
+                  <div className="comment-header">
+                    <strong>{comment.username}</strong>
+                    <span className="comment-time">{timeAgo(comment.created_at)}</span>
+                    <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                   </div>
-                ))}
-                <div className="comment-add">
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="comment-input"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
-                  />
-                  <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
+                  <p className="comment-text">{comment.text}</p>
                 </div>
-              </>
-            )
-          )}
-        </div>
+              ))}
+              <div className="comment-add">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write a comment..."
+                  className="comment-input"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
+                />
+                <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
+              </div>
+            </>
+          )
+        )}
+      </div>
+    </>
+  );
 
+  if (isEditing && canWrite) {
+    // Mobile: fullscreen portal
+    if (isMobile) {
+      return createPortal(
+        <div className="card-fullscreen-overlay">
+          <div className="card-fullscreen-header">
+            <button onClick={handleCancel} className="btn-icon" aria-label="Back">←</button>
+            <h2>{card.title}</h2>
+            <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
+          </div>
+          <div className="card-fullscreen-body">
+            {renderEditFields()}
+          </div>
+          <div className="card-fullscreen-actions">
+            <button onClick={() => { onEditEnd(); onArchive(); }} className="btn-secondary btn-sm btn-archive">Archive</button>
+            <button onClick={() => { onEditEnd(); onDelete(); }} className="btn-danger btn-sm">Delete</button>
+          </div>
+        </div>,
+        document.body
+      );
+    }
+
+    // Desktop: inline editing
+    return (
+      <div className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
+        {renderEditFields()}
         <div className="card-edit-actions">
           <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
           <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
