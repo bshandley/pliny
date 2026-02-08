@@ -12,8 +12,18 @@ interface KanbanCardProps {
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
+  if (!dueDateStr || dueDateStr.trim() === '') {
+    return null;
+  }
+  
   const now = new Date();
   const due = new Date(dueDateStr + 'T00:00:00');
+  
+  // Check if date is valid
+  if (isNaN(due.getTime())) {
+    return null;
+  }
+  
   const msLeft = due.getTime() - now.getTime();
   const hoursLeft = msLeft / (1000 * 60 * 60);
 
