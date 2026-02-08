@@ -37,7 +37,7 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-pill: 999px;
-  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-display: 'Red Hat Display', system-ui, sans-serif;
   --font-ui: 'Figtree', system-ui, -apple-system, sans-serif;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -192,11 +192,11 @@ body {
 .login-card h1 {
   font-family: var(--font-display);
   font-size: 2.25rem;
-  font-weight: 400;
+  font-weight: 700;
   text-align: center;
   color: var(--primary);
   margin-bottom: 2rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
 }
 
 .login-card form button[type="submit"] {
@@ -421,8 +421,8 @@ button:disabled {
 .board-list-header h1 {
   font-family: var(--font-display);
   font-size: 1.75rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .header-actions {
@@ -530,7 +530,7 @@ button:disabled {
 .kanban-header h1 {
   font-family: var(--font-display);
   font-size: 1.35rem;
-  font-weight: 400;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -734,24 +734,19 @@ button:disabled {
   box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
-/* ---- Card Labels (face) ---- */
+/* ---- Card Labels (color bars on face) ---- */
 
 .card-labels {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.2rem;
   margin-bottom: 0.5rem;
 }
 
-.card-label-pill {
+.card-label-bar {
   display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.675rem;
-  font-weight: 600;
-  color: white;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
+  width: 28px;
+  height: 6px;
+  border-radius: 3px;
 }
 
 /* ---- Label Picker (edit mode) ---- */
@@ -913,26 +908,45 @@ button:disabled {
 .card-description {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.25rem;
   word-break: break-word;
   line-height: 1.45;
 }
 
-.card-assignees {
+/* Card footer: assignees left, meta badges right */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--border);
+}
+
+.card-footer-left {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.375rem;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.card-footer-right {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .assignee-badge {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--text-secondary);
-  padding: 0.125rem 0.5rem;
+  padding: 0.1rem 0.4rem;
   border-radius: var(--radius-pill);
-  font-size: 0.7rem;
+  font-size: 0.675rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ---- Due Date ---- */
@@ -1323,8 +1337,9 @@ button:disabled {
 .modal h2 {
   font-family: var(--font-display);
   font-size: 1.5rem;
-  font-weight: 400;
+  font-weight: 700;
   margin-bottom: 1.25rem;
+  letter-spacing: -0.02em;
 }
 
 .modal-subtitle {

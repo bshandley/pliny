@@ -385,11 +385,11 @@ export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpda
       onClick={() => canWrite && setIsEditing(true)}
       style={{ cursor: canWrite ? 'pointer' : 'default' }}
     >
-      {/* Labels on card face */}
+      {/* Label color bars */}
       {card.labels && card.labels.length > 0 && (
         <div className="card-labels">
           {card.labels.map(label => (
-            <span key={label.id} className="card-label-pill" style={{ background: label.color }}>{label.name}</span>
+            <span key={label.id} className="card-label-bar" style={{ background: label.color }} title={label.name} />
           ))}
         </div>
       )}
@@ -406,24 +406,28 @@ export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpda
           </button>
         )}
       </div>
-      {(card.assignees?.length || card.due_date || card.checklist) && (
-        <div className="card-assignees">
-          {card.assignees?.map((name, index) => (
-            <span key={index} className="assignee-badge">@{name}</span>
-          ))}
-          {card.due_date && (() => {
-            const badge = getDueBadge(card.due_date);
-            return badge ? <span className={badge.className}>{badge.label}</span> : null;
-          })()}
-          {card.checklist && card.checklist.total > 0 && (
-            <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
-              {card.checklist.checked}/{card.checklist.total}
-            </span>
-          )}
-        </div>
-      )}
       {card.description && (
         <p className="card-description">{card.description}</p>
+      )}
+      {(card.assignees?.length || card.due_date || card.checklist) && (
+        <div className="card-footer">
+          <div className="card-footer-left">
+            {card.assignees?.map((name, index) => (
+              <span key={index} className="assignee-badge">{name}</span>
+            ))}
+          </div>
+          <div className="card-footer-right">
+            {card.due_date && (() => {
+              const badge = getDueBadge(card.due_date);
+              return badge ? <span className={badge.className}>{badge.label}</span> : null;
+            })()}
+            {card.checklist && card.checklist.total > 0 && (
+              <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
+                {card.checklist.checked}/{card.checklist.total}
+              </span>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
