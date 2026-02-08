@@ -72,6 +72,8 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(!!(card.checklist && card.checklist.total > 0));
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     setEditTitle(card.title);
@@ -93,6 +95,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     try {
       const data = await api.getCardComments(card.id);
       setComments(data);
+      if (data.length > 0) setShowComments(true);
     } catch (err) {
       console.error('Failed to load comments:', err);
     } finally {
@@ -105,6 +108,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     try {
       const data = await api.getCardChecklist(card.id);
       setChecklistItems(data);
+      if (data.length > 0) setShowChecklist(true);
     } catch (err) {
       console.error('Failed to load checklist:', err);
     } finally {
@@ -306,70 +310,81 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
 
         {/* Checklist */}
         <div className="checklist-section">
-          <div className="checklist-header">
+          <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
+            <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
             <strong>Checklist</strong>
             {checklistItems.length > 0 && (
               <span className="checklist-progress-text">
                 {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
               </span>
             )}
-          </div>
-          {loadingChecklist ? (
-            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
-          ) : (
-            <>
-              {checklistItems.map(item => (
-                <div key={item.id} className="checklist-item">
-                  <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
-                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
-                  <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+          </button>
+          {showChecklist && (
+            loadingChecklist ? (
+              <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+            ) : (
+              <>
+                {checklistItems.map(item => (
+                  <div key={item.id} className="checklist-item">
+                    <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
+                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                    <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                  </div>
+                ))}
+                <div className="checklist-add">
+                  <input
+                    type="text"
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    placeholder="Add item..."
+                    className="checklist-input"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(); } }}
+                  />
+                  <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
                 </div>
-              ))}
-              <div className="checklist-add">
-                <input
-                  type="text"
-                  value={newChecklistItem}
-                  onChange={(e) => setNewChecklistItem(e.target.value)}
-                  placeholder="Add item..."
-                  className="checklist-input"
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(); } }}
-                />
-                <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
-              </div>
-            </>
+              </>
+            )
           )}
         </div>
 
         {/* Comments */}
         <div className="comments-section">
-          <strong>Comments</strong>
-          {loadingComments ? (
-            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
-          ) : (
-            <>
-              {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
-              {comments.map(comment => (
-                <div key={comment.id} className="comment-item">
-                  <div className="comment-header">
-                    <strong>{comment.username}</strong>
-                    <span className="comment-time">{timeAgo(comment.created_at)}</span>
-                    <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+          <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
+            <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
+            <strong>Comments</strong>
+            {comments.length > 0 && (
+              <span className="section-toggle-count">{comments.length}</span>
+            )}
+          </button>
+          {showComments && (
+            loadingComments ? (
+              <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+            ) : (
+              <>
+                {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
+                {comments.map(comment => (
+                  <div key={comment.id} className="comment-item">
+                    <div className="comment-header">
+                      <strong>{comment.username}</strong>
+                      <span className="comment-time">{timeAgo(comment.created_at)}</span>
+                      <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+                    </div>
+                    <p className="comment-text">{comment.text}</p>
                   </div>
-                  <p className="comment-text">{comment.text}</p>
+                ))}
+                <div className="comment-add">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="comment-input"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
+                  />
+                  <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
                 </div>
-              ))}
-              <div className="comment-add">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="comment-input"
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
-                />
-                <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
-              </div>
-            </>
+              </>
+            )
           )}
         </div>
 

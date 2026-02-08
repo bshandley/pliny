@@ -8,6 +8,7 @@ import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
+import PlankLogo from './PlankLogo';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -289,6 +290,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       <header className="kanban-header">
         <div className="header-left">
           <button onClick={onBack} className="btn-icon">←</button>
+          <PlankLogo size={24} />
           <h1>{board.name}</h1>
         </div>
         <div className="header-actions">
