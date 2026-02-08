@@ -6,6 +6,9 @@ import { useConfirm } from '../contexts/ConfirmContext';
 interface KanbanCardProps {
   card: Card;
   canWrite: boolean;
+  isEditing: boolean;
+  onEditStart: () => void;
+  onEditEnd: () => void;
   onDelete: () => void;
   onArchive: () => void;
   onUpdate: (updates: Partial<Card>) => void;
@@ -48,9 +51,8 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee }: KanbanCardProps) {
+export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee }: KanbanCardProps) {
   const confirm = useConfirm();
-  const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
   const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
@@ -119,7 +121,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpda
       labels: editLabels as any,
       due_date: editDueDate || null
     });
-    setIsEditing(false);
+    onEditEnd();
   };
 
   const handleCancel = () => {
@@ -128,7 +130,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpda
     setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
     setEditAssignees(card.assignees || []);
     setEditLabels(card.labels?.map(l => l.id) || []);
-    setIsEditing(false);
+    onEditEnd();
     setShowAutocomplete(false);
     setAutocompleteFilter('');
   };
@@ -382,7 +384,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onArchive, onUpda
   return (
     <div
       className={`kanban-card ${card.archived ? 'archived' : ''}`}
-      onClick={() => canWrite && setIsEditing(true)}
+      onClick={() => canWrite && onEditStart()}
       style={{ cursor: canWrite ? 'pointer' : 'default' }}
     >
       {/* Label color bars */}

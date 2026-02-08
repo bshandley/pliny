@@ -30,6 +30,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [showAssignees, setShowAssignees] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -385,6 +386,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                         <KanbanCard
                                           card={card}
                                           canWrite={isAdmin}
+                                          isEditing={editingCardId === card.id}
+                                          onEditStart={() => setEditingCardId(card.id)}
+                                          onEditEnd={() => setEditingCardId(null)}
                                           onDelete={() => handleDeleteCard(card.id)}
                                           onArchive={() => handleArchiveCard(card.id)}
                                           onUpdate={(updates) => handleUpdateCard(card.id, updates)}
