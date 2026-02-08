@@ -19,6 +19,8 @@ export default function BoardLabels({ boardId, onClose }: BoardLabelsProps) {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(PRESET_COLORS[4]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   useEffect(() => {
     loadLabels();
@@ -45,6 +47,19 @@ export default function BoardLabels({ boardId, onClose }: BoardLabelsProps) {
       loadLabels();
     } catch (err: any) {
       alert(err.message || 'Failed to create label');
+    }
+  };
+
+  const handleRename = async (label: Label) => {
+    const trimmed = editingName.trim();
+    setEditingId(null);
+    if (!trimmed || trimmed === label.name) return;
+
+    try {
+      await api.updateLabel(label.id, trimmed, label.color);
+      loadLabels();
+    } catch (err: any) {
+      alert(err.message || 'Failed to rename label');
     }
   };
 
@@ -100,9 +115,30 @@ export default function BoardLabels({ boardId, onClose }: BoardLabelsProps) {
               ) : (
                 labels.map((label) => (
                   <div key={label.id} className="label-item">
-                    <span className="label-pill" style={{ background: label.color }}>
-                      {label.name}
-                    </span>
+                    {editingId === label.id ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => handleRename(label)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRename(label);
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        className="label-rename-input"
+                        style={{ borderColor: label.color }}
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="label-pill label-pill-editable"
+                        style={{ background: label.color }}
+                        onClick={() => { setEditingId(label.id); setEditingName(label.name); }}
+                        title="Click to rename"
+                      >
+                        {label.name}
+                      </span>
+                    )}
                     <button
                       onClick={() => handleDelete(label.id, label.name)}
                       className="btn-sm btn-delete-assignee"

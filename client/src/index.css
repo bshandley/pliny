@@ -1521,6 +1521,26 @@ button:disabled {
   color: white;
 }
 
+.label-pill-editable {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.label-pill-editable:hover {
+  opacity: 0.8;
+}
+
+.label-rename-input {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* ---- Role Badges ---- */
 
 .role-badge {
