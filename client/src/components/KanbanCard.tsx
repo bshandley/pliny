@@ -48,7 +48,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
   // Format timestamp to YYYY-MM-DD for date input
-  const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0] : '');
+  const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
   const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
@@ -57,9 +57,12 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
 
   // Sync state when card changes
   useEffect(() => {
+    console.log('Card updated, due_date:', card.due_date);
     setEditTitle(card.title);
     setEditDescription(card.description || '');
-    setEditDueDate(card.due_date ? card.due_date.split(' ')[0] : '');
+    const formattedDate = card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '';
+    console.log('Setting editDueDate to:', formattedDate);
+    setEditDueDate(formattedDate);
     setEditAssignees(card.assignees || []);
   }, [card.title, card.description, card.due_date, card.assignees]);
 
@@ -79,7 +82,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
     setEditTitle(card.title);
     setEditDescription(card.description || '');
     // Format timestamp to YYYY-MM-DD for date input
-    setEditDueDate(card.due_date ? card.due_date.split(' ')[0] : '');
+    setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
     setEditAssignees(card.assignees || []);
     setIsEditing(false);
     setShowAutocomplete(false);
