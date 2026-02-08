@@ -44,21 +44,42 @@ router.post('/boards/:boardId/assignees', authenticate, requireAdmin, async (req
   }
 });
 
-// Delete assignee (admin only)
+// Delete assignee (admin only) - also removes from all cards on this board
 router.delete('/boards/:boardId/assignees/:assigneeId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { assigneeId } = req.params;
+    const { boardId, assigneeId } = req.params;
 
-    const result = await pool.query(
-      'DELETE FROM board_assignees WHERE id = $1 RETURNING *',
+    // Get the assignee name before deleting
+    const assignee = await pool.query(
+      'SELECT name FROM board_assignees WHERE id = $1',
       [assigneeId]
     );
 
-    if (result.rows.length === 0) {
+    if (assignee.rows.length === 0) {
       return res.status(404).json({ error: 'Assignee not found' });
     }
 
-    res.json({ message: 'Assignee deleted' });
+    const assigneeName = assignee.rows[0].name;
+
+    // Remove from all cards on this board
+    await pool.query(
+      `DELETE FROM card_assignees 
+       WHERE assignee_name = $1 
+       AND card_id IN (
+         SELECT c.id FROM cards c
+         JOIN columns col ON c.column_id = col.id
+         WHERE col.board_id = $2
+       )`,
+      [assigneeName, boardId]
+    );
+
+    // Delete the board assignee
+    await pool.query(
+      'DELETE FROM board_assignees WHERE id = $1',
+      [assigneeId]
+    );
+
+    res.json({ message: 'Assignee deleted', removedFromCards: true });
   } catch (error) {
     console.error('Delete assignee error:', error);
     res.status(500).json({ error: 'Internal server error' });
