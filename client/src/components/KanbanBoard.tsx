@@ -33,6 +33,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -308,9 +309,19 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
             {isAdmin && (
               <>
-                <button onClick={() => { setShowMembers(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Members</button>
-                <button onClick={() => { setShowAssignees(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Assignees</button>
-                <button onClick={() => { setShowLabels(true); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Labels</button>
+                <div className="board-settings">
+                  <button
+                    onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                    className="board-settings-trigger btn-secondary btn-sm"
+                  >
+                    Board ▾
+                  </button>
+                  <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
+                    <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Members</button>
+                    <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Assignees</button>
+                    <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Labels</button>
+                  </div>
+                </div>
                 <button onClick={() => { setShowNewColumn(true); setMobileMenuOpen(false); }} className="btn-primary btn-sm">+ Column</button>
               </>
             )}
@@ -327,6 +338,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
 
       {/* Mobile menu backdrop */}
       {mobileMenuOpen && <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)} />}
+      {showSettingsDropdown && <div className="settings-backdrop" onClick={() => setShowSettingsDropdown(false)} />}
 
       {/* Filter bar */}
       <div className={`filter-bar${mobileFiltersOpen ? ' mobile-open' : ''}`}>

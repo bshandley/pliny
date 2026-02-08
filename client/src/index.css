@@ -700,7 +700,7 @@ button:disabled {
   padding: 0.5rem 0.625rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   font-family: var(--font-ui);
   margin-bottom: 0.5rem;
@@ -720,7 +720,7 @@ button:disabled {
   padding: 0.5rem 0.625rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
   resize: vertical;
   font-family: var(--font-ui);
   background: var(--bg);
@@ -837,7 +837,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
   font-family: var(--font-ui);
   transition: border-color 0.15s var(--ease);
 }
@@ -867,7 +867,7 @@ button:disabled {
 .mention-item {
   padding: 0.5rem 0.75rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
@@ -907,7 +907,7 @@ button:disabled {
 }
 
 .card-description {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
   word-break: break-word;
@@ -945,7 +945,7 @@ button:disabled {
   color: var(--text-secondary);
   padding: 0.1rem 0.4rem;
   border-radius: var(--radius-pill);
-  font-size: 0.675rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -956,7 +956,7 @@ button:disabled {
   display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  font-size: 0.7rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -1011,7 +1011,7 @@ button:disabled {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
@@ -1042,11 +1042,11 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.375rem;
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
 }
 
 .checklist-progress-text {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -1056,7 +1056,7 @@ button:disabled {
   align-items: center;
   gap: 0.375rem;
   padding: 0.2rem 0;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
 }
 
 .checklist-item input[type="checkbox"] {
@@ -1108,7 +1108,7 @@ button:disabled {
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
@@ -1125,7 +1125,7 @@ button:disabled {
   display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-pill);
-  font-size: 0.7rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -1150,12 +1150,12 @@ button:disabled {
   border-top: 1px solid var(--border);
   padding-top: 0.5rem;
   margin-bottom: 0.5rem;
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
 }
 
 .empty-comments {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   padding: 0.25rem 0;
   font-style: italic;
 }
@@ -1173,12 +1173,12 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .comment-time {
   color: var(--text-secondary);
-  font-size: 0.675rem;
+  font-size: 0.75rem;
 }
 
 .comment-delete {
@@ -1204,7 +1204,7 @@ button:disabled {
 
 .comment-text {
   margin-top: 0.125rem;
-  font-size: 0.775rem;
+  font-size: 0.8125rem;
   color: var(--text);
   word-break: break-word;
   line-height: 1.4;
@@ -1221,7 +1221,7 @@ button:disabled {
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
@@ -1655,6 +1655,57 @@ button:disabled {
   transform: rotate(2deg);
 }
 
+/* ---- Board Settings Dropdown ---- */
+
+.board-settings {
+  position: relative;
+}
+
+.board-settings-trigger {
+  /* Desktop trigger button */
+}
+
+.board-settings-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem;
+  min-width: 160px;
+  z-index: 300;
+  flex-direction: column;
+  animation: fadeIn 0.1s var(--ease);
+}
+
+.board-settings-menu.open {
+  display: flex;
+}
+
+.board-settings-menu button {
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  text-align: left;
+  min-height: 36px;
+}
+
+.board-settings-menu button:hover {
+  background: var(--bg-raised);
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+}
+
 /* ---- Mobile Support ---- */
 
 .mobile-only {
@@ -1711,6 +1762,23 @@ button:disabled {
     background: var(--danger);
     border-radius: 50%;
     border: 2px solid var(--card-bg);
+  }
+
+  /* Flatten board-settings into mobile overflow menu */
+  .board-settings {
+    display: contents;
+  }
+
+  .board-settings-trigger {
+    display: none !important;
+  }
+
+  .board-settings-menu {
+    display: contents !important;
+  }
+
+  .settings-backdrop {
+    display: none;
   }
 
   /* Mobile menu dropdown */
