@@ -1701,6 +1701,27 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.assignee-name-editable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.25rem;
+  margin: -0.125rem -0.25rem;
+}
+
+.assignee-name-editable:hover {
+  background: var(--surface-hover);
+}
+
+.assignee-rename-input {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.25rem;
+  margin: -0.125rem -0.25rem;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+}
+
 .btn-delete-assignee {
   color: var(--text-secondary);
   background: transparent;

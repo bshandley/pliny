@@ -19,6 +19,8 @@ export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: B
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   useEffect(() => {
     loadAssignees();
@@ -45,6 +47,20 @@ export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: B
       loadAssignees();
     } catch (err: any) {
       alert(err.message || 'Failed to add assignee');
+    }
+  };
+
+  const handleRename = async (id: string, originalName: string) => {
+    const trimmed = editingName.trim();
+    setEditingId(null);
+    if (!trimmed || trimmed === originalName) return;
+
+    try {
+      await api.renameBoardAssignee(boardId, id, trimmed);
+      loadAssignees();
+      onAssigneeChange?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to rename assignee');
     }
   };
 
@@ -92,7 +108,28 @@ export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: B
               ) : (
                 assignees.map((assignee) => (
                   <div key={assignee.id} className="assignee-item">
-                    <span className="assignee-name">{assignee.name}</span>
+                    {editingId === assignee.id ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => handleRename(assignee.id, assignee.name)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRename(assignee.id, assignee.name);
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        className="assignee-name assignee-rename-input"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="assignee-name assignee-name-editable"
+                        onClick={() => { setEditingId(assignee.id); setEditingName(assignee.name); }}
+                        title="Click to rename"
+                      >
+                        {assignee.name}
+                      </span>
+                    )}
                     <button
                       onClick={() => handleDelete(assignee.id, assignee.name)}
                       className="btn-sm btn-delete-assignee"

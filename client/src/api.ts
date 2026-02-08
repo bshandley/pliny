@@ -177,6 +177,13 @@ class ApiClient {
     });
   }
 
+  async renameBoardAssignee(boardId: string, assigneeId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
+    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  }
+
   async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void> {
     return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
       method: 'DELETE',

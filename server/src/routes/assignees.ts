@@ -44,6 +44,62 @@ router.post('/boards/:boardId/assignees', authenticate, requireAdmin, async (req
   }
 });
 
+// Rename assignee (admin only) - also updates name on all cards on this board
+router.put('/boards/:boardId/assignees/:assigneeId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const client = await pool.connect();
+  try {
+    const { boardId, assigneeId } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    await client.query('BEGIN');
+
+    // Get old name
+    const old = await client.query(
+      'SELECT name FROM board_assignees WHERE id = $1 AND board_id = $2',
+      [assigneeId, boardId]
+    );
+
+    if (old.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Assignee not found' });
+    }
+
+    const oldName = old.rows[0].name;
+    const newName = name.trim();
+
+    // Update board_assignees
+    const result = await client.query(
+      'UPDATE board_assignees SET name = $1 WHERE id = $2 RETURNING id, name, created_at',
+      [newName, assigneeId]
+    );
+
+    // Update card_assignees for all cards on this board
+    await client.query(
+      `UPDATE card_assignees SET assignee_name = $1
+       WHERE assignee_name = $2
+       AND card_id IN (
+         SELECT c.id FROM cards c
+         JOIN columns col ON c.column_id = col.id
+         WHERE col.board_id = $3
+       )`,
+      [newName, oldName, boardId]
+    );
+
+    await client.query('COMMIT');
+    res.json(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Rename assignee error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 // Delete assignee (admin only) - also removes from all cards on this board
 router.delete('/boards/:boardId/assignees/:assigneeId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
