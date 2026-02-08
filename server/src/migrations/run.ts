@@ -18,6 +18,13 @@ async function runMigrations() {
     );
     await pool.query(upgrade);
 
+    // Add due dates to cards
+    const dueDates = fs.readFileSync(
+      path.join(__dirname, '003-due-dates.sql'),
+      'utf-8'
+    );
+    await pool.query(dueDates);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

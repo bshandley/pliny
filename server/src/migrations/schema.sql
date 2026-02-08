@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS cards (
   title VARCHAR(255) NOT NULL,
   description TEXT,
   assignee VARCHAR(255), -- Deprecated, use card_assignees table
+  due_date DATE,
   position INTEGER NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

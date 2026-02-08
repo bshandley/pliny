@@ -39,6 +39,7 @@ export interface Card {
   description?: string;
   assignee?: string; // Deprecated, use assignees
   assignees?: string[];
+  due_date?: string | null;
   position: number;
   created_at: string;
   updated_at: string;

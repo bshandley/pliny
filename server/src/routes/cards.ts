@@ -8,11 +8,11 @@ const router = Router();
 // Create card
 router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { column_id, title, description, assignee, position } = req.body;
+    const { column_id, title, description, assignee, position, due_date } = req.body;
 
     const result = await pool.query(
-      'INSERT INTO cards (column_id, title, description, assignee, position) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [column_id, title, description, assignee, position]
+      'INSERT INTO cards (column_id, title, description, assignee, position, due_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [column_id, title, description, assignee, position, due_date || null]
     );
 
     res.status(201).json(result.rows[0]);
@@ -26,7 +26,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { column_id, title, description, assignees, position } = req.body;
+    const { column_id, title, description, assignees, position, due_date } = req.body;
 
     // Build update query dynamically to handle optional fields correctly
     const updates: string[] = [];
@@ -48,6 +48,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     if (position !== undefined) {
       updates.push(`position = $${paramCount++}`);
       values.push(position);
+    }
+    if (due_date !== undefined) {
+      updates.push(`due_date = $${paramCount++}`);
+      values.push(due_date || null); // Empty string or null clears the date
     }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');

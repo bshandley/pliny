@@ -11,10 +11,32 @@ interface KanbanCardProps {
   onAddAssignee: (name: string) => Promise<boolean>;
 }
 
+function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
+  const now = new Date();
+  const due = new Date(dueDateStr + 'T00:00:00');
+  const msLeft = due.getTime() - now.getTime();
+  const hoursLeft = msLeft / (1000 * 60 * 60);
+
+  if (hoursLeft < -24) {
+    return { label: 'Overdue', className: 'due-badge due-overdue' };
+  }
+  if (hoursLeft < 0) {
+    return { label: 'Overdue', className: 'due-badge due-overdue' };
+  }
+  if (hoursLeft < 24) {
+    const isToday = due.toDateString() === now.toDateString();
+    return { label: isToday ? 'Today' : 'Tomorrow', className: 'due-badge due-soon' };
+  }
+  const month = due.toLocaleString('en-US', { month: 'short' });
+  const day = due.getDate();
+  return { label: `${month} ${day}`, className: 'due-badge' };
+}
+
 export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assignees = [], boardId, onAddAssignee }: KanbanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
+  const [editDueDate, setEditDueDate] = useState(card.due_date || '');
   const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
@@ -27,7 +49,8 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
     onUpdate({
       title: editTitle,
       description: editDescription, // Always send description, even if empty
-      assignees: editAssignees
+      assignees: editAssignees,
+      due_date: editDueDate || null
     });
     setIsEditing(false);
   };
@@ -35,6 +58,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
   const handleCancel = () => {
     setEditTitle(card.title);
     setEditDescription(card.description || '');
+    setEditDueDate(card.due_date || '');
     setEditAssignees(card.assignees || []);
     setIsEditing(false);
     setShowAutocomplete(false);
@@ -185,7 +209,30 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
           className="card-edit-description"
           rows={3}
         />
-        
+
+        <div className="due-date-picker">
+          <label htmlFor="due-date">Due date</label>
+          <div className="due-date-input-row">
+            <input
+              type="date"
+              id="due-date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="due-date-input"
+            />
+            {editDueDate && (
+              <button
+                type="button"
+                onClick={() => setEditDueDate('')}
+                className="btn-icon btn-sm due-date-clear"
+                aria-label="Clear due date"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="card-edit-actions">
           <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
           <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
@@ -215,11 +262,15 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
           </button>
         )}
       </div>
-      {card.assignees && card.assignees.length > 0 && (
+      {(card.assignees?.length || card.due_date) && (
         <div className="card-assignees">
-          {card.assignees.map((name, index) => (
+          {card.assignees?.map((name, index) => (
             <span key={index} className="assignee-badge">@{name}</span>
           ))}
+          {card.due_date && (() => {
+            const badge = getDueBadge(card.due_date);
+            return badge ? <span className={badge.className}>{badge.label}</span> : null;
+          })()}
         </div>
       )}
       {card.description && (

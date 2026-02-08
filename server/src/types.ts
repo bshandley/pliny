@@ -38,6 +38,7 @@ export interface Card {
   title: string;
   description?: string;
   assignee?: string;
+  due_date?: string;
   position: number;
   created_at: Date;
   updated_at: Date;
