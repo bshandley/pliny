@@ -1939,7 +1939,7 @@ button:disabled {
 
 .btn-column-kebab {
   padding: 0.125rem 0.25rem !important;
-  opacity: 0;
+  opacity: 0.5;
   transition: all 0.15s var(--ease);
 }
 
