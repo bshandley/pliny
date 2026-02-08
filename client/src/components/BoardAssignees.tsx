@@ -5,6 +5,7 @@ import { useConfirm } from '../contexts/ConfirmContext';
 interface BoardAssigneesProps {
   boardId: string;
   onClose: () => void;
+  onAssigneeChange?: () => void;
 }
 
 interface Assignee {
@@ -13,7 +14,7 @@ interface Assignee {
   created_at: string;
 }
 
-export default function BoardAssignees({ boardId, onClose }: BoardAssigneesProps) {
+export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: BoardAssigneesProps) {
   const confirm = useConfirm();
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,7 @@ export default function BoardAssignees({ boardId, onClose }: BoardAssigneesProps
     try {
       await api.deleteBoardAssignee(boardId, id);
       loadAssignees();
+      onAssigneeChange?.(); // Reload board to reflect card changes
     } catch (err: any) {
       alert(err.message || 'Failed to delete assignee');
     }

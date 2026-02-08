@@ -437,6 +437,11 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
             setShowAssignees(false);
             loadAssignees();
           }}
+          onAssigneeChange={async () => {
+            await loadBoard();
+            await loadAssignees();
+            socket?.emit('board-updated', boardId);
+          }}
         />
       )}
     </div>
