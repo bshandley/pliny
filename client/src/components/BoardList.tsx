@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { Board, User } from '../types';
+import PlankLogo from './PlankLogo';
 
 interface BoardListProps {
   onSelectBoard: (boardId: string, boardName: string) => void;
@@ -53,7 +54,10 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
   return (
     <div className="board-list-container">
       <header className="board-list-header">
-        <h1>Wiz Kanban Boards</h1>
+        <div className="board-list-logo">
+          <PlankLogo size={28} />
+          <h1>Plank</h1>
+        </div>
         <div className="header-actions">
           {isAdmin && (
             <>

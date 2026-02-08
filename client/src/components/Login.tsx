@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PlankLogo from './PlankLogo';
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -27,7 +28,10 @@ export default function Login({ onLogin }: LoginProps) {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Wiz Kanban</h1>
+        <div className="login-logo">
+          <PlankLogo size={48} />
+          <h1>Plank</h1>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="username">Username</label>
