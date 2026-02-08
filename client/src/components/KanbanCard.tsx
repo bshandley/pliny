@@ -7,9 +7,11 @@ interface KanbanCardProps {
   onDelete: () => void;
   onUpdate: (updates: Partial<Card>) => void;
   assignees?: { id: string; name: string }[];
+  boardId: string;
+  onAddAssignee: (name: string) => Promise<boolean>;
 }
 
-export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assignees = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assignees = [], boardId, onAddAssignee }: KanbanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
@@ -73,7 +75,7 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
     setEditAssignees(editAssignees.filter(a => a !== name));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (showAutocomplete && filteredAssignees.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -87,6 +89,26 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
       } else if (e.key === 'Escape') {
         setShowAutocomplete(false);
         setAutocompleteFilter('');
+      }
+    } else if (e.key === 'Enter') {
+      // Free text entry - add to assignees table
+      const input = inputRef.current?.value.trim();
+      if (input && input !== '') {
+        e.preventDefault();
+        const name = input.startsWith('@') ? input.substring(1) : input;
+        
+        // Check if already exists
+        const existingAssignee = assignees.find(a => a.name.toLowerCase() === name.toLowerCase());
+        if (existingAssignee) {
+          // Already exists, just add to card
+          selectAssignee(existingAssignee.name);
+        } else {
+          // New assignee - add to board
+          const success = await onAddAssignee(name);
+          if (success) {
+            selectAssignee(name);
+          }
+        }
       }
     }
   };

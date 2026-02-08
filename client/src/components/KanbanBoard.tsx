@@ -237,6 +237,18 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleAddAssignee = async (name: string): Promise<boolean> => {
+    try {
+      await api.addBoardAssignee(boardId, name);
+      await loadAssignees(); // Reload assignees list
+      socket?.emit('board-updated', boardId);
+      return true;
+    } catch (error: any) {
+      console.error('Failed to add assignee:', error);
+      return false;
+    }
+  };
+
   const handleDeleteColumn = async (columnId: string, columnName: string) => {
     if (!confirm(`Delete column "${columnName}" and all its cards?`)) return;
 
@@ -332,6 +344,8 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                       onDelete={() => handleDeleteCard(card.id)}
                                       onUpdate={(updates) => handleUpdateCard(card.id, updates)}
                                       assignees={assignees}
+                                      boardId={boardId}
+                                      onAddAssignee={handleAddAssignee}
                                     />
                                   </div>
                                 )}
