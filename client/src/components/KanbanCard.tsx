@@ -17,7 +17,8 @@ function getDueBadge(dueDateStr: string): { label: string; className: string } |
   }
   
   const now = new Date();
-  const due = new Date(dueDateStr + 'T00:00:00');
+  // Parse date - handle both YYYY-MM-DD and full timestamp formats
+  const due = new Date(dueDateStr.includes('T') ? dueDateStr : dueDateStr.replace(' ', 'T'));
   
   // Check if date is valid
   if (isNaN(due.getTime())) {
@@ -46,7 +47,8 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
-  const [editDueDate, setEditDueDate] = useState(card.due_date || '');
+  // Format timestamp to YYYY-MM-DD for date input
+  const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0] : '');
   const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
@@ -68,7 +70,8 @@ export default function KanbanCard({ card, canWrite, onDelete, onUpdate, assigne
   const handleCancel = () => {
     setEditTitle(card.title);
     setEditDescription(card.description || '');
-    setEditDueDate(card.due_date || '');
+    // Format timestamp to YYYY-MM-DD for date input
+    setEditDueDate(card.due_date ? card.due_date.split(' ')[0] : '');
     setEditAssignees(card.assignees || []);
     setIsEditing(false);
     setShowAutocomplete(false);
