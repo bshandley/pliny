@@ -1,8 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (secret && secret.length >= 16) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: JWT_SECRET must be set (>=16 chars) in production');
+    process.exit(1);
+  }
+  // Generate a random secret for development (changes each restart)
+  const devSecret = crypto.randomBytes(32).toString('hex');
+  console.warn('WARNING: No JWT_SECRET set — using random dev secret (sessions lost on restart)');
+  return devSecret;
+}
+
+const JWT_SECRET = getJwtSecret();
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];

@@ -51,7 +51,8 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     loadAssignees();
     loadLabels();
 
-    const newSocket = io('/');
+    const token = localStorage.getItem('token');
+    const newSocket = io('/', { auth: { token } });
     newSocket.emit('join-board', boardId);
     newSocket.on('board-updated', () => {
       loadBoard();

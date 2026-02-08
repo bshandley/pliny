@@ -1,11 +1,16 @@
 import { Pool } from 'pg';
 
+if (process.env.NODE_ENV === 'production' && !process.env.DB_PASSWORD) {
+  console.error('FATAL: DB_PASSWORD must be set in production');
+  process.exit(1);
+}
+
 const pool = new Pool({
   host: process.env.DB_HOST || 'db',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'kanban',
   user: process.env.DB_USER || 'kanban',
-  password: process.env.DB_PASSWORD || 'kanban123',
+  password: process.env.DB_PASSWORD || 'dev-only-password',
 });
 
 export default pool;

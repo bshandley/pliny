@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: wiz_kanban
       POSTGRES_USER: wiz
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-wizkanban2024}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
@@ -29,9 +29,9 @@ services:
       DB_PORT: 5432
       DB_NAME: wiz_kanban
       DB_USER: wiz
-      DB_PASSWORD: ${DB_PASSWORD:-wizkanban2024}
-      DATABASE_URL: postgres://wiz:${DB_PASSWORD:-wizkanban2024}@db:5432/wiz_kanban
-      JWT_SECRET: ${JWT_SECRET:-wiz-kanban-jwt-secret-change-in-production}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      DATABASE_URL: postgres://wiz:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/wiz_kanban
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       PORT: 3001
       CLIENT_URL: http://localhost:5174
     depends_on:
