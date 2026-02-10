@@ -199,7 +199,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
                 >
                   <option value="READ">READ - View only</option>
-                  <option value="COLLABORATOR">COLLABORATOR - Can edit</option>
+                  <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
                   <option value="ADMIN">ADMIN - Full access</option>
                 </select>
               </div>
@@ -253,7 +253,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                   disabled={editingUser.id === currentUser.id}
                 >
                   <option value="READ">READ - View only</option>
-                  <option value="COLLABORATOR">COLLABORATOR - Can edit</option>
+                  <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
                   <option value="ADMIN">ADMIN - Full access</option>
                 </select>
                 {editingUser.id === currentUser.id && (
