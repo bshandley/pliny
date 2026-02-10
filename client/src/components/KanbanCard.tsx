@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem } from '../types';
+import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
+import MentionText from './MentionText';
 
 interface KanbanCardProps {
   card: Card;
@@ -20,6 +21,7 @@ interface KanbanCardProps {
   isMobile?: boolean;
   columns?: Column[];
   onMoveToColumn?: (cardId: string, columnId: string) => void;
+  boardMembers?: BoardMember[];
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
@@ -55,7 +57,37 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn }: KanbanCardProps) {
+function formatActivity(action: string, detail: Record<string, any> | null): string {
+  switch (action) {
+    case 'created': return 'created this card';
+    case 'moved': return `moved this card from ${detail?.from_column} to ${detail?.to_column}`;
+    case 'archived': return 'archived this card';
+    case 'unarchived': return 'restored this card';
+    case 'title_changed': return `renamed this card from "${detail?.from}" to "${detail?.to}"`;
+    case 'description_changed': return 'updated the description';
+    case 'assignees_changed': {
+      const parts: string[] = [];
+      if (detail?.added?.length) parts.push(`added ${detail.added.join(', ')}`);
+      if (detail?.removed?.length) parts.push(`removed ${detail.removed.join(', ')}`);
+      return parts.join(' and ') || 'changed assignees';
+    }
+    case 'members_changed': {
+      const parts: string[] = [];
+      if (detail?.added?.length) parts.push(`added ${detail.added.join(', ')}`);
+      if (detail?.removed?.length) parts.push(`removed ${detail.removed.join(', ')}`);
+      return parts.join(' and ') || 'changed members';
+    }
+    case 'labels_changed': return 'changed labels';
+    case 'due_date_changed': {
+      if (!detail?.from && detail?.to) return `set due date to ${detail.to}`;
+      if (detail?.from && !detail?.to) return 'removed the due date';
+      return `changed due date from ${detail?.from} to ${detail?.to}`;
+    }
+    default: return action.replace(/_/g, ' ');
+  }
+}
+
+export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
@@ -79,18 +111,28 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   const [showChecklist, setShowChecklist] = useState(!!(card.checklist && card.checklist.total > 0));
   const [showComments, setShowComments] = useState(false);
 
+  // Members state
+  const [editMembers, setEditMembers] = useState<string[]>(card.members?.map(m => m.id) || []);
+
+  // Activity state
+  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
+
   useEffect(() => {
     setEditTitle(card.title);
     setEditDescription(card.description || '');
     setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
     setEditAssignees(card.assignees || []);
     setEditLabels(card.labels?.map(l => l.id) || []);
-  }, [card.title, card.description, card.due_date, card.assignees, card.labels]);
+    setEditMembers(card.members?.map(m => m.id) || []);
+  }, [card.title, card.description, card.due_date, card.assignees, card.labels, card.members]);
 
   useEffect(() => {
     if (isEditing) {
       loadComments();
       loadChecklist();
+      loadActivity();
     }
   }, [isEditing]);
 
@@ -120,7 +162,30 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     }
   };
 
-  const handleSave = () => {
+  const loadActivity = async () => {
+    setLoadingActivity(true);
+    try {
+      const data = await api.getCardActivity(card.id);
+      setActivityEntries(data);
+    } catch (err) {
+      console.error('Failed to load activity:', err);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
+
+  const removeMember = (id: string) => {
+    setEditMembers(editMembers.filter(m => m !== id));
+  };
+
+  const selectMember = (id: string) => {
+    if (!editMembers.includes(id)) setEditMembers([...editMembers, id]);
+    setShowAutocomplete(false);
+    setAutocompleteFilter('');
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const handleSave = async () => {
     if (!editTitle.trim()) return;
     onUpdate({
       title: editTitle,
@@ -129,6 +194,15 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
       labels: editLabels as any,
       due_date: editDueDate || null
     });
+    // Save members separately
+    const originalMemberIds = card.members?.map(m => m.id) || [];
+    if (JSON.stringify([...editMembers].sort()) !== JSON.stringify([...originalMemberIds].sort())) {
+      try {
+        await api.setCardMembers(card.id, editMembers);
+      } catch (err) {
+        console.error('Failed to save members:', err);
+      }
+    }
     onEditEnd();
   };
 
@@ -138,6 +212,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
     setEditAssignees(card.assignees || []);
     setEditLabels(card.labels?.map(l => l.id) || []);
+    setEditMembers(card.members?.map(m => m.id) || []);
     onEditEnd();
     setShowAutocomplete(false);
     setAutocompleteFilter('');
@@ -276,10 +351,20 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
         </div>
       )}
 
-      {/* Assignees */}
+      {/* Members & Assignees */}
       <div className="assignee-picker">
-        {editAssignees.length > 0 && (
+        {(editMembers.length > 0 || editAssignees.length > 0) && (
           <div className="assignee-chips">
+            {editMembers.map(id => {
+              const member = boardMembers?.find(m => m.id === id);
+              if (!member) return null;
+              return (
+                <div key={id} className="assignee-chip member-chip">
+                  <span className="chip-name">@{member.username}</span>
+                  <button type="button" onClick={() => removeMember(id)} className="chip-remove" aria-label="Remove member">×</button>
+                </div>
+              );
+            })}
             {editAssignees.map((name, index) => (
               <div key={index} className="assignee-chip">
                 <span className="chip-name">@{name}</span>
@@ -290,13 +375,50 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
         )}
         <div className="assignee-input-wrapper">
           <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" />
-          {showAutocomplete && filteredAssignees.length > 0 && (
-            <div className="mention-autocomplete">
-              {filteredAssignees.map((assignee, index) => (
-                <div key={assignee.id} className={`mention-item ${index === selectedIndex ? 'selected' : ''}`} onClick={() => selectAssignee(assignee.name)} onMouseEnter={() => setSelectedIndex(index)}>@{assignee.name}</div>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const filteredMembersList = boardMembers.filter(m =>
+              m.username.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
+              !editMembers.includes(m.id)
+            );
+            const filteredAssigneesList = filteredAssignees;
+            if (!showAutocomplete || (filteredMembersList.length === 0 && filteredAssigneesList.length === 0)) return null;
+            return (
+              <div className="mention-autocomplete">
+                {filteredMembersList.length > 0 && (
+                  <>
+                    <div className="mention-group-header">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                      Members
+                    </div>
+                    {filteredMembersList.map((member, index) => (
+                      <div key={member.id}
+                        className={`mention-item mention-item-member ${index === selectedIndex ? 'selected' : ''}`}
+                        onClick={() => selectMember(member.id)}
+                        onMouseEnter={() => setSelectedIndex(index)}>
+                        @{member.username}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {filteredAssigneesList.length > 0 && (
+                  <>
+                    <div className="mention-group-header">Assignees</div>
+                    {filteredAssigneesList.map((assignee, index) => {
+                      const adjustedIndex = filteredMembersList.length + index;
+                      return (
+                        <div key={assignee.id}
+                          className={`mention-item mention-item-assignee ${adjustedIndex === selectedIndex ? 'selected' : ''}`}
+                          onClick={() => selectAssignee(assignee.name)}
+                          onMouseEnter={() => setSelectedIndex(adjustedIndex)}>
+                          @{assignee.name}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -394,7 +516,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                     <span className="comment-time">{timeAgo(comment.created_at)}</span>
                     <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                   </div>
-                  <p className="comment-text">{comment.text}</p>
+                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} assignees={assignees} /></p>
                 </div>
               ))}
               <div className="comment-add">
@@ -409,6 +531,35 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                 <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
               </div>
             </>
+          )
+        )}
+      </div>
+
+      {/* Activity */}
+      <div className="activity-section">
+        <button type="button" className="section-toggle" onClick={() => setShowActivity(!showActivity)}>
+          <span className="section-toggle-icon">{showActivity ? '▾' : '▸'}</span>
+          <strong>Activity</strong>
+          {activityEntries.length > 0 && (
+            <span className="section-toggle-count">{activityEntries.length}</span>
+          )}
+        </button>
+        {showActivity && (
+          loadingActivity ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <div className="activity-list">
+              {activityEntries.length === 0 && <p className="empty-comments">No activity yet.</p>}
+              {activityEntries.map(entry => (
+                <div key={entry.id} className="activity-item">
+                  <span className="activity-text">
+                    <strong>{entry.username}</strong>{' '}
+                    {formatActivity(entry.action, entry.detail)}
+                  </span>
+                  <span className="activity-time">{timeAgo(entry.created_at)}</span>
+                </div>
+              ))}
+            </div>
           )
         )}
       </div>
