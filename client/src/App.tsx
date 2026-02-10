@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { api } from './api';
 import { User } from './types';
 import Login from './components/Login';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
+import NotificationBell from './components/NotificationBell';
 
 type Page = 'boards' | 'users' | 'board';
 
@@ -27,6 +29,8 @@ function App() {
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('boards');
   const [loading, setLoading] = useState(true);
+  const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     return (saved as 'light' | 'dark') || 'light';
@@ -118,6 +122,18 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Notification socket — connects when user is authenticated
+  useEffect(() => {
+    if (user) {
+      const token = api.getToken();
+      const s = io('/', { auth: { token } });
+      setNotifSocket(s);
+      return () => { s.disconnect(); setNotifSocket(null); };
+    } else {
+      setNotifSocket(null);
+    }
+  }, [user]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -153,6 +169,15 @@ function App() {
     navigateTo('boards');
   };
 
+  const handleNavigateToBoard = async (boardId: string) => {
+    try {
+      const board = await api.getBoard(boardId);
+      navigateTo('board', boardId, board.name);
+    } catch {
+      // Board may have been deleted
+    }
+  };
+
   const handleGoToUsers = () => {
     navigateTo('users');
   };
@@ -167,14 +192,19 @@ function App() {
   }
 
   const ThemeToggle = () => (
-    <button
-      className="theme-toggle"
-      onClick={toggleTheme}
-      aria-label="Toggle theme"
-      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-    >
-      {theme === 'light' ? '🌙' : '☀️'}
-    </button>
+    <div className="global-actions">
+      {user && notifSocket && (
+        <NotificationBell socket={notifSocket} onNavigateToBoard={handleNavigateToBoard} />
+      )}
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        aria-label="Toggle theme"
+        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      >
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+    </div>
   );
 
   if (!user && !api.getToken()) {

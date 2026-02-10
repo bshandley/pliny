@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
-import { Board, Card, Label } from '../types';
+import { Board, Card, Label, BoardMember } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import KanbanCard from './KanbanCard';
@@ -24,6 +24,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [socket, setSocket] = useState<Socket | null>(null);
   const [assignees, setAssignees] = useState<{ id: string; name: string }[]>([]);
   const [boardLabels, setBoardLabels] = useState<Label[]>([]);
+  const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
   const [showNewColumn, setShowNewColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [showNewCard, setShowNewCard] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     loadBoard();
     loadAssignees();
     loadLabels();
+    loadBoardMembers();
 
     const token = localStorage.getItem('token');
     const newSocket = io('/', { auth: { token } });
@@ -66,6 +68,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       loadBoard();
       loadAssignees();
       loadLabels();
+      loadBoardMembers();
     });
     setSocket(newSocket);
     return () => {
@@ -131,6 +134,15 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       setBoardLabels(data);
     } catch (error) {
       console.error('Failed to load labels:', error);
+    }
+  };
+
+  const loadBoardMembers = async () => {
+    try {
+      const data = await api.getBoardMembers(boardId);
+      setBoardMembers(data);
+    } catch (error) {
+      console.error('Failed to load board members:', error);
     }
   };
 
@@ -571,6 +583,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                           isMobile={isMobile}
                                           columns={board?.columns}
                                           onMoveToColumn={handleMoveToColumn}
+                                          boardMembers={boardMembers}
                                         />
                                       )}
                                     </div>
