@@ -98,6 +98,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -211,6 +212,22 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     }
     onEditEnd();
   };
+
+  // Keep a ref to the latest handleSave so the click-outside effect always calls current state
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => { handleSaveRef.current = handleSave; });
+
+  // Close edit panel when clicking outside the card
+  useEffect(() => {
+    if (!isEditing || isMobile) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        handleSaveRef.current();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEditing, isMobile]);
 
   const handleCancel = () => {
     setEditTitle(card.title);
@@ -736,7 +753,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
 
     // Desktop: inline editing
     return (
-      <div className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
+      <div ref={cardRef} className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
         {renderEditFields()}
         <div className="card-edit-actions">
           <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
