@@ -55,6 +55,32 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const isAdmin = userRole === 'ADMIN';
   const hasFilters = filterText || filterAssignee || filterLabel || filterDue;
 
+  // On mobile, push a history entry when a card is opened so the browser
+  // back button/gesture closes the card instead of leaving the board.
+  const cardHistoryPushed = useRef(false);
+  useEffect(() => {
+    if (!isMobile) return;
+    if (editingCardId) {
+      window.history.pushState({ cardOpen: true }, '');
+      cardHistoryPushed.current = true;
+      const handlePopState = () => {
+        cardHistoryPushed.current = false;
+        setEditingCardId(null);
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, [isMobile, editingCardId]);
+
+  const closeCard = () => {
+    if (isMobile && cardHistoryPushed.current) {
+      // Let history.back() trigger the popstate handler which clears editingCardId
+      window.history.back();
+    } else {
+      setEditingCardId(null);
+    }
+  };
+
   useEffect(() => {
     loadBoard();
     loadAssignees();
@@ -572,7 +598,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                           userRole={userRole}
                                           isEditing={editingCardId === card.id}
                                           onEditStart={() => setEditingCardId(card.id)}
-                                          onEditEnd={() => setEditingCardId(null)}
+                                          onEditEnd={closeCard}
                                           onDelete={() => handleDeleteCard(card.id)}
                                           onArchive={() => handleArchiveCard(card.id)}
                                           onUpdate={(updates) => handleUpdateCard(card.id, updates)}
