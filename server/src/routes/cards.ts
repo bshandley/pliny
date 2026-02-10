@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { logActivity } from './activity';
 
 const router = Router();
 
@@ -15,6 +16,8 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
       [column_id, title, description, assignee, position, due_date || null]
     );
 
+    logActivity(result.rows[0].id, req.user!.id, 'created');
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Create card error:', error);
@@ -27,6 +30,25 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
   try {
     const { id } = req.params;
     const { column_id, title, description, assignees, position, due_date } = req.body;
+
+    // Fetch old state for activity logging
+    const oldCard = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);
+    if (oldCard.rows.length === 0) return res.status(404).json({ error: 'Card not found' });
+    const old = oldCard.rows[0];
+
+    // Fetch old assignees before they get deleted
+    let oldAssignees: string[] = [];
+    if (assignees !== undefined) {
+      const oldAssigneesResult = await pool.query('SELECT assignee_name FROM card_assignees WHERE card_id = $1', [id]);
+      oldAssignees = oldAssigneesResult.rows.map((r: any) => r.assignee_name);
+    }
+
+    // Fetch old labels before they get deleted
+    let oldLabels: string[] = [];
+    if (req.body.labels !== undefined) {
+      const oldLabelsResult = await pool.query('SELECT label_id FROM card_labels WHERE card_id = $1', [id]);
+      oldLabels = oldLabelsResult.rows.map((r: any) => r.label_id);
+    }
 
     // Build update query dynamically to handle optional fields correctly
     const updates: string[] = [];
@@ -109,6 +131,58 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
        WHERE cl.card_id = $1`,
       [id]
     );
+
+    // Log activity for each change
+    if (column_id !== undefined && column_id !== old.column_id) {
+      const cols = await pool.query('SELECT id, name FROM columns WHERE id = ANY($1)', [[old.column_id, column_id]]);
+      const colMap: Record<string, string> = {};
+      cols.rows.forEach((c: any) => { colMap[c.id] = c.name; });
+      logActivity(id, req.user!.id, 'moved', {
+        from_column: colMap[old.column_id] || old.column_id,
+        to_column: colMap[column_id] || column_id
+      });
+    }
+
+    if (title !== undefined && title !== old.title) {
+      logActivity(id, req.user!.id, 'title_changed', { from: old.title, to: title });
+    }
+
+    if (description !== undefined && (description || null) !== (old.description || null)) {
+      logActivity(id, req.user!.id, 'description_changed');
+    }
+
+    if (due_date !== undefined) {
+      const oldDue = old.due_date ? old.due_date.toISOString().split('T')[0] : null;
+      const newDue = due_date || null;
+      if (oldDue !== newDue) {
+        logActivity(id, req.user!.id, 'due_date_changed', { from: oldDue, to: newDue });
+      }
+    }
+
+    if (req.body.archived !== undefined && req.body.archived !== old.archived) {
+      logActivity(id, req.user!.id, req.body.archived ? 'archived' : 'unarchived');
+    }
+
+    if (assignees !== undefined) {
+      const oldSet = new Set(oldAssignees);
+      const newSet = new Set(assignees as string[]);
+      const added = (assignees as string[]).filter((a: string) => !oldSet.has(a));
+      const removed = oldAssignees.filter((a: string) => !newSet.has(a));
+      if (added.length > 0 || removed.length > 0) {
+        logActivity(id, req.user!.id, 'assignees_changed', { added, removed });
+      }
+    }
+
+    if (req.body.labels !== undefined) {
+      const labels = req.body.labels;
+      const oldSet = new Set(oldLabels);
+      const newSet = new Set(labels as string[]);
+      const added = (labels as string[]).filter((l: string) => !oldSet.has(l));
+      const removed = oldLabels.filter((l: string) => !newSet.has(l));
+      if (added.length > 0 || removed.length > 0) {
+        logActivity(id, req.user!.id, 'labels_changed', { added, removed });
+      }
+    }
 
     res.json({
       ...result.rows[0],
