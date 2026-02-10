@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification } from './types';
 
 const API_URL = '/api';
 
@@ -250,6 +250,35 @@ class ApiClient {
 
   async deleteChecklistItem(id: string): Promise<void> {
     return this.fetch(`/checklist/${id}`, { method: 'DELETE' });
+  }
+  // Card Members
+  async getCardMembers(cardId: string): Promise<CardMember[]> {
+    return this.fetch(`/cards/${cardId}/members`);
+  }
+
+  async setCardMembers(cardId: string, memberIds: string[]): Promise<CardMember[]> {
+    return this.fetch(`/cards/${cardId}/members`, {
+      method: 'PUT',
+      body: JSON.stringify({ members: memberIds }),
+    });
+  }
+
+  // Activity
+  async getCardActivity(cardId: string): Promise<ActivityEntry[]> {
+    return this.fetch(`/cards/${cardId}/activity`);
+  }
+
+  // Notifications
+  async getNotifications(): Promise<Notification[]> {
+    return this.fetch('/notifications');
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    return this.fetch(`/notifications/${id}/read`, { method: 'PUT' });
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    return this.fetch('/notifications/read-all', { method: 'PUT' });
   }
 }
 
