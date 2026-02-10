@@ -12,6 +12,7 @@ import assigneeRoutes from './routes/assignees';
 import labelRoutes from './routes/labels';
 import commentRoutes from './routes/comments';
 import checklistRoutes from './routes/checklists';
+import activityRoutes from './routes/activity';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -38,6 +39,7 @@ app.use('/api', assigneeRoutes);
 app.use('/api', labelRoutes);
 app.use('/api', commentRoutes);
 app.use('/api', checklistRoutes);
+app.use('/api', activityRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
