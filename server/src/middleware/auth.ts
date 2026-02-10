@@ -29,7 +29,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     const decoded = jwt.verify(token, JWT_SECRET) as {
       id: string;
       username: string;
-      role: 'READ' | 'ADMIN';
+      role: 'READ' | 'COLLABORATOR' | 'ADMIN';
     };
     req.user = decoded;
     next();
@@ -45,6 +45,6 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
-export const generateToken = (user: { id: string; username: string; role: 'READ' | 'ADMIN' }) => {
+export const generateToken = (user: { id: string; username: string; role: 'READ' | 'COLLABORATOR' | 'ADMIN' }) => {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 };

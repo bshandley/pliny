@@ -7,7 +7,7 @@ import MentionText from './MentionText';
 
 interface KanbanCardProps {
   card: Card;
-  canWrite: boolean;
+  userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   isEditing: boolean;
   onEditStart: () => void;
   onEditEnd: () => void;
@@ -87,7 +87,9 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
   }
 }
 
-export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+  const canWrite = userRole === 'ADMIN';
+  const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
@@ -217,17 +219,21 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   const handleSaveRef = useRef(handleSave);
   useEffect(() => { handleSaveRef.current = handleSave; });
 
-  // Close edit panel when clicking outside the card
+  // Close edit/detail panel when clicking outside the card
   useEffect(() => {
     if (!isEditing || isMobile) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
-        handleSaveRef.current();
+        if (canWrite) {
+          handleSaveRef.current();
+        } else {
+          onEditEnd();
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isEditing, isMobile]);
+  }, [isEditing, isMobile, canWrite]);
 
   const handleCancel = () => {
     setEditTitle(card.title);
@@ -729,6 +735,223 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     </>
   );
 
+  // Read-only detail view for COLLABORATOR and READ
+  const renderDetailFields = () => (
+    <>
+      <h3 className="card-detail-title">{card.title}</h3>
+
+      {/* Labels */}
+      {card.labels && card.labels.length > 0 && (
+        <div className="card-detail-labels">
+          {card.labels.map(label => (
+            <span key={label.id} className="label-toggle selected" style={{ '--label-color': label.color } as React.CSSProperties}>
+              {label.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Members & Assignees */}
+      {(card.members?.length || card.assignees?.length) ? (
+        <div className="card-detail-chips">
+          {card.members?.map(member => (
+            <span key={member.id} className="assignee-chip member-chip"><span className="chip-name">{member.username}</span></span>
+          ))}
+          {card.assignees?.map((name, index) => (
+            <span key={index} className="assignee-chip"><span className="chip-name">{name}</span></span>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Description */}
+      {card.description && (
+        <p className="card-detail-description">{card.description}</p>
+      )}
+
+      {/* Due date */}
+      {card.due_date && (() => {
+        const badge = getDueBadge(card.due_date);
+        return badge ? (
+          <div className="card-detail-field">
+            <span className="card-detail-field-label">Due date</span>
+            <span className={badge.className}>{badge.label}</span>
+          </div>
+        ) : null;
+      })()}
+
+      {/* Checklist */}
+      <div className="checklist-section">
+        <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
+          <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
+          <strong>Checklist</strong>
+          {checklistItems.length > 0 && (
+            <span className="checklist-progress-text">
+              {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
+            </span>
+          )}
+        </button>
+        {showChecklist && (
+          loadingChecklist ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              {checklistItems.length === 0 && <p className="empty-comments">No checklist items.</p>}
+              {checklistItems.map(item => (
+                <div key={item.id} className="checklist-item">
+                  <input type="checkbox" checked={item.checked} disabled />
+                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                </div>
+              ))}
+            </>
+          )
+        )}
+      </div>
+
+      {/* Comments */}
+      <div className="comments-section">
+        <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
+          <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
+          <strong>Comments</strong>
+          {comments.length > 0 && (
+            <span className="section-toggle-count">{comments.length}</span>
+          )}
+        </button>
+        {showComments && (
+          loadingComments ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
+              {comments.map(comment => (
+                <div key={comment.id} className="comment-item">
+                  <div className="comment-header">
+                    <strong>{comment.username}</strong>
+                    <span className="comment-time">{timeAgo(comment.created_at)}</span>
+                    {canComment && (
+                      <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+                    )}
+                  </div>
+                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} assignees={assignees} /></p>
+                </div>
+              ))}
+              {canComment && (
+                <div className="comment-add">
+                  <div className="assignee-input-wrapper">
+                    <input
+                      ref={commentInputRef}
+                      type="text"
+                      value={newComment}
+                      onChange={handleCommentChange}
+                      placeholder="Write a comment... (@ to mention)"
+                      className="comment-input"
+                      onKeyDown={handleCommentKeyDown}
+                    />
+                    {(() => {
+                      if (!commentMentionActive) return null;
+                      const { members, assignees: assigneeItems } = getCommentMentionItems();
+                      if (members.length === 0 && assigneeItems.length === 0) return null;
+                      return (
+                        <div className="mention-autocomplete">
+                          {members.length > 0 && (
+                            <>
+                              <div className="mention-group-header">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                Members
+                              </div>
+                              {members.map((member, index) => (
+                                <div key={member.id}
+                                  className={`mention-item mention-item-member ${index === commentMentionIndex ? 'selected' : ''}`}
+                                  onClick={() => handleCommentMentionSelect(member.username)}
+                                  onMouseEnter={() => setCommentMentionIndex(index)}>
+                                  {member.username}
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          {assigneeItems.length > 0 && (
+                            <>
+                              <div className="mention-group-header">Assignees</div>
+                              {assigneeItems.map((assignee, index) => {
+                                const adjustedIndex = members.length + index;
+                                return (
+                                  <div key={assignee.id}
+                                    className={`mention-item mention-item-assignee ${adjustedIndex === commentMentionIndex ? 'selected' : ''}`}
+                                    onClick={() => handleCommentMentionSelect(assignee.name)}
+                                    onMouseEnter={() => setCommentMentionIndex(adjustedIndex)}>
+                                    {assignee.name}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
+                </div>
+              )}
+            </>
+          )
+        )}
+      </div>
+
+      {/* Activity */}
+      <div className="activity-section">
+        <button type="button" className="section-toggle" onClick={() => setShowActivity(!showActivity)}>
+          <span className="section-toggle-icon">{showActivity ? '▾' : '▸'}</span>
+          <strong>Activity</strong>
+          {activityEntries.length > 0 && (
+            <span className="section-toggle-count">{activityEntries.length}</span>
+          )}
+        </button>
+        {showActivity && (
+          loadingActivity ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <div className="activity-list">
+              {activityEntries.length === 0 && <p className="empty-comments">No activity yet.</p>}
+              {activityEntries.map(entry => (
+                <div key={entry.id} className="activity-item">
+                  <span className="activity-text">
+                    <strong>{entry.username}</strong>{' '}
+                    {formatActivity(entry.action, entry.detail)}
+                  </span>
+                  <span className="activity-time">{timeAgo(entry.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    </>
+  );
+
+  // Detail view for non-admin users (COLLABORATOR / READ)
+  if (isEditing && !canWrite) {
+    if (isMobile) {
+      return createPortal(
+        <div className="card-fullscreen-overlay">
+          <div className="card-fullscreen-header">
+            <button onClick={onEditEnd} className="btn-icon" aria-label="Back">←</button>
+            <h2>{card.title}</h2>
+          </div>
+          <div className="card-fullscreen-body">
+            {renderDetailFields()}
+          </div>
+        </div>,
+        document.body
+      );
+    }
+
+    return (
+      <div ref={cardRef} className="kanban-card card-detail" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onEditEnd} className="card-detail-close" aria-label="Close">×</button>
+        {renderDetailFields()}
+      </div>
+    );
+  }
+
   if (isEditing && canWrite) {
     // Mobile: fullscreen portal
     if (isMobile) {
@@ -770,8 +993,8 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   return (
     <div
       className={`kanban-card ${card.archived ? 'archived' : ''}`}
-      onClick={() => canWrite && onEditStart()}
-      style={{ cursor: canWrite ? 'pointer' : 'default' }}
+      onClick={() => onEditStart()}
+      style={{ cursor: 'pointer' }}
     >
       {/* Label color bars */}
       {card.labels && card.labels.length > 0 && (

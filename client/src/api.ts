@@ -59,7 +59,7 @@ class ApiClient {
     return this.fetch('/auth/me');
   }
 
-  async register(username: string, password: string, role: 'READ' | 'ADMIN') {
+  async register(username: string, password: string, role: 'READ' | 'COLLABORATOR' | 'ADMIN') {
     return this.fetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password, role }),
@@ -71,7 +71,7 @@ class ApiClient {
     return this.fetch('/users');
   }
 
-  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'ADMIN' }): Promise<User> {
+  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' }): Promise<User> {
     return this.fetch(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),

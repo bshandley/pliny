@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   username: string;
-  role: 'READ' | 'ADMIN';
+  role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   created_at?: string;
 }
 
@@ -19,7 +19,7 @@ export interface Board {
 export interface BoardMember {
   id: string;
   username: string;
-  role: 'READ' | 'ADMIN';
+  role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   added_at: string;
 }
 
