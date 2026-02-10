@@ -46,6 +46,13 @@ async function runMigrations() {
     );
     await pool.query(activityMembersNotifications);
 
+    // Add collaborator role
+    const collaboratorRole = fs.readFileSync(
+      path.join(__dirname, '007-collaborator-role.sql'),
+      'utf-8'
+    );
+    await pool.query(collaboratorRole);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {
