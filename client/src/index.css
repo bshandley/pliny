@@ -1031,6 +1031,12 @@ button:disabled {
   white-space: nowrap;
 }
 
+.assignee-badge.member-badge {
+  background: rgba(56, 132, 244, 0.12);
+  border-color: rgba(56, 132, 244, 0.3);
+  color: #3884f4;
+}
+
 /* ---- Due Date ---- */
 
 .due-badge {

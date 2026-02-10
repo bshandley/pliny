@@ -258,7 +258,12 @@ router.get('/:id/members', authenticate, async (req: AuthRequest, res) => {
        FROM board_members bm
        INNER JOIN users u ON bm.user_id = u.id
        WHERE bm.board_id = $1
-       ORDER BY bm.added_at DESC`,
+       UNION
+       SELECT u.id, u.username, u.role, u.created_at as added_at
+       FROM users u
+       WHERE u.role = 'ADMIN'
+         AND u.id NOT IN (SELECT user_id FROM board_members WHERE board_id = $1)
+       ORDER BY username`,
       [id]
     );
 

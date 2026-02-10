@@ -780,11 +780,14 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
       {card.description && (
         <p className="card-description">{card.description}</p>
       )}
-      {(card.assignees?.length || card.due_date || card.checklist) && (
+      {(card.assignees?.length || card.members?.length || card.due_date || card.checklist) && (
         <div className="card-footer">
           <div className="card-footer-left">
+            {card.members?.map((member, index) => (
+              <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
+            ))}
             {card.assignees?.map((name, index) => (
-              <span key={index} className="assignee-badge">{name}</span>
+              <span key={`a-${index}`} className="assignee-badge">{name}</span>
             ))}
           </div>
           <div className="card-footer-right">
