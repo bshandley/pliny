@@ -45,8 +45,8 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
       [result.rows[0].id]
     );
     // Parse @mentions and create notifications
-    const text = comment.rows[0].text;
-    const mentions = [...text.matchAll(/@(\w+)/g)].map((m: RegExpMatchArray) => m[1]);
+    const commentText = comment.rows[0].text;
+    const mentions = [...commentText.matchAll(/@(\w+)/g)].map((m: RegExpMatchArray) => m[1]);
 
     if (mentions.length > 0) {
       const cardInfo = await pool.query(
@@ -79,7 +79,7 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
               `INSERT INTO notifications (user_id, type, card_id, board_id, actor_id, detail)
                VALUES ($1, 'mention_comment', $2, $3, $4, $5) RETURNING *`,
               [memberId, cardId, board_id, req.user!.id,
-               JSON.stringify({ card_title: cardTitle, comment_text: text.substring(0, 200) })]
+               JSON.stringify({ card_title: cardTitle, comment_text: commentText.substring(0, 200) })]
             );
 
             if (io && userSockets) {
