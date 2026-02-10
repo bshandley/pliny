@@ -106,6 +106,26 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
+    // Fetch card members for all cards
+    const cardMembersResult = await pool.query(
+      `SELECT cm.card_id, u.id, u.username
+       FROM card_members cm
+       INNER JOIN users u ON cm.user_id = u.id
+       INNER JOIN cards c ON cm.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1`,
+      [id]
+    );
+
+    // Group members by card_id
+    const membersByCard: Record<string, { id: string; username: string }[]> = {};
+    cardMembersResult.rows.forEach(row => {
+      if (!membersByCard[row.card_id]) {
+        membersByCard[row.card_id] = [];
+      }
+      membersByCard[row.card_id].push({ id: row.id, username: row.username });
+    });
+
     // Group assignees by card_id
     const assigneesByCard: Record<string, string[]> = {};
     assigneesResult.rows.forEach(row => {
@@ -136,7 +156,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       ...card,
       assignees: assigneesByCard[card.id] || [],
       labels: labelsByCard[card.id] || [],
-      checklist: checklistByCard[card.id] || null
+      checklist: checklistByCard[card.id] || null,
+      members: membersByCard[card.id] || []
     }));
 
     res.json({
@@ -227,8 +248,8 @@ router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) 
   }
 });
 
-// Get board members (admin only)
-router.get('/:id/members', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+// Get board members
+router.get('/:id/members', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
