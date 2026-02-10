@@ -258,12 +258,28 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if (showAutocomplete && filteredAssignees.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, filteredAssignees.length - 1)); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
-      else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); selectAssignee(filteredAssignees[selectedIndex].name); }
-      else if (e.key === 'Escape') { setShowAutocomplete(false); setAutocompleteFilter(''); }
-    } else if (e.key === 'Enter') {
+    if (showAutocomplete) {
+      const filteredMembersList = boardMembers.filter(m =>
+        m.username.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
+        !editMembers.includes(m.id)
+      );
+      const totalItems = filteredMembersList.length + filteredAssignees.length;
+      if (totalItems > 0) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, totalItems - 1)); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
+        else if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          if (selectedIndex < filteredMembersList.length) {
+            selectMember(filteredMembersList[selectedIndex].id);
+          } else {
+            selectAssignee(filteredAssignees[selectedIndex - filteredMembersList.length].name);
+          }
+        }
+        else if (e.key === 'Escape') { setShowAutocomplete(false); setAutocompleteFilter(''); }
+        return;
+      }
+    }
+    if (e.key === 'Enter') {
       const input = inputRef.current?.value.trim();
       if (input && input !== '') {
         e.preventDefault();
@@ -446,14 +462,14 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
               if (!member) return null;
               return (
                 <div key={id} className="assignee-chip member-chip">
-                  <span className="chip-name">@{member.username}</span>
+                  <span className="chip-name">{member.username}</span>
                   <button type="button" onClick={() => removeMember(id)} className="chip-remove" aria-label="Remove member">×</button>
                 </div>
               );
             })}
             {editAssignees.map((name, index) => (
               <div key={index} className="assignee-chip">
-                <span className="chip-name">@{name}</span>
+                <span className="chip-name">{name}</span>
                 <button type="button" onClick={() => removeAssignee(name)} className="chip-remove" aria-label="Remove assignee">×</button>
               </div>
             ))}
@@ -481,7 +497,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                         className={`mention-item mention-item-member ${index === selectedIndex ? 'selected' : ''}`}
                         onClick={() => selectMember(member.id)}
                         onMouseEnter={() => setSelectedIndex(index)}>
-                        @{member.username}
+                        {member.username}
                       </div>
                     ))}
                   </>
@@ -496,7 +512,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                           className={`mention-item mention-item-assignee ${adjustedIndex === selectedIndex ? 'selected' : ''}`}
                           onClick={() => selectAssignee(assignee.name)}
                           onMouseEnter={() => setSelectedIndex(adjustedIndex)}>
-                          @{assignee.name}
+                          {assignee.name}
                         </div>
                       );
                     })}
@@ -633,7 +649,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                                 className={`mention-item mention-item-member ${index === commentMentionIndex ? 'selected' : ''}`}
                                 onClick={() => handleCommentMentionSelect(member.username)}
                                 onMouseEnter={() => setCommentMentionIndex(index)}>
-                                @{member.username}
+                                {member.username}
                               </div>
                             ))}
                           </>
@@ -648,7 +664,7 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                                   className={`mention-item mention-item-assignee ${adjustedIndex === commentMentionIndex ? 'selected' : ''}`}
                                   onClick={() => handleCommentMentionSelect(assignee.name)}
                                   onMouseEnter={() => setCommentMentionIndex(adjustedIndex)}>
-                                  @{assignee.name}
+                                  {assignee.name}
                                 </div>
                               );
                             })}

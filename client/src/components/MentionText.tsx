@@ -24,14 +24,14 @@ export default function MentionText({ text, boardMembers, assignees }: MentionTe
           if (isMember) {
             return (
               <span key={i} className="mention-chip mention-member">
-                {part}
+                {name}
               </span>
             );
           }
           if (isAssignee) {
             return (
               <span key={i} className="mention-chip mention-assignee">
-                {part}
+                {name}
               </span>
             );
           }
