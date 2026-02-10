@@ -15,7 +15,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({ username: '', password: '', role: 'READ' as 'READ' | 'ADMIN' });
+  const [formData, setFormData] = useState({ username: '', password: '', role: 'READ' as 'READ' | 'COLLABORATOR' | 'ADMIN' });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
     setError('');
 
     try {
-      const updates: { username?: string; password?: string; role?: 'READ' | 'ADMIN' } = {};
+      const updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' } = {};
       if (formData.username && formData.username !== editingUser.username) {
         updates.username = formData.username;
       }
@@ -196,9 +196,10 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                 <select
                   id="new-role"
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'ADMIN' })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
                 >
                   <option value="READ">READ - View only</option>
+                  <option value="COLLABORATOR">COLLABORATOR - Can edit</option>
                   <option value="ADMIN">ADMIN - Full access</option>
                 </select>
               </div>
@@ -248,10 +249,11 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                 <select
                   id="edit-role"
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'ADMIN' })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
                   disabled={editingUser.id === currentUser.id}
                 >
                   <option value="READ">READ - View only</option>
+                  <option value="COLLABORATOR">COLLABORATOR - Can edit</option>
                   <option value="ADMIN">ADMIN - Full access</option>
                 </select>
                 {editingUser.id === currentUser.id && (
