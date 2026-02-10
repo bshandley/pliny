@@ -39,6 +39,13 @@ async function runMigrations() {
     );
     await pool.query(boardArchive);
 
+    // Add activity, card members, notifications
+    const activityMembersNotifications = fs.readFileSync(
+      path.join(__dirname, '006-activity-members-notifications.sql'),
+      'utf-8'
+    );
+    await pool.query(activityMembersNotifications);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {
