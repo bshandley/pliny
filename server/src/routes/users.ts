@@ -30,7 +30,7 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       return res.status(400).json({ error: 'Cannot change your own role' });
     }
 
-    if (role && !['READ', 'ADMIN'].includes(role)) {
+    if (role && !['READ', 'COLLABORATOR', 'ADMIN'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
