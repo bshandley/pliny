@@ -178,6 +178,13 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { name, description } = req.body;
 
+    if (name && name.length > 255) {
+      return res.status(400).json({ error: 'Board name must be 255 characters or fewer' });
+    }
+    if (description && description.length > 10000) {
+      return res.status(400).json({ error: 'Board description must be 10000 characters or fewer' });
+    }
+
     const result = await pool.query(
       'INSERT INTO boards (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
       [name, description, req.user!.id]
@@ -195,6 +202,13 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
   try {
     const { id } = req.params;
     const { name, description, archived } = req.body;
+
+    if (name !== undefined && name.length > 255) {
+      return res.status(400).json({ error: 'Board name must be 255 characters or fewer' });
+    }
+    if (description !== undefined && description.length > 10000) {
+      return res.status(400).json({ error: 'Board description must be 10000 characters or fewer' });
+    }
 
     const fields: string[] = [];
     const values: any[] = [];

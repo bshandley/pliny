@@ -25,6 +25,17 @@ router.post('/boards/:boardId/labels', authenticate, requireAdmin, async (req: A
   try {
     const { boardId } = req.params;
     const { name, color } = req.body;
+
+    if (name && name.length > 50) {
+      return res.status(400).json({ error: 'Label name must be 50 characters or fewer' });
+    }
+    if (color && color.length > 7) {
+      return res.status(400).json({ error: 'Label color must be 7 characters or fewer' });
+    }
+    if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+      return res.status(400).json({ error: 'Label color must be a valid hex color (e.g. #ff0000)' });
+    }
+
     const result = await pool.query(
       'INSERT INTO board_labels (board_id, name, color) VALUES ($1, $2, $3) RETURNING *',
       [boardId, name, color || '#6b7280']
@@ -41,6 +52,17 @@ router.put('/labels/:id', authenticate, requireAdmin, async (req: AuthRequest, r
   try {
     const { id } = req.params;
     const { name, color } = req.body;
+
+    if (name && name.length > 50) {
+      return res.status(400).json({ error: 'Label name must be 50 characters or fewer' });
+    }
+    if (color && color.length > 7) {
+      return res.status(400).json({ error: 'Label color must be 7 characters or fewer' });
+    }
+    if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {
+      return res.status(400).json({ error: 'Label color must be a valid hex color (e.g. #ff0000)' });
+    }
+
     const result = await pool.query(
       'UPDATE board_labels SET name = $1, color = $2 WHERE id = $3 RETURNING *',
       [name, color, id]

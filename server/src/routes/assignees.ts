@@ -31,6 +31,9 @@ router.post('/boards/:boardId/assignees', authenticate, requireAdmin, async (req
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Name is required' });
     }
+    if (name.length > 100) {
+      return res.status(400).json({ error: 'Assignee name must be 100 characters or fewer' });
+    }
 
     const result = await pool.query(
       'INSERT INTO board_assignees (board_id, name) VALUES ($1, $2) RETURNING id, name, created_at',
@@ -53,6 +56,9 @@ router.put('/boards/:boardId/assignees/:assigneeId', authenticate, requireAdmin,
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Name is required' });
+    }
+    if (name.length > 100) {
+      return res.status(400).json({ error: 'Assignee name must be 100 characters or fewer' });
     }
 
     await client.query('BEGIN');

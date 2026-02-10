@@ -34,6 +34,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       return res.status(400).json({ error: 'Invalid role' });
     }
 
+    if (username && username.length > 255) {
+      return res.status(400).json({ error: 'Username must be 255 characters or fewer' });
+    }
+
     // Build update query dynamically
     const updates: string[] = [];
     const values: any[] = [];

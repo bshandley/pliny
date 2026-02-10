@@ -98,6 +98,7 @@ export default function BoardLabels({ boardId, onClose }: BoardLabelsProps) {
                 placeholder="Label name..."
                 className="label-name-input"
                 autoFocus
+                maxLength={50}
               />
               <div className="color-picker">
                 {PRESET_COLORS.map((color) => (
@@ -136,6 +137,7 @@ export default function BoardLabels({ boardId, onClose }: BoardLabelsProps) {
                           className="label-rename-input"
                           style={{ borderColor: editingColor }}
                           autoFocus
+                          maxLength={50}
                         />
                         <div className="color-picker color-picker-inline">
                           {PRESET_COLORS.map((color) => (

@@ -10,6 +10,10 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { board_id, name, position } = req.body;
 
+    if (name && name.length > 255) {
+      return res.status(400).json({ error: 'Column name must be 255 characters or fewer' });
+    }
+
     const result = await pool.query(
       'INSERT INTO columns (board_id, name, position) VALUES ($1, $2, $3) RETURNING *',
       [board_id, name, position]
@@ -27,6 +31,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
   try {
     const { id } = req.params;
     const { name, position } = req.body;
+
+    if (name !== undefined && name.length > 255) {
+      return res.status(400).json({ error: 'Column name must be 255 characters or fewer' });
+    }
 
     const result = await pool.query(
       'UPDATE columns SET name = COALESCE($1, name), position = COALESCE($2, position), updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',

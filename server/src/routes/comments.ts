@@ -32,6 +32,9 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
     if (!text?.trim()) {
       return res.status(400).json({ error: 'Comment text is required' });
     }
+    if (text.length > 5000) {
+      return res.status(400).json({ error: 'Comment text must be 5000 characters or fewer' });
+    }
     const result = await pool.query(
       'INSERT INTO card_comments (card_id, user_id, text) VALUES ($1, $2, $3) RETURNING *',
       [cardId, req.user!.id, text.trim()]

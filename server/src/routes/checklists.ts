@@ -28,6 +28,9 @@ router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: 
     if (!text?.trim()) {
       return res.status(400).json({ error: 'Item text is required' });
     }
+    if (text.length > 500) {
+      return res.status(400).json({ error: 'Checklist item text must be 500 characters or fewer' });
+    }
     // Get next position
     const posResult = await pool.query(
       'SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM card_checklist_items WHERE card_id = $1',
@@ -60,6 +63,9 @@ router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest
       values.push(checked);
     }
     if (text !== undefined) {
+      if (text.length > 500) {
+        return res.status(400).json({ error: 'Checklist item text must be 500 characters or fewer' });
+      }
       updates.push(`text = $${paramCount++}`);
       values.push(text);
     }

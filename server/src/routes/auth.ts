@@ -70,6 +70,10 @@ router.post('/register', authenticate, requireAdmin, async (req: AuthRequest, re
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    if (username.length > 255) {
+      return res.status(400).json({ error: 'Username must be 255 characters or fewer' });
+    }
+
     if (!['READ', 'COLLABORATOR', 'ADMIN'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }

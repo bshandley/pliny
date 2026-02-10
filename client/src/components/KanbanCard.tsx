@@ -457,6 +457,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); handleSave(); }
           else if (!isMobile && e.key === 'Escape') handleCancel();
         }}
+        maxLength={255}
       />
 
       {/* Labels */}
@@ -499,7 +500,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           </div>
         )}
         <div className="assignee-input-wrapper">
-          <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" />
+          <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" maxLength={100} />
           {(() => {
             const filteredMembersList = boardMembers.filter(m =>
               m.username.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
@@ -568,7 +569,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} />
+      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000} />
 
       <div className="due-date-picker">
         <label htmlFor={`due-date-${card.id}`}>Due date</label>
@@ -611,6 +612,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                   placeholder="Add item..."
                   className="checklist-input"
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(); } }}
+                  maxLength={500}
                 />
                 <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
               </div>
@@ -654,6 +656,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     placeholder="Write a comment... (@ to mention)"
                     className="comment-input"
                     onKeyDown={handleCommentKeyDown}
+                    maxLength={5000}
                   />
                   {(() => {
                     if (!commentMentionActive) return null;
@@ -845,6 +848,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       placeholder="Write a comment... (@ to mention)"
                       className="comment-input"
                       onKeyDown={handleCommentKeyDown}
+                      maxLength={5000}
                     />
                     {(() => {
                       if (!commentMentionActive) return null;

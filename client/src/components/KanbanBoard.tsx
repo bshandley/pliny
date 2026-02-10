@@ -541,6 +541,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                               }}
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
+                              maxLength={255}
                             />
                           ) : (
                             <h3>{column.name}</h3>
@@ -624,7 +625,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                         {isAdmin && !showArchived && (
                           showNewCard === column.id ? (
                             <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
-                              <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required />
+                              <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
                               <div className="form-actions">
                                 <button type="submit" className="btn-primary btn-sm">Add</button>
                                 <button type="button" onClick={() => { setShowNewCard(null); setNewCardTitle(''); }} className="btn-secondary btn-sm">Cancel</button>
@@ -652,7 +653,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
             <form onSubmit={handleCreateColumn}>
               <div className="form-group">
                 <label htmlFor="column-name">Column Name</label>
-                <input type="text" id="column-name" value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} required autoFocus />
+                <input type="text" id="column-name" value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} required autoFocus maxLength={255} />
               </div>
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowNewColumn(false)} className="btn-secondary">Cancel</button>

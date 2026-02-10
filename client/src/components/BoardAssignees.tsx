@@ -96,6 +96,7 @@ export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: B
                 placeholder="Enter name..."
                 className="assignee-input"
                 autoFocus
+                maxLength={100}
               />
               <button type="submit" className="btn-primary btn-sm" disabled={!newName.trim()}>
                 Add
@@ -120,6 +121,7 @@ export default function BoardAssignees({ boardId, onClose, onAssigneeChange }: B
                         }}
                         className="assignee-name assignee-rename-input"
                         autoFocus
+                        maxLength={100}
                       />
                     ) : (
                       <span

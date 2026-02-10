@@ -9,11 +9,18 @@ const router = Router();
 // Create card
 router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { column_id, title, description, assignee, position, due_date } = req.body;
+    const { column_id, title, description, position, due_date } = req.body;
+
+    if (title && title.length > 255) {
+      return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
+    }
+    if (description && description.length > 10000) {
+      return res.status(400).json({ error: 'Card description must be 10000 characters or fewer' });
+    }
 
     const result = await pool.query(
-      'INSERT INTO cards (column_id, title, description, assignee, position, due_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [column_id, title, description, assignee, position, due_date || null]
+      'INSERT INTO cards (column_id, title, description, position, due_date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [column_id, title, description, position, due_date || null]
     );
 
     logActivity(result.rows[0].id, req.user!.id, 'created');
@@ -30,6 +37,13 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
   try {
     const { id } = req.params;
     const { column_id, title, description, assignees, position, due_date } = req.body;
+
+    if (title !== undefined && title.length > 255) {
+      return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
+    }
+    if (description !== undefined && description.length > 10000) {
+      return res.status(400).json({ error: 'Card description must be 10000 characters or fewer' });
+    }
 
     // Fetch old state for activity logging
     const oldCard = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);

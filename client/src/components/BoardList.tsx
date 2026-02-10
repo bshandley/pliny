@@ -239,6 +239,7 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
                   onChange={(e) => setNewBoardName(e.target.value)}
                   required
                   autoFocus
+                  maxLength={255}
                 />
               </div>
               <div className="form-group">
@@ -248,6 +249,7 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
                   value={newBoardDesc}
                   onChange={(e) => setNewBoardDesc(e.target.value)}
                   rows={3}
+                  maxLength={10000}
                 />
               </div>
               <div className="modal-actions">
@@ -278,6 +280,7 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
                   onChange={(e) => setEditBoardName(e.target.value)}
                   required
                   autoFocus
+                  maxLength={255}
                 />
               </div>
               <div className="form-group">
@@ -287,6 +290,7 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
                   value={editBoardDesc}
                   onChange={(e) => setEditBoardDesc(e.target.value)}
                   rows={3}
+                  maxLength={10000}
                 />
               </div>
               <div className="modal-actions">

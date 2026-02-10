@@ -178,6 +178,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
                   autoFocus
+                  maxLength={255}
                 />
               </div>
               <div className="form-group">
@@ -232,6 +233,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
                   autoFocus
+                  maxLength={255}
                 />
               </div>
               <div className="form-group">
