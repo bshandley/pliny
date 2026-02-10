@@ -44,6 +44,60 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
        WHERE cc.id = $1`,
       [result.rows[0].id]
     );
+    // Parse @mentions and create notifications
+    const text = comment.rows[0].text;
+    const mentions = [...text.matchAll(/@(\w+)/g)].map((m: RegExpMatchArray) => m[1]);
+
+    if (mentions.length > 0) {
+      const cardInfo = await pool.query(
+        `SELECT c.id, c.title, col.board_id FROM cards c
+         JOIN columns col ON c.column_id = col.id
+         WHERE c.id = $1`,
+        [cardId]
+      );
+
+      if (cardInfo.rows.length > 0) {
+        const { title: cardTitle, board_id } = cardInfo.rows[0];
+
+        const boardMembers = await pool.query(
+          `SELECT DISTINCT u.id, u.username FROM users u
+           LEFT JOIN board_members bm ON u.id = bm.user_id AND bm.board_id = $1
+           WHERE u.role = 'ADMIN' OR bm.board_id = $1`,
+          [board_id]
+        );
+
+        const memberMap = new Map<string, string>();
+        boardMembers.rows.forEach((m: any) => memberMap.set(m.username.toLowerCase(), m.id));
+
+        const io = req.app.get('io');
+        const userSockets: Map<string, string[]> = req.app.get('userSockets');
+
+        for (const mention of mentions) {
+          const memberId = memberMap.get(mention.toLowerCase());
+          if (memberId && memberId !== req.user!.id) {
+            const notif = await pool.query(
+              `INSERT INTO notifications (user_id, type, card_id, board_id, actor_id, detail)
+               VALUES ($1, 'mention_comment', $2, $3, $4, $5) RETURNING *`,
+              [memberId, cardId, board_id, req.user!.id,
+               JSON.stringify({ card_title: cardTitle, comment_text: text.substring(0, 200) })]
+            );
+
+            if (io && userSockets) {
+              const sockets = userSockets.get(memberId);
+              if (sockets) {
+                for (const sid of sockets) {
+                  io.to(sid).emit('notification:new', {
+                    ...notif.rows[0],
+                    actor_username: req.user!.username
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     res.status(201).json(comment.rows[0]);
   } catch (error) {
     console.error('Add comment error:', error);

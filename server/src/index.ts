@@ -50,6 +50,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// User socket tracking for point-to-point notifications
+const userSockets = new Map<string, string[]>();
+app.set('userSockets', userSockets);
+
 // WebSocket authentication
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
@@ -59,7 +63,8 @@ io.use((socket, next) => {
   try {
     const secret = process.env.JWT_SECRET;
     if (!secret) return next(new Error('Server misconfigured'));
-    jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret) as { id: string; username: string; role: string };
+    (socket as any).userId = decoded.id;
     next();
   } catch {
     next(new Error('Invalid token'));
@@ -67,6 +72,13 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
+  const userId = (socket as any).userId;
+  if (userId) {
+    const existing = userSockets.get(userId) || [];
+    existing.push(socket.id);
+    userSockets.set(userId, existing);
+  }
+
   socket.on('join-board', (boardId: string) => {
     socket.join(`board:${boardId}`);
   });
@@ -77,6 +89,18 @@ io.on('connection', (socket) => {
 
   socket.on('board-updated', (boardId: string) => {
     socket.to(`board:${boardId}`).emit('board-updated');
+  });
+
+  socket.on('disconnect', () => {
+    if (userId) {
+      const existing = userSockets.get(userId) || [];
+      const filtered = existing.filter(id => id !== socket.id);
+      if (filtered.length === 0) {
+        userSockets.delete(userId);
+      } else {
+        userSockets.set(userId, filtered);
+      }
+    }
   });
 });
 
