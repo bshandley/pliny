@@ -111,6 +111,12 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
   const [showChecklist, setShowChecklist] = useState(!!(card.checklist && card.checklist.total > 0));
   const [showComments, setShowComments] = useState(false);
 
+  // Comment @mention state
+  const [commentMentionActive, setCommentMentionActive] = useState(false);
+  const [commentMentionFilter, setCommentMentionFilter] = useState('');
+  const [commentMentionIndex, setCommentMentionIndex] = useState(0);
+  const commentInputRef = useRef<HTMLInputElement>(null);
+
   // Members state
   const [editMembers, setEditMembers] = useState<string[]>(card.members?.map(m => m.id) || []);
 
@@ -318,6 +324,86 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
     }
   };
 
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewComment(value);
+
+    const cursorPos = e.target.selectionStart || value.length;
+    const textUpToCursor = value.substring(0, cursorPos);
+    const lastAtIndex = textUpToCursor.lastIndexOf('@');
+
+    if (lastAtIndex >= 0) {
+      const charBefore = lastAtIndex > 0 ? textUpToCursor[lastAtIndex - 1] : ' ';
+      if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
+        const filterText = textUpToCursor.substring(lastAtIndex + 1);
+        if (!/\s/.test(filterText)) {
+          setCommentMentionActive(true);
+          setCommentMentionFilter(filterText);
+          setCommentMentionIndex(0);
+          return;
+        }
+      }
+    }
+    setCommentMentionActive(false);
+  };
+
+  const handleCommentMentionSelect = (name: string) => {
+    const cursorPos = commentInputRef.current?.selectionStart || newComment.length;
+    const textUpToCursor = newComment.substring(0, cursorPos);
+    const lastAtIndex = textUpToCursor.lastIndexOf('@');
+    const before = newComment.substring(0, lastAtIndex);
+    const after = newComment.substring(cursorPos);
+    setNewComment(`${before}@${name} ${after}`);
+    setCommentMentionActive(false);
+  };
+
+  const getCommentMentionItems = () => {
+    const filter = commentMentionFilter.toLowerCase();
+    const members = boardMembers.filter(m =>
+      m.username.toLowerCase().includes(filter)
+    );
+    const assigneeItems = assignees.filter(a =>
+      a.name.toLowerCase().includes(filter)
+    );
+    return { members, assignees: assigneeItems };
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent) => {
+    if (commentMentionActive) {
+      const { members, assignees: assigneeItems } = getCommentMentionItems();
+      const totalItems = members.length + assigneeItems.length;
+      if (totalItems > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setCommentMentionIndex(prev => Math.min(prev + 1, totalItems - 1));
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setCommentMentionIndex(prev => Math.max(prev - 1, 0));
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          if (commentMentionIndex < members.length) {
+            handleCommentMentionSelect(members[commentMentionIndex].username);
+          } else {
+            handleCommentMentionSelect(assigneeItems[commentMentionIndex - members.length].name);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          setCommentMentionActive(false);
+          return;
+        }
+      }
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddComment();
+    }
+  };
+
   // Shared edit form fields (used by both inline and fullscreen)
   const renderEditFields = () => (
     <>
@@ -520,14 +606,58 @@ export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onE
                 </div>
               ))}
               <div className="comment-add">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="comment-input"
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddComment(); } }}
-                />
+                <div className="assignee-input-wrapper">
+                  <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={newComment}
+                    onChange={handleCommentChange}
+                    placeholder="Write a comment... (@ to mention)"
+                    className="comment-input"
+                    onKeyDown={handleCommentKeyDown}
+                  />
+                  {(() => {
+                    if (!commentMentionActive) return null;
+                    const { members, assignees: assigneeItems } = getCommentMentionItems();
+                    if (members.length === 0 && assigneeItems.length === 0) return null;
+                    return (
+                      <div className="mention-autocomplete">
+                        {members.length > 0 && (
+                          <>
+                            <div className="mention-group-header">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                              Members
+                            </div>
+                            {members.map((member, index) => (
+                              <div key={member.id}
+                                className={`mention-item mention-item-member ${index === commentMentionIndex ? 'selected' : ''}`}
+                                onClick={() => handleCommentMentionSelect(member.username)}
+                                onMouseEnter={() => setCommentMentionIndex(index)}>
+                                @{member.username}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {assigneeItems.length > 0 && (
+                          <>
+                            <div className="mention-group-header">Assignees</div>
+                            {assigneeItems.map((assignee, index) => {
+                              const adjustedIndex = members.length + index;
+                              return (
+                                <div key={assignee.id}
+                                  className={`mention-item mention-item-assignee ${adjustedIndex === commentMentionIndex ? 'selected' : ''}`}
+                                  onClick={() => handleCommentMentionSelect(assignee.name)}
+                                  onMouseEnter={() => setCommentMentionIndex(adjustedIndex)}>
+                                  @{assignee.name}
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
               </div>
             </>
