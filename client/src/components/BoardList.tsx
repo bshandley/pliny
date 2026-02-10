@@ -18,8 +18,9 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
   const [newBoardName, setNewBoardName] = useState('');
   const [newBoardDesc, setNewBoardDesc] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [renameBoard, setRenameBoard] = useState<Board | null>(null);
-  const [renameName, setRenameName] = useState('');
+  const [editingBoard, setEditingBoard] = useState<Board | null>(null);
+  const [editBoardName, setEditBoardName] = useState('');
+  const [editBoardDesc, setEditBoardDesc] = useState('');
   const [showArchivedBoards, setShowArchivedBoards] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -66,16 +67,17 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
     }
   };
 
-  const handleRenameBoard = async (e: React.FormEvent) => {
+  const handleEditBoard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!renameBoard) return;
+    if (!editingBoard) return;
     try {
-      await api.updateBoard(renameBoard.id, { name: renameName });
-      setRenameBoard(null);
-      setRenameName('');
+      await api.updateBoard(editingBoard.id, { name: editBoardName, description: editBoardDesc });
+      setEditingBoard(null);
+      setEditBoardName('');
+      setEditBoardDesc('');
       loadBoards();
     } catch (error: any) {
-      alert('Failed to rename board: ' + error.message);
+      alert('Failed to update board: ' + error.message);
     }
   };
 
@@ -173,9 +175,10 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
                       <button onClick={(e) => {
                         e.stopPropagation();
                         setOpenMenuId(null);
-                        setRenameName(board.name);
-                        setRenameBoard(board);
-                      }}>Rename</button>
+                        setEditBoardName(board.name);
+                        setEditBoardDesc(board.description || '');
+                        setEditingBoard(board);
+                      }}>Edit Board</button>
                       <button onClick={(e) => { e.stopPropagation(); handleArchiveBoard(board); }}>Archive</button>
                       <div className="kebab-divider" />
                       <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteBoard(board); }}>Delete</button>
@@ -260,29 +263,38 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
         </div>
       )}
 
-      {/* Rename Board Modal */}
-      {renameBoard && (
-        <div className="modal-overlay" onClick={() => setRenameBoard(null)}>
+      {/* Edit Board Modal */}
+      {editingBoard && (
+        <div className="modal-overlay" onClick={() => setEditingBoard(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Rename Board</h2>
-            <form onSubmit={handleRenameBoard}>
+            <h2>Edit Board</h2>
+            <form onSubmit={handleEditBoard}>
               <div className="form-group">
-                <label htmlFor="rename-board">Board Name</label>
+                <label htmlFor="edit-board-name">Board Name</label>
                 <input
                   type="text"
-                  id="rename-board"
-                  value={renameName}
-                  onChange={(e) => setRenameName(e.target.value)}
+                  id="edit-board-name"
+                  value={editBoardName}
+                  onChange={(e) => setEditBoardName(e.target.value)}
                   required
                   autoFocus
                 />
               </div>
+              <div className="form-group">
+                <label htmlFor="edit-board-desc">Description (optional)</label>
+                <textarea
+                  id="edit-board-desc"
+                  value={editBoardDesc}
+                  onChange={(e) => setEditBoardDesc(e.target.value)}
+                  rows={3}
+                />
+              </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setRenameBoard(null)} className="btn-secondary">
+                <button type="button" onClick={() => setEditingBoard(null)} className="btn-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Rename
+                  Save
                 </button>
               </div>
             </form>
