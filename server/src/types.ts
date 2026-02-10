@@ -4,7 +4,7 @@ export interface User {
   id: string;
   username: string;
   password_hash: string;
-  role: 'READ' | 'ADMIN';
+  role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   created_at: Date;
 }
 
@@ -75,6 +75,6 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     username: string;
-    role: 'READ' | 'ADMIN';
+    role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   };
 }
