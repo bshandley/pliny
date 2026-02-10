@@ -7,7 +7,7 @@ import MentionText from './MentionText';
 
 interface KanbanCardProps {
   card: Card;
-  canWrite: boolean;
+  userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   isEditing: boolean;
   onEditStart: () => void;
   onEditEnd: () => void;
@@ -87,7 +87,9 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
   }
 }
 
-export default function KanbanCard({ card, canWrite, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+  const canWrite = userRole === 'ADMIN';
+  const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');

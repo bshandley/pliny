@@ -15,7 +15,7 @@ interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   onLogout: () => void;
-  userRole: 'READ' | 'ADMIN';
+  userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
 }
 
 export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: KanbanBoardProps) {
@@ -569,7 +569,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
                                       ) : (
                                         <KanbanCard
                                           card={card}
-                                          canWrite={isAdmin}
+                                          userRole={userRole}
                                           isEditing={editingCardId === card.id}
                                           onEditStart={() => setEditingCardId(card.id)}
                                           onEditEnd={() => setEditingCardId(null)}
