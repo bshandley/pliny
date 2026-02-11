@@ -128,6 +128,12 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
 
+  // Card overflow menu state
+  const [showCardMenu, setShowCardMenu] = useState(false);
+  const [cardMenuPos, setCardMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const cardMenuRef = useRef<HTMLDivElement>(null);
+  const cardMenuBtnRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     setEditTitle(card.title);
     setEditDescription(card.description || '');
@@ -142,6 +148,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       loadComments();
       loadChecklist();
       loadActivity();
+    } else {
+      setShowCardMenu(false);
     }
   }, [isEditing]);
 
@@ -234,6 +242,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isEditing, isMobile, canWrite]);
+
+  // Close card overflow menu on outside click or scroll
+  useEffect(() => {
+    if (!showCardMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (cardMenuRef.current?.contains(target)) return;
+      if (cardMenuBtnRef.current?.contains(target)) return;
+      setShowCardMenu(false);
+    };
+    const handleScroll = () => setShowCardMenu(false);
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [showCardMenu]);
 
   const handleCancel = () => {
     setEditTitle(card.title);
@@ -964,14 +990,26 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           <div className="card-fullscreen-header">
             <button onClick={handleCancel} className="btn-icon" aria-label="Back">←</button>
             <h2>{card.title}</h2>
+            <div className="card-edit-actions-menu" ref={showCardMenu ? cardMenuRef : undefined}>
+              <button
+                className="btn-kebab"
+                onClick={() => setShowCardMenu(!showCardMenu)}
+                title="Card actions"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </button>
+              {showCardMenu && (
+                <div className="kebab-dropdown">
+                  <button onClick={() => { setShowCardMenu(false); onEditEnd(); onArchive(); }}>Archive</button>
+                  <div className="kebab-divider" />
+                  <button className="kebab-danger" onClick={() => { setShowCardMenu(false); onEditEnd(); onDelete(); }}>Delete</button>
+                </div>
+              )}
+            </div>
             <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
           </div>
           <div className="card-fullscreen-body">
             {renderEditFields()}
-          </div>
-          <div className="card-fullscreen-actions">
-            <button onClick={() => { onEditEnd(); onArchive(); }} className="btn-secondary btn-sm btn-archive">Archive</button>
-            <button onClick={() => { onEditEnd(); onDelete(); }} className="btn-danger btn-sm">Delete</button>
           </div>
         </div>,
         document.body
@@ -985,9 +1023,34 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         <div className="card-edit-actions">
           <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
           <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
-          <div className="card-edit-actions-right">
-            <button onClick={() => { onEditEnd(); onArchive(); }} className="btn-secondary btn-sm btn-archive" title="Archive card">Archive</button>
-            <button onClick={() => { onEditEnd(); onDelete(); }} className="btn-danger btn-sm" title="Delete card">Delete</button>
+          <div className="card-edit-actions-menu">
+            <button
+              ref={cardMenuBtnRef}
+              className="btn-kebab"
+              onClick={(e) => {
+                if (!showCardMenu) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setCardMenuPos({ top: rect.bottom + 4, left: rect.right });
+                }
+                setShowCardMenu(!showCardMenu);
+              }}
+              title="Card actions"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+            {showCardMenu && cardMenuPos && createPortal(
+              <div
+                ref={cardMenuRef}
+                className="kebab-dropdown kebab-dropdown-portal"
+                style={{ top: cardMenuPos.top, left: cardMenuPos.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button onClick={() => { setShowCardMenu(false); onEditEnd(); onArchive(); }}>Archive</button>
+                <div className="kebab-divider" />
+                <button className="kebab-danger" onClick={() => { setShowCardMenu(false); onEditEnd(); onDelete(); }}>Delete</button>
+              </div>,
+              document.body
+            )}
           </div>
         </div>
       </div>
@@ -1011,14 +1074,36 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       <div className="card-header">
         <h4>{card.title}</h4>
         {canWrite && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onArchive(); }}
-            className="btn-delete card-archive"
-            aria-label="Archive card"
-            title="Archive"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
-          </button>
+          <div className="card-header-menu">
+            <button
+              ref={cardMenuBtnRef}
+              className="btn-kebab"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!showCardMenu) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setCardMenuPos({ top: rect.bottom + 4, left: rect.right });
+                }
+                setShowCardMenu(!showCardMenu);
+              }}
+              title="Card actions"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+            {showCardMenu && cardMenuPos && createPortal(
+              <div
+                ref={cardMenuRef}
+                className="kebab-dropdown kebab-dropdown-portal"
+                style={{ top: cardMenuPos.top, left: cardMenuPos.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button onClick={() => { setShowCardMenu(false); onArchive(); }}>Archive</button>
+                <div className="kebab-divider" />
+                <button className="kebab-danger" onClick={() => { setShowCardMenu(false); onDelete(); }}>Delete</button>
+              </div>,
+              document.body
+            )}
+          </div>
         )}
       </div>
       {card.description && (

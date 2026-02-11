@@ -375,19 +375,21 @@ button:disabled {
   color: var(--danger);
 }
 
-.kanban-card:hover .card-archive,
+.kanban-card:hover .card-header-menu .btn-kebab,
 .column-header:hover .btn-delete {
   opacity: 1;
 }
 
-.card-archive {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.card-header-menu {
+  position: relative;
 }
 
-.card-archive svg {
-  pointer-events: none;
+.kebab-dropdown.kebab-dropdown-portal {
+  position: fixed;
+  right: auto;
+  top: auto;
+  transform: translateX(-100%);
+  z-index: 9999;
 }
 
 /* Theme Toggle */
@@ -959,10 +961,13 @@ button:disabled {
   align-items: center;
 }
 
-.card-edit-actions-right {
-  display: flex;
-  gap: 0.375rem;
+.card-edit-actions-menu {
+  position: relative;
   margin-left: auto;
+}
+
+.card-edit-actions-menu .btn-kebab {
+  opacity: 1;
 }
 
 .btn-archive {
@@ -1938,6 +1943,14 @@ button:disabled {
   flex-shrink: 0;
 }
 
+.card-fullscreen-header .card-edit-actions-menu {
+  margin-left: 0;
+}
+
+.card-fullscreen-header .kebab-dropdown {
+  z-index: 1001;
+}
+
 .card-fullscreen-header h2 {
   flex: 1;
   font-family: var(--font-display);
@@ -2084,7 +2097,7 @@ button:disabled {
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   padding: 0.25rem;
-  min-width: 140px;
+  min-width: 110px;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -2096,9 +2109,9 @@ button:disabled {
   color: var(--text);
   border: none;
   border-radius: var(--radius-sm);
-  padding: 0.5rem 0.75rem;
+  padding: 0.375rem 0.5rem;
   font-size: 0.8125rem;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -2846,8 +2859,7 @@ button:disabled {
   /* Always show interactive controls (no hover on touch) */
   .btn-kebab,
   .btn-column-kebab,
-  .btn-delete,
-  .card-archive {
+  .btn-delete {
     opacity: 1;
   }
 
