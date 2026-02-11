@@ -5,8 +5,7 @@ services:
       POSTGRES_DB: plank
       POSTGRES_USER: plank
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
-    ports:
-      - "5432:5432"
+    # Internal network only - no external port
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +19,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
     ports:
-      - "3003:3001"
+      - "3006:3001"
     environment:
       NODE_ENV: production
       DB_HOST: db
@@ -31,7 +30,7 @@ services:
       DATABASE_URL: postgres://plank:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/plank
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       PORT: 3001
-      CLIENT_URL: http://localhost:5174
+      CLIENT_URL: http://10.0.0.102:5175
     depends_on:
       db:
         condition: service_healthy
@@ -42,10 +41,10 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:3003
-        VITE_WS_URL: http://localhost:3003
+        VITE_API_URL: http://10.0.0.102:3006
+        VITE_WS_URL: http://10.0.0.102:3006
     ports:
-      - "5174:80"
+      - "5175:80"
     depends_on:
       - server
     restart: unless-stopped
