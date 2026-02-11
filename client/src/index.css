@@ -2877,21 +2877,65 @@ button:disabled {
     margin-bottom: 0.625rem;
   }
 
-  /* Users table */
-  .users-table th,
+  /* Users table → list rows on mobile */
+  .users-table thead {
+    display: none;
+  }
+
+  .users-table,
+  .users-table tbody,
+  .users-table tr,
   .users-table td {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
+    display: block;
+  }
+
+  .users-table {
+    border: none;
+    background: transparent;
+  }
+
+  .users-table tr {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .users-table td {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .user-name-cell {
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .user-role-cell {
+    /* Sits to the right of username */
+  }
+
+  .user-created-cell {
+    display: none !important;
   }
 
   .actions-cell {
-    flex-direction: column;
-    gap: 0.25rem;
+    width: 100%;
+    margin-top: 0.5rem;
+    justify-content: flex-end;
   }
 
   .actions-cell .btn-sm {
-    width: 100%;
-    text-align: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .hide-mobile {
+    display: none !important;
   }
 
   /* Members modal */
@@ -2955,52 +2999,14 @@ button:disabled {
   }
 
   .board-list-header {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
   }
 
-  .board-list-header .header-actions {
-    justify-content: stretch;
+  .board-list-header h1 {
+    font-size: 1.25rem;
   }
 
-  .board-list-header .header-actions button {
-    flex: 1;
-  }
-
-  /* Users table card layout */
-  .users-table thead {
-    display: none;
-  }
-
-  .users-table,
-  .users-table tbody,
-  .users-table tr,
-  .users-table td {
-    display: block;
-  }
-
-  .users-table tr {
-    padding: 0.75rem;
-    border-bottom: 2px solid var(--border);
-  }
-
-  .users-table td {
-    padding: 0.25rem 0;
-    border-bottom: none;
-  }
-
-  .users-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    margin-right: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .actions-cell {
-    flex-direction: row;
-    margin-top: 0.5rem;
-  }
+  /* Users table - already handled at 768px */
 }

@@ -115,7 +115,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
           <button onClick={openCreateModal} className="btn-primary">
             + New User
           </button>
-          <button onClick={onLogout} className="btn-secondary">
+          <button onClick={onLogout} className="btn-secondary hide-mobile">
             Logout
           </button>
         </div>
@@ -134,13 +134,13 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td>{user.username}</td>
-                <td>
+                <td className="user-name-cell">{user.username}</td>
+                <td className="user-role-cell">
                   <span className={`role-badge role-${user.role.toLowerCase()}`}>
                     {user.role}
                   </span>
                 </td>
-                <td>{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
+                <td className="user-created-cell">{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
                 <td className="actions-cell">
                   <button
                     onClick={() => openEditModal(user)}
