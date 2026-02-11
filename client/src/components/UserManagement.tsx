@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -11,6 +13,7 @@ interface UserManagementProps {
 
 export default function UserManagement({ onBack, onLogout, currentUser }: UserManagementProps) {
   const confirm = useConfirm();
+  const isMobile = useIsMobile();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -104,6 +107,101 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
     return <div className="loading"><div className="spinner"></div></div>;
   }
 
+  // Shared form fields for create/edit
+  const renderFormFields = (mode: 'create' | 'edit') => (
+    <>
+      <div className="form-group">
+        <label htmlFor={`${mode}-username`}>Username</label>
+        <input
+          type="text"
+          id={`${mode}-username`}
+          value={formData.username}
+          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+          required
+          autoFocus={!isMobile}
+          maxLength={255}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor={`${mode}-password`}>
+          {mode === 'edit' ? 'New Password (leave blank to keep current)' : 'Password'}
+        </label>
+        <input
+          type="password"
+          id={`${mode}-password`}
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          required={mode === 'create'}
+          autoComplete="new-password"
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor={`${mode}-role`}>Role</label>
+        <select
+          id={`${mode}-role`}
+          value={formData.role}
+          onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
+          disabled={mode === 'edit' && editingUser?.id === currentUser.id}
+        >
+          <option value="READ">READ - View only</option>
+          <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
+          <option value="ADMIN">ADMIN - Full access</option>
+        </select>
+        {mode === 'edit' && editingUser?.id === currentUser.id && (
+          <small className="form-hint">Cannot change your own role</small>
+        )}
+      </div>
+      {error && <div className="error">{error}</div>}
+    </>
+  );
+
+  // Mobile: fullscreen form overlay
+  const renderMobileForm = (mode: 'create' | 'edit') => {
+    const title = mode === 'create' ? 'New User' : `Edit ${editingUser?.username}`;
+    const onClose = () => mode === 'create' ? setShowCreateModal(false) : setEditingUser(null);
+    const onSubmit = mode === 'create' ? handleCreate : handleUpdate;
+    const submitLabel = mode === 'create' ? 'Create' : 'Save';
+
+    return createPortal(
+      <div className="user-form-fullscreen">
+        <div className="user-form-header">
+          <button onClick={onClose} className="btn-icon" aria-label="Back">←</button>
+          <h2>{title}</h2>
+          <button type="submit" form={`${mode}-user-form`} className="btn-primary btn-sm">{submitLabel}</button>
+        </div>
+        <div className="user-form-body">
+          <form id={`${mode}-user-form`} onSubmit={onSubmit}>
+            {renderFormFields(mode)}
+          </form>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  // Desktop: centered modal
+  const renderDesktopModal = (mode: 'create' | 'edit') => {
+    const title = mode === 'create' ? 'Create New User' : 'Edit User';
+    const onClose = () => mode === 'create' ? setShowCreateModal(false) : setEditingUser(null);
+    const onSubmit = mode === 'create' ? handleCreate : handleUpdate;
+    const submitLabel = mode === 'create' ? 'Create' : 'Save Changes';
+
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <h2>{title}</h2>
+          <form onSubmit={onSubmit}>
+            {renderFormFields(mode)}
+            <div className="modal-actions">
+              <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+              <button type="submit" className="btn-primary">{submitLabel}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="board-list-container">
       <header className="board-list-header">
@@ -144,7 +242,7 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
                 <td className="actions-cell">
                   <button
                     onClick={() => openEditModal(user)}
-                    className="btn-sm btn-primary"
+                    className="btn-sm btn-secondary"
                   >
                     Edit
                   </button>
@@ -163,118 +261,8 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
         </table>
       </div>
 
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create New User</h2>
-            <form onSubmit={handleCreate}>
-              <div className="form-group">
-                <label htmlFor="new-username">Username</label>
-                <input
-                  type="text"
-                  id="new-username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
-                  autoFocus
-                  maxLength={255}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="new-password">Password</label>
-                <input
-                  type="password"
-                  id="new-password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="new-role">Role</label>
-                <select
-                  id="new-role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
-                >
-                  <option value="READ">READ - View only</option>
-                  <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
-                  <option value="ADMIN">ADMIN - Full access</option>
-                </select>
-              </div>
-              {error && <div className="error">{error}</div>}
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="modal-overlay" onClick={() => setEditingUser(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit User</h2>
-            <form onSubmit={handleUpdate}>
-              <div className="form-group">
-                <label htmlFor="edit-username">Username</label>
-                <input
-                  type="text"
-                  id="edit-username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
-                  autoFocus
-                  maxLength={255}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="edit-password">New Password (leave blank to keep current)</label>
-                <input
-                  type="password"
-                  id="edit-password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="edit-role">Role</label>
-                <select
-                  id="edit-role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
-                  disabled={editingUser.id === currentUser.id}
-                >
-                  <option value="READ">READ - View only</option>
-                  <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
-                  <option value="ADMIN">ADMIN - Full access</option>
-                </select>
-                {editingUser.id === currentUser.id && (
-                  <small className="form-hint">Cannot change your own role</small>
-                )}
-              </div>
-              {error && <div className="error">{error}</div>}
-              <div className="modal-actions">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showCreateModal && (isMobile ? renderMobileForm('create') : renderDesktopModal('create'))}
+      {editingUser && (isMobile ? renderMobileForm('edit') : renderDesktopModal('edit'))}
     </div>
   );
 }

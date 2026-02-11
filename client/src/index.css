@@ -1774,6 +1774,57 @@ button:disabled {
   align-items: center;
 }
 
+/* ---- User Form Fullscreen (Mobile) ---- */
+
+.user-form-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s var(--ease);
+}
+
+.user-form-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.user-form-header h2 {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.user-form-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 1.25rem 1rem;
+}
+
+.user-form-body .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.user-form-body .form-group input,
+.user-form-body .form-group select {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
 /* ---- Board Members ---- */
 
 .add-member-section {
