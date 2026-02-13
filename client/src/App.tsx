@@ -28,6 +28,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('boards');
+  const [adminSubRoute, setAdminSubRoute] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
 
@@ -36,19 +37,20 @@ function App() {
     return (saved as 'light' | 'dark') || 'light';
   });
 
-  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string) => {
+  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null) => {
     setPage(newPage);
     setCurrentBoardId(boardId ?? null);
+    setAdminSubRoute(newPage === 'users' ? (adminSub ?? null) : null);
 
     let path = '/';
     if (newPage === 'users') {
-      path = '/admin';
+      path = adminSub ? `/admin/${adminSub}` : '/admin';
     } else if (newPage === 'board' && boardName) {
       path = '/' + slugify(boardName);
     }
 
     if (window.location.pathname !== path) {
-      window.history.pushState({ page: newPage, boardId, boardName }, '', path);
+      window.history.pushState({ page: newPage, boardId, boardName, adminSub }, '', path);
     }
   }, []);
 
@@ -58,9 +60,11 @@ function App() {
 
     if (!slug) return; // root → board list (default)
 
-    if (slug === 'admin') {
+    if (slug === 'admin' || slug.startsWith('admin/')) {
       if (authenticatedUser.role === 'ADMIN') {
         setPage('users');
+        const sub = slug === 'admin' ? null : slug.substring('admin/'.length);
+        setAdminSubRoute(sub || null);
       }
       return;
     }
@@ -103,15 +107,19 @@ function App() {
       if (state) {
         setPage(state.page || 'boards');
         setCurrentBoardId(state.boardId || null);
+        setAdminSubRoute(state.page === 'users' ? (state.adminSub ?? null) : null);
       } else {
         // No state (e.g. initial entry) — resolve from URL
         const slug = getPathSlug();
         if (!slug) {
           setPage('boards');
           setCurrentBoardId(null);
-        } else if (slug === 'admin') {
+          setAdminSubRoute(null);
+        } else if (slug === 'admin' || slug.startsWith('admin/')) {
           setPage('users');
           setCurrentBoardId(null);
+          const sub = slug === 'admin' ? null : slug.substring('admin/'.length);
+          setAdminSubRoute(sub || null);
         }
         // For board slugs without state, we'd need to re-resolve,
         // but popstate with no state is rare after initial navigation
@@ -157,6 +165,7 @@ function App() {
     api.setToken(null);
     setUser(null);
     setCurrentBoardId(null);
+    setAdminSubRoute(null);
     setPage('boards');
     window.history.pushState(null, '', '/');
   };
@@ -180,6 +189,10 @@ function App() {
 
   const handleGoToUsers = () => {
     navigateTo('users');
+  };
+
+  const handleAdminNavigate = (sub: string | null) => {
+    navigateTo('users', null, undefined, sub);
   };
 
   if (loading) {
@@ -237,6 +250,8 @@ function App() {
           onBack={handleBackToBoards}
           onLogout={handleLogout}
           currentUser={user}
+          subRoute={adminSubRoute}
+          onNavigate={handleAdminNavigate}
         />
         <ThemeToggle />
       </>
