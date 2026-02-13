@@ -10,15 +10,19 @@ import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
 import PlankLogo from './PlankLogo';
+import CalendarView from './CalendarView';
+import UnscheduledSidebar from './UnscheduledSidebar';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   onLogout: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  viewMode: 'board' | 'calendar';
+  onViewChange: (mode: 'board' | 'calendar') => void;
 }
 
-export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewMode, onViewChange }: KanbanBoardProps) {
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -41,6 +45,9 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const [renameColumnValue, setRenameColumnValue] = useState('');
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [calendarPopoverCard, setCalendarPopoverCard] = useState<{ card: Card; columnName: string } | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +134,29 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     return () => document.removeEventListener('mousedown', handleClick);
   }, [labelDropdownOpen]);
 
+  // Close calendar popover on outside click or Escape
+  useEffect(() => {
+    if (!calendarPopoverCard) return;
+    const handleClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setCalendarPopoverCard(null);
+        setPopoverPos(null);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCalendarPopoverCard(null);
+        setPopoverPos(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [calendarPopoverCard]);
+
   const loadBoard = async () => {
     try {
       const data = await api.getBoard(boardId);
@@ -202,6 +232,27 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     const { destination, source, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    if (type === 'CALENDAR') {
+      const cardId = result.draggableId;
+      const destId = destination.droppableId;
+
+      let newDueDate: string | null = null;
+      if (destId.startsWith('calendar-')) {
+        newDueDate = destId.replace('calendar-', '');
+      }
+      // destId === 'unscheduled' means clearing the date (newDueDate stays null)
+
+      try {
+        await api.updateCard(cardId, { due_date: newDueDate });
+        socket?.emit('board-updated', boardId);
+        await loadBoard();
+      } catch (error) {
+        console.error('Failed to update card date:', error);
+        loadBoard();
+      }
+      return;
+    }
 
     if (type === 'COLUMN') {
       const newColumns = Array.from(board.columns || []);
@@ -377,6 +428,20 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleCalendarCardClick = (card: Card, columnName: string, event: React.MouseEvent) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setPopoverPos({ top: rect.bottom + 4, left: rect.left });
+    setCalendarPopoverCard({ card, columnName });
+  };
+
+  const handleOpenInBoard = (cardId: string) => {
+    setCalendarPopoverCard(null);
+    setPopoverPos(null);
+    onViewChange('board');
+    // Small delay to let the board render, then open the card
+    setTimeout(() => setEditingCardId(cardId), 100);
+  };
+
   const handleMoveToColumn = async (cardId: string, columnId: string) => {
     try {
       const targetColumn = board?.columns?.find(c => c.id === columnId);
@@ -403,6 +468,26 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           <h1>{board.name}</h1>
         </div>
         <div className="header-actions">
+          <div className="view-toggle">
+            <button
+              className={`btn-icon view-toggle-btn${viewMode === 'board' ? ' active' : ''}`}
+              onClick={() => onViewChange('board')}
+              title="Board view"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="12" rx="1"/>
+              </svg>
+            </button>
+            <button
+              className={`btn-icon view-toggle-btn${viewMode === 'calendar' ? ' active' : ''}`}
+              onClick={() => onViewChange('calendar')}
+              title="Calendar view"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+            </button>
+          </div>
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
             className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
@@ -519,131 +604,181 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
-          {(provided) => (
-            <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
-              {board.columns?.map((column, index) => {
-                const visibleCards = column.cards?.filter(filterCard) || [];
-                return (
-                  <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
-                    {(provided) => (
-                      <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
-                        <div className="column-header" {...provided.dragHandleProps}>
-                          {renamingColumnId === column.id ? (
-                            <input
-                              className="column-rename-input"
-                              value={renameColumnValue}
-                              onChange={(e) => setRenameColumnValue(e.target.value)}
-                              onBlur={() => handleRenameColumn(column.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRenameColumn(column.id);
-                                if (e.key === 'Escape') { setRenamingColumnId(null); setRenameColumnValue(''); }
-                              }}
-                              autoFocus
-                              onClick={(e) => e.stopPropagation()}
-                              maxLength={255}
-                            />
-                          ) : (
-                            <h3>{column.name}</h3>
-                          )}
-                          <div className="column-header-actions">
-                            <span className="card-count">{visibleCards.length}</span>
-                            {isAdmin && (
-                              <div className="column-kebab" ref={columnMenuId === column.id ? columnMenuRef : undefined}>
-                                <button
-                                  className="btn-icon btn-column-kebab"
-                                  onClick={(e) => { e.stopPropagation(); setColumnMenuId(columnMenuId === column.id ? null : column.id); }}
-                                  title="Column actions"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                                </button>
-                                {columnMenuId === column.id && (
-                                  <div className="kebab-dropdown column-kebab-dropdown">
-                                    <button onClick={(e) => {
-                                      e.stopPropagation();
-                                      setColumnMenuId(null);
-                                      setRenameColumnValue(column.name);
-                                      setRenamingColumnId(column.id);
-                                    }}>Rename</button>
-                                    <div className="kebab-divider" />
-                                    <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}>Delete</button>
-                                  </div>
-                                )}
-                              </div>
+        {viewMode === 'calendar' ? (
+          <div className="calendar-layout">
+            <CalendarView
+              board={board}
+              onCardClick={handleCalendarCardClick}
+              filterCard={filterCard}
+              isAdmin={isAdmin}
+            />
+            <UnscheduledSidebar
+              board={board}
+              filterCard={filterCard}
+              onCardClick={handleCalendarCardClick}
+              isAdmin={isAdmin}
+            />
+            {calendarPopoverCard && popoverPos && (
+              <div
+                className="calendar-popover"
+                ref={popoverRef}
+                style={{ top: popoverPos.top, left: popoverPos.left }}
+              >
+                <h4 className="popover-title">{calendarPopoverCard.card.title}</h4>
+                <div className="popover-meta">
+                  <span className="popover-column">{calendarPopoverCard.columnName}</span>
+                  {calendarPopoverCard.card.due_date && (
+                    <span className="popover-due">{new Date(calendarPopoverCard.card.due_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                </div>
+                {calendarPopoverCard.card.labels && calendarPopoverCard.card.labels.length > 0 && (
+                  <div className="popover-labels">
+                    {calendarPopoverCard.card.labels.map(l => (
+                      <span key={l.id} className="popover-label" style={{ background: l.color }}>{l.name}</span>
+                    ))}
+                  </div>
+                )}
+                {calendarPopoverCard.card.checklist && (
+                  <div className="popover-checklist">
+                    Checklist: {calendarPopoverCard.card.checklist.checked}/{calendarPopoverCard.card.checklist.total}
+                  </div>
+                )}
+                {calendarPopoverCard.card.description && (
+                  <p className="popover-description">{calendarPopoverCard.card.description.slice(0, 120)}{calendarPopoverCard.card.description.length > 120 ? '...' : ''}</p>
+                )}
+                <button className="btn-secondary btn-sm popover-open-btn" onClick={() => handleOpenInBoard(calendarPopoverCard.card.id)}>
+                  Open in Board
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
+            {(provided) => (
+              <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
+                {board.columns?.map((column, index) => {
+                  const visibleCards = column.cards?.filter(filterCard) || [];
+                  return (
+                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
+                      {(provided) => (
+                        <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
+                          <div className="column-header" {...provided.dragHandleProps}>
+                            {renamingColumnId === column.id ? (
+                              <input
+                                className="column-rename-input"
+                                value={renameColumnValue}
+                                onChange={(e) => setRenameColumnValue(e.target.value)}
+                                onBlur={() => handleRenameColumn(column.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameColumn(column.id);
+                                  if (e.key === 'Escape') { setRenamingColumnId(null); setRenameColumnValue(''); }
+                                }}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                maxLength={255}
+                              />
+                            ) : (
+                              <h3>{column.name}</h3>
                             )}
-                          </div>
-                        </div>
-
-                        <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin || showArchived}>
-                          {(provided) => (
-                            <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
-                              {visibleCards.map((card, cardIndex) => (
-                                <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
-                                  {(provided) => (
-                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                      {showArchived ? (
-                                        <div className="kanban-card archived">
-                                          <div className="card-header">
-                                            <h4>{card.title}</h4>
-                                          </div>
-                                          {isAdmin && (
-                                            <div className="archive-actions">
-                                              <button onClick={() => handleRestoreCard(card.id)} className="btn-primary btn-sm">Restore</button>
-                                              <button onClick={() => handleDeleteCard(card.id)} className="btn-danger btn-sm">Delete</button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <KanbanCard
-                                          card={card}
-                                          userRole={userRole}
-                                          isEditing={editingCardId === card.id}
-                                          onEditStart={() => setEditingCardId(card.id)}
-                                          onEditEnd={closeCard}
-                                          onDelete={() => handleDeleteCard(card.id)}
-                                          onArchive={() => handleArchiveCard(card.id)}
-                                          onUpdate={(updates) => handleUpdateCard(card.id, updates)}
-                                          assignees={assignees}
-                                          boardLabels={boardLabels}
-                                          boardId={boardId}
-                                          onAddAssignee={handleAddAssignee}
-                                          isMobile={isMobile}
-                                          columns={board?.columns}
-                                          onMoveToColumn={handleMoveToColumn}
-                                          boardMembers={boardMembers}
-                                        />
-                                      )}
+                            <div className="column-header-actions">
+                              <span className="card-count">{visibleCards.length}</span>
+                              {isAdmin && (
+                                <div className="column-kebab" ref={columnMenuId === column.id ? columnMenuRef : undefined}>
+                                  <button
+                                    className="btn-icon btn-column-kebab"
+                                    onClick={(e) => { e.stopPropagation(); setColumnMenuId(columnMenuId === column.id ? null : column.id); }}
+                                    title="Column actions"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                  </button>
+                                  {columnMenuId === column.id && (
+                                    <div className="kebab-dropdown column-kebab-dropdown">
+                                      <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        setColumnMenuId(null);
+                                        setRenameColumnValue(column.name);
+                                        setRenamingColumnId(column.id);
+                                      }}>Rename</button>
+                                      <div className="kebab-divider" />
+                                      <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}>Delete</button>
                                     </div>
                                   )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </Droppable>
+                          </div>
 
-                        {isAdmin && !showArchived && (
-                          showNewCard === column.id ? (
-                            <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
-                              <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
-                              <div className="form-actions">
-                                <button type="submit" className="btn-primary btn-sm">Add</button>
-                                <button type="button" onClick={() => { setShowNewCard(null); setNewCardTitle(''); }} className="btn-secondary btn-sm">Cancel</button>
+                          <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin || showArchived}>
+                            {(provided) => (
+                              <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
+                                {visibleCards.map((card, cardIndex) => (
+                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
+                                    {(provided) => (
+                                      <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                        {showArchived ? (
+                                          <div className="kanban-card archived">
+                                            <div className="card-header">
+                                              <h4>{card.title}</h4>
+                                            </div>
+                                            {isAdmin && (
+                                              <div className="archive-actions">
+                                                <button onClick={() => handleRestoreCard(card.id)} className="btn-primary btn-sm">Restore</button>
+                                                <button onClick={() => handleDeleteCard(card.id)} className="btn-danger btn-sm">Delete</button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <KanbanCard
+                                            card={card}
+                                            userRole={userRole}
+                                            isEditing={editingCardId === card.id}
+                                            onEditStart={() => setEditingCardId(card.id)}
+                                            onEditEnd={closeCard}
+                                            onDelete={() => handleDeleteCard(card.id)}
+                                            onArchive={() => handleArchiveCard(card.id)}
+                                            onUpdate={(updates) => handleUpdateCard(card.id, updates)}
+                                            assignees={assignees}
+                                            boardLabels={boardLabels}
+                                            boardId={boardId}
+                                            onAddAssignee={handleAddAssignee}
+                                            isMobile={isMobile}
+                                            columns={board?.columns}
+                                            onMoveToColumn={handleMoveToColumn}
+                                            boardMembers={boardMembers}
+                                          />
+                                        )}
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {provided.placeholder}
                               </div>
-                            </form>
-                          ) : (
-                            <button onClick={() => setShowNewCard(column.id)} className="btn-add-card">+ Add card</button>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </Draggable>
-                );
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+                            )}
+                          </Droppable>
+
+                          {isAdmin && !showArchived && (
+                            showNewCard === column.id ? (
+                              <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
+                                <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
+                                <div className="form-actions">
+                                  <button type="submit" className="btn-primary btn-sm">Add</button>
+                                  <button type="button" onClick={() => { setShowNewCard(null); setNewCardTitle(''); }} className="btn-secondary btn-sm">Cancel</button>
+                                </div>
+                              </form>
+                            ) : (
+                              <button onClick={() => setShowNewCard(column.id)} className="btn-add-card">+ Add card</button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        )}
       </DragDropContext>
 
       {showNewColumn && (

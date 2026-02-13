@@ -29,6 +29,7 @@ function App() {
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('boards');
   const [adminSubRoute, setAdminSubRoute] = useState<string | null>(null);
+  const [boardViewMode, setBoardViewMode] = useState<'board' | 'calendar'>('board');
   const [loading, setLoading] = useState(true);
   const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
 
@@ -37,20 +38,21 @@ function App() {
     return (saved as 'light' | 'dark') || 'light';
   });
 
-  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null) => {
+  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null, viewMode?: 'board' | 'calendar') => {
     setPage(newPage);
     setCurrentBoardId(boardId ?? null);
     setAdminSubRoute(newPage === 'users' ? (adminSub ?? null) : null);
+    setBoardViewMode(newPage === 'board' ? (viewMode ?? 'board') : 'board');
 
     let path = '/';
     if (newPage === 'users') {
       path = adminSub ? `/admin/${adminSub}` : '/admin';
     } else if (newPage === 'board' && boardName) {
-      path = '/' + slugify(boardName);
+      path = '/' + slugify(boardName) + (viewMode === 'calendar' ? '/calendar' : '');
     }
 
     if (window.location.pathname !== path) {
-      window.history.pushState({ page: newPage, boardId, boardName, adminSub }, '', path);
+      window.history.pushState({ page: newPage, boardId, boardName, adminSub, viewMode }, '', path);
     }
   }, []);
 
@@ -69,13 +71,21 @@ function App() {
       return;
     }
 
-    // Try to match slug to a board name
+    // Try to match slug to a board name (with optional /calendar suffix)
+    let boardSlug = slug;
+    let resolvedViewMode: 'board' | 'calendar' = 'board';
+    if (slug.endsWith('/calendar')) {
+      boardSlug = slug.slice(0, -'/calendar'.length);
+      resolvedViewMode = 'calendar';
+    }
+
     try {
       const boards = await api.getBoards();
-      const match = boards.find((b: any) => slugify(b.name) === slug);
+      const match = boards.find((b: any) => slugify(b.name) === boardSlug);
       if (match) {
         setCurrentBoardId(match.id);
         setPage('board');
+        setBoardViewMode(resolvedViewMode);
       }
     } catch {
       // Couldn't load boards, stay on board list
@@ -108,6 +118,7 @@ function App() {
         setPage(state.page || 'boards');
         setCurrentBoardId(state.boardId || null);
         setAdminSubRoute(state.page === 'users' ? (state.adminSub ?? null) : null);
+        setBoardViewMode(state.page === 'board' ? (state.viewMode ?? 'board') : 'board');
       } else {
         // No state (e.g. initial entry) — resolve from URL
         const slug = getPathSlug();
@@ -166,6 +177,7 @@ function App() {
     setUser(null);
     setCurrentBoardId(null);
     setAdminSubRoute(null);
+    setBoardViewMode('board');
     setPage('boards');
     window.history.pushState(null, '', '/');
   };
@@ -193,6 +205,14 @@ function App() {
 
   const handleAdminNavigate = (sub: string | null) => {
     navigateTo('users', null, undefined, sub);
+  };
+
+  const handleViewChange = (viewMode: 'board' | 'calendar') => {
+    if (!currentBoardId) return;
+    const slug = getPathSlug().replace(/\/calendar$/, '');
+    const path = '/' + slug + (viewMode === 'calendar' ? '/calendar' : '');
+    setBoardViewMode(viewMode);
+    window.history.pushState({ page: 'board', boardId: currentBoardId, viewMode }, '', path);
   };
 
   if (loading) {
@@ -237,6 +257,8 @@ function App() {
           onBack={handleBackToBoards}
           onLogout={handleLogout}
           userRole={user?.role || 'READ'}
+          viewMode={boardViewMode}
+          onViewChange={handleViewChange}
         />
         <ThemeToggle />
       </>
