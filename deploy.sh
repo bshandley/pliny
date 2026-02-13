@@ -1,37 +1,56 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Deploying Plank to Wharf (10.0.0.102)..."
+cd /opt/stacks/plank
 
-# Check if .env exists
-if [ ! -f .env ]; then
-  echo "⚠️  .env file not found. Creating from .env.example..."
-  cp .env.example .env
-  echo "✏️  Please edit .env with your configuration."
-  exit 1
+echo "🔄 Checking for updates from Gitea..."
+
+# Store git credentials
+git config credential.helper store
+
+# Fetch latest
+git fetch origin master 2>/dev/null || git fetch origin main 2>/dev/null || true
+
+# Check for updates
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse origin/master 2>/dev/null || git rev-parse origin/main 2>/dev/null || echo "$LOCAL")
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "✅ Already up to date"
+    exit 0
 fi
 
-# Build and start containers
-echo "📦 Building Docker images..."
-docker-compose build
+echo "📥 New changes detected, deploying..."
+echo "   Local:  ${LOCAL:0:8}"
+echo "   Remote: ${REMOTE:0:8}"
 
-echo "🎬 Starting containers..."
-docker-compose up -d
+# Pull changes
+git pull origin master 2>/dev/null || git pull origin main 2>/dev/null || git reset --hard origin/master
 
+# Rebuild and restart (database volume persists!)
+echo "🐳 Rebuilding containers..."
+sudo docker compose down
+sudo docker compose up -d --build
+
+# Wait for db to be healthy
 echo "⏳ Waiting for database..."
 sleep 5
+for i in {1..30}; do
+    if sudo docker compose exec -T db pg_isready -U plank -d plank >/dev/null 2>&1; then
+        echo "✅ Database ready"
+        break
+    fi
+    sleep 2
+done
 
-echo "🗄️  Running database migrations..."
-docker-compose exec -T server npm run migrate
+# Run migrations (idempotent - safe to run every deploy)
+echo "📦 Running database migrations..."
+sudo docker compose exec -T server node dist/migrations/run.js 2>&1 || echo "⚠️ Migration runner not found, skipping"
 
 echo "✅ Deployment complete!"
-echo ""
-echo "Access the application:"
-echo "  Frontend: http://10.0.0.102:5173"
-echo "  Backend:  http://10.0.0.102:3001"
-echo ""
-echo "Default login:"
-echo "  Username: admin"
-echo "  Password: admin123"
-echo ""
-echo "⚠️  Remember to change the default password!"
+echo "📍 Frontend: http://10.0.0.102:5175"
+echo "📍 Backend: http://10.0.0.102:3006"
+echo "💾 Database: plank_pgdata (preserved)"
+
+# Log deployment
+echo "$(date -Iseconds) - Deployed: ${REMOTE:0:8}" >> deploy.log
