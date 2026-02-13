@@ -1727,7 +1727,8 @@ button:disabled {
 
 .users-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -1769,9 +1770,7 @@ button:disabled {
 }
 
 .actions-cell {
-  display: flex;
-  gap: 0.375rem;
-  align-items: center;
+  vertical-align: middle;
 }
 
 .user-row-clickable {
