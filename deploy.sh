@@ -27,10 +27,13 @@ echo "   Remote: ${REMOTE:0:8}"
 # Pull changes
 git pull origin master 2>/dev/null || git pull origin main 2>/dev/null || git reset --hard origin/master
 
-# Rebuild and restart (database volume persists!)
-echo "🐳 Rebuilding containers..."
-sudo docker compose down
-sudo docker compose up -d --build
+# Get new commit hash for cache busting
+COMMIT_HASH=$(git rev-parse HEAD)
+
+# Rebuild with cache bust (forces fresh COPY on every deploy)
+echo "🐳 Rebuilding containers (cache bust: ${COMMIT_HASH:0:8})..."
+sudo docker compose build --build-arg CACHE_BUST="$COMMIT_HASH"
+sudo docker compose up -d
 
 # Wait for db to be healthy
 echo "⏳ Waiting for database..."
@@ -53,4 +56,4 @@ echo "📍 Backend: http://10.0.0.102:3006"
 echo "💾 Database: plank_pgdata (preserved)"
 
 # Log deployment
-echo "$(date -Iseconds) - Deployed: ${REMOTE:0:8}" >> deploy.log
+echo "$(date -Iseconds) - Deployed: ${COMMIT_HASH:0:8}" >> deploy.log
