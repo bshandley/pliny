@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Board, Card } from '../types';
+import { CalendarCardChip } from './CalendarView';
 
 interface UnscheduledSidebarProps {
   board: Board;
   filterCard: (card: Card) => boolean;
   onCardClick: (card: Card, columnName: string, event: React.MouseEvent) => void;
   isAdmin: boolean;
+  isMobile: boolean;
+  onOpenInBoard: (cardId: string) => void;
+  onChangeDate: (cardId: string, date: string) => void;
+  onRemoveDate: (cardId: string) => void;
 }
 
-export default function UnscheduledSidebar({ board, filterCard, onCardClick, isAdmin }: UnscheduledSidebarProps) {
+export default function UnscheduledSidebar({ board, filterCard, onCardClick, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate }: UnscheduledSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const unscheduledCards: { card: Card; columnName: string }[] = [];
@@ -35,13 +40,19 @@ export default function UnscheduledSidebar({ board, filterCard, onCardClick, isA
               {...provided.droppableProps}
             >
               {unscheduledCards.map(({ card, columnName }, index) => (
-                <Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={!isAdmin}>
+                <Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={!isAdmin || isMobile}>
                   {(provided) => (
                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                      <div className="calendar-card-chip sidebar-chip" onClick={(e) => onCardClick(card, columnName, e)}>
-                        <span className="chip-column-dot" style={{ background: 'var(--primary)' }} />
-                        <span className="chip-title">{card.title}</span>
-                      </div>
+                      <CalendarCardChip
+                        card={card}
+                        columnName={columnName}
+                        onClick={(e) => onCardClick(card, columnName, e)}
+                        isMobile={isMobile}
+                        isAdmin={isAdmin}
+                        onOpenInBoard={onOpenInBoard}
+                        onChangeDate={onChangeDate}
+                        onRemoveDate={onRemoveDate}
+                      />
                     </div>
                   )}
                 </Draggable>

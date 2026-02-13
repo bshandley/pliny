@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Board, Card } from '../types';
 
@@ -7,6 +7,10 @@ interface CalendarViewProps {
   onCardClick: (card: Card, columnName: string, event: React.MouseEvent) => void;
   filterCard: (card: Card) => boolean;
   isAdmin: boolean;
+  isMobile: boolean;
+  onOpenInBoard: (cardId: string) => void;
+  onChangeDate: (cardId: string, date: string) => void;
+  onRemoveDate: (cardId: string) => void;
 }
 
 function formatDateKey(date: Date): string {
@@ -55,22 +59,90 @@ function getWeekDays(date: Date): Date[] {
   return days;
 }
 
-function CalendarCardChip({ card, columnName, onClick }: {
+function CalendarCardChip({ card, columnName, onClick, isMobile, isAdmin, onOpenInBoard, onChangeDate, onRemoveDate }: {
   card: Card;
   columnName: string;
   onClick: (e: React.MouseEvent) => void;
+  isMobile: boolean;
+  isAdmin: boolean;
+  onOpenInBoard: (cardId: string) => void;
+  onChangeDate: (cardId: string, date: string) => void;
+  onRemoveDate: (cardId: string) => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
+
+  const handleChipClick = (e: React.MouseEvent) => {
+    if (isMobile) {
+      e.stopPropagation();
+      setMenuOpen(!menuOpen);
+    } else {
+      onClick(e);
+    }
+  };
+
   return (
-    <div className="calendar-card-chip" onClick={onClick}>
+    <div className="calendar-card-chip" onClick={handleChipClick} ref={isMobile ? menuRef : undefined}>
       <span className="chip-column-dot" style={{ background: 'var(--primary)' }} />
       <span className="chip-title">{card.title}</span>
+      {isMobile && (
+        <>
+          <button
+            className="chip-kebab"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
+          {menuOpen && (
+            <div className="chip-menu">
+              <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onOpenInBoard(card.id); }}>
+                Open in Board
+              </button>
+              {isAdmin && (
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); dateInputRef.current?.showPicker(); }}>
+                    Change Date
+                  </button>
+                  {card.due_date && (
+                    <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRemoveDate(card.id); }}>
+                      Remove Date
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          <input
+            ref={dateInputRef}
+            type="date"
+            className="chip-date-input"
+            value={card.due_date ? card.due_date.split('T')[0] : ''}
+            onChange={(e) => { if (e.target.value) onChangeDate(card.id, e.target.value); }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </>
+      )}
     </div>
   );
 }
 
 export { CalendarCardChip };
 
-export default function CalendarView({ board, onCardClick, filterCard, isAdmin }: CalendarViewProps) {
+export default function CalendarView({ board, onCardClick, filterCard, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<'month' | 'week'>('month');
 
@@ -146,10 +218,19 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin }
                   <div className="calendar-day-number">{date.getDate()}</div>
                   <div className="calendar-day-cards">
                     {cards.slice(0, maxVisible).map(({ card, columnName }, cardIndex) => (
-                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin}>
+                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
                         {(provided) => (
                           <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                            <CalendarCardChip card={card} columnName={columnName} onClick={(e) => onCardClick(card, columnName, e)} />
+                            <CalendarCardChip
+                              card={card}
+                              columnName={columnName}
+                              onClick={(e) => onCardClick(card, columnName, e)}
+                              isMobile={isMobile}
+                              isAdmin={isAdmin}
+                              onOpenInBoard={onOpenInBoard}
+                              onChangeDate={onChangeDate}
+                              onRemoveDate={onRemoveDate}
+                            />
                           </div>
                         )}
                       </Draggable>
@@ -194,10 +275,19 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin }
                   </div>
                   <div className="calendar-day-cards">
                     {cards.map(({ card, columnName }, cardIndex) => (
-                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin}>
+                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
                         {(provided) => (
                           <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                            <CalendarCardChip card={card} columnName={columnName} onClick={(e) => onCardClick(card, columnName, e)} />
+                            <CalendarCardChip
+                              card={card}
+                              columnName={columnName}
+                              onClick={(e) => onCardClick(card, columnName, e)}
+                              isMobile={isMobile}
+                              isAdmin={isAdmin}
+                              onOpenInBoard={onOpenInBoard}
+                              onChangeDate={onChangeDate}
+                              onRemoveDate={onRemoveDate}
+                            />
                           </div>
                         )}
                       </Draggable>

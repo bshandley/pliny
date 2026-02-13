@@ -429,6 +429,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewM
   };
 
   const handleCalendarCardClick = (card: Card, columnName: string, event: React.MouseEvent) => {
+    if (isMobile) return; // Mobile uses kebab menu instead
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     setPopoverPos({ top: rect.bottom + 4, left: rect.left });
     setCalendarPopoverCard({ card, columnName });
@@ -440,6 +441,28 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewM
     onViewChange('board');
     // Small delay to let the board render, then open the card
     setTimeout(() => setEditingCardId(cardId), 100);
+  };
+
+  const handleCalendarChangeDate = async (cardId: string, date: string) => {
+    try {
+      await api.updateCard(cardId, { due_date: date } as any);
+      socket?.emit('board-updated', boardId);
+      await loadBoard();
+    } catch (error) {
+      console.error('Failed to update card date:', error);
+      loadBoard();
+    }
+  };
+
+  const handleCalendarRemoveDate = async (cardId: string) => {
+    try {
+      await api.updateCard(cardId, { due_date: null } as any);
+      socket?.emit('board-updated', boardId);
+      await loadBoard();
+    } catch (error) {
+      console.error('Failed to remove card date:', error);
+      loadBoard();
+    }
   };
 
   const handleMoveToColumn = async (cardId: string, columnId: string) => {
@@ -611,12 +634,20 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewM
               onCardClick={handleCalendarCardClick}
               filterCard={filterCard}
               isAdmin={isAdmin}
+              isMobile={isMobile}
+              onOpenInBoard={handleOpenInBoard}
+              onChangeDate={handleCalendarChangeDate}
+              onRemoveDate={handleCalendarRemoveDate}
             />
             <UnscheduledSidebar
               board={board}
               filterCard={filterCard}
               onCardClick={handleCalendarCardClick}
               isAdmin={isAdmin}
+              isMobile={isMobile}
+              onOpenInBoard={handleOpenInBoard}
+              onChangeDate={handleCalendarChangeDate}
+              onRemoveDate={handleCalendarRemoveDate}
             />
             {calendarPopoverCard && popoverPos && (
               <div

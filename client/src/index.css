@@ -643,6 +643,7 @@ button:disabled {
 }
 
 .calendar-card-chip {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -657,6 +658,53 @@ button:disabled {
 
 .calendar-card-chip:hover {
   background: var(--bg-raised);
+}
+
+.chip-kebab {
+  background: transparent;
+  border: none;
+  padding: 0 0.125rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: none;
+}
+
+.chip-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.chip-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.chip-menu button:hover {
+  background: var(--bg-raised);
+}
+
+.chip-date-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
 }
 
 .chip-column-dot {
@@ -885,7 +933,7 @@ button:disabled {
   background: var(--primary-subtle);
 }
 
-.sidebar-chip {
+.unscheduled-list .calendar-card-chip {
   white-space: normal;
   padding: 0.375rem;
 }
@@ -3441,6 +3489,14 @@ button:disabled {
     transform: translateX(-50%);
     bottom: 1rem;
     top: auto !important;
+  }
+
+  .chip-kebab {
+    display: flex;
+  }
+
+  .calendar-card-chip {
+    overflow: visible;
   }
 }
 
