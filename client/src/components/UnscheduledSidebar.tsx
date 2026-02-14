@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Board, Card } from '../types';
-import { CalendarCardChip } from './CalendarView';
+import { CalendarCardChip, MobileCalendarCard } from './CalendarView';
 
 interface UnscheduledSidebarProps {
   board: Board;
@@ -48,24 +48,38 @@ export default function UnscheduledSidebar({ board, filterCard, onCardClick, isA
               ref={provided.innerRef}
               {...provided.droppableProps}
             >
-              {unscheduledCards.map(({ card, columnName }, index) => (
-                <Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={!isAdmin || isMobile}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                      <CalendarCardChip
-                        card={card}
-                        columnName={columnName}
-                        onClick={(e) => onCardClick(card, columnName, e)}
-                        isMobile={isMobile}
-                        isAdmin={isAdmin}
-                        onOpenInBoard={onOpenInBoard}
-                        onChangeDate={onChangeDate}
-                        onRemoveDate={onRemoveDate}
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
+              {isMobile ? (
+                unscheduledCards.map(({ card, columnName }) => (
+                  <MobileCalendarCard
+                    key={card.id}
+                    card={card}
+                    columnName={columnName}
+                    onOpenInBoard={onOpenInBoard}
+                    onChangeDate={onChangeDate}
+                    onRemoveDate={onRemoveDate}
+                    isAdmin={isAdmin}
+                  />
+                ))
+              ) : (
+                unscheduledCards.map(({ card, columnName }, index) => (
+                  <Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={!isAdmin}>
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                        <CalendarCardChip
+                          card={card}
+                          columnName={columnName}
+                          onClick={(e) => onCardClick(card, columnName, e)}
+                          isMobile={false}
+                          isAdmin={isAdmin}
+                          onOpenInBoard={onOpenInBoard}
+                          onChangeDate={onChangeDate}
+                          onRemoveDate={onRemoveDate}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))
+              )}
               {provided.placeholder}
               {unscheduledCards.length === 0 && (
                 <div className="unscheduled-empty">No unscheduled cards</div>
