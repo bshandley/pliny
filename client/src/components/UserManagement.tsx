@@ -2,16 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
+import AppBar from './AppBar';
 
 interface UserManagementProps {
   onBack: () => void;
-  onLogout: () => void;
   currentUser: User;
   subRoute: string | null;
   onNavigate: (sub: string | null) => void;
 }
 
-export default function UserManagement({ onBack, onLogout, currentUser, subRoute, onNavigate }: UserManagementProps) {
+export default function UserManagement({ onBack, currentUser, subRoute, onNavigate }: UserManagementProps) {
   const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,15 +179,9 @@ export default function UserManagement({ onBack, onLogout, currentUser, subRoute
 
     return (
       <div className="board-list-container">
-        <header className="board-list-header">
-          <div className="header-left">
-            <button onClick={() => onNavigate(null)} className="btn-icon">←</button>
-            <h1>{title}</h1>
-          </div>
-          <div className="header-actions">
-            <button type="submit" form="user-form" className="btn-primary btn-sm">{submitLabel}</button>
-          </div>
-        </header>
+        <AppBar title={title} onBack={() => onNavigate(null)}>
+          <button type="submit" form="user-form" className="btn-primary btn-sm">{submitLabel}</button>
+        </AppBar>
         <div className="user-form-page">
           <form id="user-form" onSubmit={onSubmit}>
             {renderFormFields(isCreate ? 'create' : 'edit')}
@@ -203,20 +197,11 @@ export default function UserManagement({ onBack, onLogout, currentUser, subRoute
 
   return (
     <div className="board-list-container">
-      <header className="board-list-header">
-        <div className="header-left">
-          <button onClick={onBack} className="btn-icon">←</button>
-          <h1>User Management</h1>
-        </div>
-        <div className="header-actions">
-          <button onClick={() => onNavigate('new')} className="btn-primary">
-            + New User
-          </button>
-          <button onClick={onLogout} className="btn-secondary hide-mobile">
-            Logout
-          </button>
-        </div>
-      </header>
+      <AppBar title="Users" onBack={onBack}>
+        <button onClick={() => onNavigate('new')} className="btn-primary btn-sm">
+          + New User
+        </button>
+      </AppBar>
 
       <div className="users-table-container">
         <table className="users-table">

@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { api } from './api';
 import { User, Notification } from './types';
+import AppBarContext from './contexts/AppBarContext';
 import Login from './components/Login';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
-import NotificationBell from './components/NotificationBell';
+import AppBar from './components/AppBar';
 
 type Page = 'boards' | 'users' | 'board' | 'notifications';
 
@@ -156,8 +157,6 @@ function App() {
           const sub = slug === 'admin' ? null : slug.substring('admin/'.length);
           setAdminSubRoute(sub || null);
         }
-        // For board slugs without state, we'd need to re-resolve,
-        // but popstate with no state is rare after initial navigation
       }
     };
 
@@ -288,6 +287,21 @@ function App() {
     handleNavigateToBoard(notif.board_id);
   };
 
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+  const appBarContext = useMemo(() => ({
+    user,
+    notifications,
+    unreadCount,
+    onMarkRead: handleMarkNotificationRead,
+    onMarkAllRead: handleMarkAllNotificationsRead,
+    onNavigateToBoard: handleNavigateToBoard,
+    onGoToNotifications: handleGoToNotifications,
+    theme,
+    onToggleTheme: toggleTheme,
+    onLogout: handleLogout,
+  }), [user, notifications, unreadCount, theme]);
+
   if (loading) {
     return (
       <div className="loading">
@@ -297,81 +311,52 @@ function App() {
     );
   }
 
-  const ThemeToggle = () => (
-    <div className="global-actions">
-      {user && (
-        <NotificationBell
-          notifications={notifications}
-          onMarkRead={handleMarkNotificationRead}
-          onMarkAllRead={handleMarkAllNotificationsRead}
-          onNavigateToBoard={handleNavigateToBoard}
-        />
-      )}
-      <button
-        className="theme-toggle"
-        onClick={toggleTheme}
-        aria-label="Toggle theme"
-        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-      >
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
-    </div>
-  );
-
   if (!user && !api.getToken()) {
     return (
       <>
         <Login onLogin={handleLogin} />
-        <ThemeToggle />
+        <button
+          className="login-theme-toggle"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {theme === 'light' ? (
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            ) : (
+              <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
+            )}
+          </svg>
+        </button>
       </>
     );
   }
 
-  if (page === 'board' && currentBoardId) {
-    return (
-      <>
+  return (
+    <AppBarContext.Provider value={appBarContext}>
+      {page === 'board' && currentBoardId ? (
         <KanbanBoard
           boardId={currentBoardId}
           onBack={handleBackToBoards}
-          onLogout={handleLogout}
           userRole={user?.role || 'READ'}
           viewMode={boardViewMode}
           onViewChange={handleViewChange}
-          notificationCount={notifications.filter(n => !n.read).length}
-          onGoToNotifications={handleGoToNotifications}
         />
-        <ThemeToggle />
-      </>
-    );
-  }
-
-  if (page === 'users' && user?.role === 'ADMIN') {
-    return (
-      <>
+      ) : page === 'users' && user?.role === 'ADMIN' ? (
         <UserManagement
           onBack={handleBackToBoards}
-          onLogout={handleLogout}
           currentUser={user}
           subRoute={adminSubRoute}
           onNavigate={handleAdminNavigate}
         />
-        <ThemeToggle />
-      </>
-    );
-  }
-
-  if (page === 'notifications') {
-    const unreadCount = notifications.filter(n => !n.read).length;
-    return (
-      <>
+      ) : page === 'notifications' ? (
         <div className="notification-page">
-          <header className="notification-page-header">
-            <button onClick={handleBackFromNotifications} className="btn-icon" aria-label="Go back">←</button>
-            <h1>Notifications</h1>
+          <AppBar title="Notifications" onBack={handleBackFromNotifications}>
             {unreadCount > 0 && (
               <button onClick={handleMarkAllNotificationsRead} className="notification-mark-all">Mark all read</button>
             )}
-          </header>
+          </AppBar>
           <div className="notification-page-list">
             {notifications.length === 0 ? (
               <div className="notification-empty">No notifications yet</div>
@@ -398,23 +383,14 @@ function App() {
             )}
           </div>
         </div>
-        <ThemeToggle />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <BoardList
-        onSelectBoard={handleSelectBoard}
-        onLogout={handleLogout}
-        onGoToUsers={handleGoToUsers}
-        user={user}
-        notificationCount={notifications.filter(n => !n.read).length}
-        onGoToNotifications={handleGoToNotifications}
-      />
-      <ThemeToggle />
-    </>
+      ) : (
+        <BoardList
+          onSelectBoard={handleSelectBoard}
+          onGoToUsers={handleGoToUsers}
+          user={user}
+        />
+      )}
+    </AppBarContext.Provider>
   );
 }
 

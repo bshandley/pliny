@@ -9,22 +9,19 @@ import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
-import PlankLogo from './PlankLogo';
+import AppBar from './AppBar';
 import CalendarView from './CalendarView';
 import UnscheduledSidebar from './UnscheduledSidebar';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
-  onLogout: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   viewMode: 'board' | 'calendar';
   onViewChange: (mode: 'board' | 'calendar') => void;
-  notificationCount?: number;
-  onGoToNotifications?: () => void;
 }
 
-export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewMode, onViewChange, notificationCount = 0, onGoToNotifications }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onViewChange }: KanbanBoardProps) {
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -486,89 +483,72 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewM
 
   return (
     <div className="kanban-container">
-      <header className="kanban-header">
-        <div className="header-left">
-          <button onClick={onBack} className="btn-icon">←</button>
-          <PlankLogo size={24} />
-          <h1>{board.name}</h1>
+      <AppBar title={board.name} onBack={onBack}>
+        <div className="view-toggle">
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'board' ? ' active' : ''}`}
+            onClick={() => onViewChange('board')}
+            title="Board view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="12" rx="1"/>
+            </svg>
+          </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'calendar' ? ' active' : ''}`}
+            onClick={() => onViewChange('calendar')}
+            title="Calendar view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+          </button>
         </div>
-        <div className="header-actions">
-          <div className="view-toggle">
+        <button
+          onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
+          title="Filters"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
+        </button>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className={`btn-icon mobile-only${mobileMenuOpen ? ' mobile-active' : ''}`}
+          title="Menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
+        <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
+          {isAdmin && (
+            <div className="board-settings">
+              <button
+                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                className="board-settings-trigger btn-secondary btn-sm"
+              >
+                Board ▾
+              </button>
+              <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
+                <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
+                <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
+                  {showArchived ? 'Show Active' : 'Archived'}
+                </button>
+                <div className="board-settings-divider" />
+                <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
+                <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
+                <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
+              </div>
+            </div>
+          )}
+          {!isAdmin && (
             <button
-              className={`btn-icon view-toggle-btn${viewMode === 'board' ? ' active' : ''}`}
-              onClick={() => onViewChange('board')}
-              title="Board view"
+              onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
+              className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="12" rx="1"/>
-              </svg>
-            </button>
-            <button
-              className={`btn-icon view-toggle-btn${viewMode === 'calendar' ? ' active' : ''}`}
-              onClick={() => onViewChange('calendar')}
-              title="Calendar view"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-              </svg>
-            </button>
-          </div>
-          {onGoToNotifications && (
-            <button onClick={onGoToNotifications} className="btn-icon header-bell mobile-only" aria-label="Notifications">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              {notificationCount > 0 && <span className="notification-badge">{notificationCount > 9 ? '9+' : notificationCount}</span>}
+              {showArchived ? 'Show Active' : 'Archived'}
             </button>
           )}
-          <button
-            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
-            title="Filters"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`btn-icon mobile-only${mobileMenuOpen ? ' mobile-active' : ''}`}
-            title="Menu"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-          </button>
-          <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
-            {isAdmin && (
-              <div className="board-settings">
-                <button
-                  onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                  className="board-settings-trigger btn-secondary btn-sm"
-                >
-                  Board ▾
-                </button>
-                <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
-                  <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
-                  <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
-                    {showArchived ? 'Show Active' : 'Archived'}
-                  </button>
-                  <div className="board-settings-divider" />
-                  <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
-                  <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
-                  <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
-                </div>
-              </div>
-            )}
-            {!isAdmin && (
-              <button
-                onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
-                className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
-              >
-                {showArchived ? 'Show Active' : 'Archived'}
-              </button>
-            )}
-            <button onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Logout</button>
-          </div>
         </div>
-      </header>
+      </AppBar>
 
       {/* Mobile menu backdrop */}
       {mobileMenuOpen && <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)} />}
