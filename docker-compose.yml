@@ -31,6 +31,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       PORT: 3001
       CLIENT_URL: http://10.0.0.102:5175
+      SERVER_URL: http://10.0.0.102:3006
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
     depends_on:
       db:
         condition: service_healthy

@@ -15,6 +15,10 @@ import checklistRoutes from './routes/checklists';
 import activityRoutes from './routes/activity';
 import cardMembersRoutes from './routes/cardMembers';
 import notificationRoutes from './routes/notifications';
+import settingsRoutes from './routes/settings';
+import totpRoutes from './routes/totp';
+import oidcRoutes from './routes/oidc';
+import cookieParser from 'cookie-parser';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -30,6 +34,7 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -44,6 +49,9 @@ app.use('/api', checklistRoutes);
 app.use('/api', activityRoutes);
 app.use('/api', cardMembersRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/settings/totp', totpRoutes);
+app.use('/api/auth/oidc', oidcRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

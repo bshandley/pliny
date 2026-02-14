@@ -12,6 +12,7 @@ export interface AppBarContextType {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onLogout: () => void;
+  onGoToProfile?: () => void;
 }
 
 const AppBarContext = createContext<AppBarContextType | null>(null);

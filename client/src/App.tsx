@@ -7,9 +7,10 @@ import Login from './components/Login';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
 import UserManagement from './components/UserManagement';
+import ProfileSettings from './components/ProfileSettings';
 import AppBar from './components/AppBar';
 
-type Page = 'boards' | 'users' | 'board' | 'notifications';
+type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
 
 function slugify(name: string): string {
   return name
@@ -49,6 +50,7 @@ function App() {
   const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [initialCardId, setInitialCardId] = useState<string | null>(null);
+  const [ssoError, setSsoError] = useState<string | null>(null);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -88,6 +90,11 @@ function App() {
       return;
     }
 
+    if (slug === 'profile') {
+      setPage('profile');
+      return;
+    }
+
     // Try to match slug to a board name (with optional /calendar suffix)
     let boardSlug = slug;
     let resolvedViewMode: 'board' | 'calendar' = 'board';
@@ -119,6 +126,33 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Check for SSO token in URL fragment (e.g., /#token=xxx or /#sso_error=xxx)
+    const hash = window.location.hash.slice(1); // remove leading #
+    const hashParams = new URLSearchParams(hash);
+    const ssoToken = hashParams.get('token');
+    const ssoErrorParam = hashParams.get('sso_error');
+
+    if (ssoToken) {
+      window.history.replaceState(null, '', window.location.pathname);
+      api.setToken(ssoToken);
+      api.me()
+        .then(async (userData) => {
+          setUser(userData);
+          await resolveUrlRoute(userData);
+          setLoading(false);
+        })
+        .catch(() => {
+          api.setToken(null);
+          setLoading(false);
+        });
+      return;
+    }
+
+    if (ssoErrorParam) {
+      setSsoError(ssoErrorParam);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     const token = api.getToken();
     if (token) {
       api.me()
@@ -150,6 +184,10 @@ function App() {
         const slug = getPathSlug();
         if (!slug) {
           setPage('boards');
+          setCurrentBoardId(null);
+          setAdminSubRoute(null);
+        } else if (slug === 'profile') {
+          setPage('profile');
           setCurrentBoardId(null);
           setAdminSubRoute(null);
         } else if (slug === 'admin' || slug.startsWith('admin/')) {
@@ -201,13 +239,21 @@ function App() {
   };
 
   const handleLogin = async (username: string, password: string) => {
-    try {
-      const userData = await api.login(username, password);
-      setUser(userData);
-      await resolveUrlRoute(userData);
-    } catch (error: any) {
-      throw error;
+    const result = await api.login(username, password);
+    if (result.requires_2fa) {
+      const err: any = new Error('2FA required');
+      err.requires_2fa = true;
+      err.ticket = result.ticket;
+      throw err;
     }
+    setUser(result.user);
+    await resolveUrlRoute(result.user);
+  };
+
+  const handleSsoLogin = async (_token: string) => {
+    const userData = await api.me();
+    setUser(userData);
+    await resolveUrlRoute(userData);
   };
 
   const handleLogout = () => {
@@ -272,6 +318,12 @@ function App() {
     }
   };
 
+  const handleGoToProfile = () => {
+    setPrevPage({ page, boardId: currentBoardId, viewMode: boardViewMode });
+    setPage('profile');
+    window.history.pushState({ page: 'profile' }, '', '/profile');
+  };
+
   const handleGoToNotifications = () => {
     setPrevPage({ page, boardId: currentBoardId, viewMode: boardViewMode });
     setPage('notifications');
@@ -302,6 +354,7 @@ function App() {
     theme,
     onToggleTheme: toggleTheme,
     onLogout: handleLogout,
+    onGoToProfile: handleGoToProfile,
   }), [user, notifications, unreadCount, theme]);
 
   if (loading) {
@@ -316,7 +369,7 @@ function App() {
   if (!user && !api.getToken()) {
     return (
       <>
-        <Login onLogin={handleLogin} />
+        <Login onLogin={handleLogin} onSsoLogin={handleSsoLogin} ssoError={ssoError} />
         <button
           className="login-theme-toggle"
           onClick={toggleTheme}
@@ -387,6 +440,11 @@ function App() {
             )}
           </div>
         </div>
+      ) : page === 'profile' ? (
+        <ProfileSettings
+          user={user!}
+          onBack={handleBackFromNotifications}
+        />
       ) : (
         <BoardList
           onSelectBoard={handleSelectBoard}

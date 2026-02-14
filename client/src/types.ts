@@ -2,6 +2,9 @@ export interface User {
   id: string;
   username: string;
   role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  email?: string;
+  display_name?: string;
+  avatar_url?: string;
   created_at?: string;
 }
 
@@ -100,4 +103,28 @@ export interface Card {
   position: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface OidcPublicConfig {
+  enabled: boolean;
+  button_label: string;
+}
+
+export interface OidcAdminConfig {
+  enabled: boolean;
+  issuer_url: string;
+  client_id: string;
+  client_secret_masked: string;
+  button_label: string;
+  claim_email: string;
+  claim_name: string;
+  claim_avatar: string;
+  callback_base_url: string;
+  callback_url: string;
+}
+
+export interface TotpSetupResponse {
+  qr_code: string;
+  secret: string;
+  backup_codes: string[];
 }

@@ -3,6 +3,7 @@ import { api } from '../api';
 import { User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import AppBar from './AppBar';
+import OidcSettings from './OidcSettings';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -191,6 +192,19 @@ export default function UserManagement({ onBack, currentUser, subRoute, onNaviga
     );
   };
 
+  if (subRoute === 'settings') {
+    return (
+      <div className="user-management">
+        <AppBar title="SSO Settings" onBack={() => onNavigate(null)}>
+          <span></span>
+        </AppBar>
+        <div className="user-management-content">
+          <OidcSettings onBack={() => onNavigate(null)} />
+        </div>
+      </div>
+    );
+  }
+
   if (subRoute) {
     return renderFormPage();
   }
@@ -198,6 +212,9 @@ export default function UserManagement({ onBack, currentUser, subRoute, onNaviga
   return (
     <div className="board-list-container">
       <AppBar title="Users" onBack={onBack}>
+        <button onClick={() => onNavigate('settings')} className="btn-secondary btn-sm">
+          SSO Settings
+        </button>
         <button onClick={() => onNavigate('new')} className="btn-primary btn-sm">
           + New User
         </button>

@@ -53,6 +53,34 @@ async function runMigrations() {
     );
     await pool.query(collaboratorRole);
 
+    // Add SSO and TOTP support
+    const ssoTotp = fs.readFileSync(
+      path.join(__dirname, '008-sso-totp.sql'),
+      'utf-8'
+    );
+    await pool.query(ssoTotp);
+
+    // Add user profile fields (email, display_name, avatar_url)
+    const userProfileFields = fs.readFileSync(
+      path.join(__dirname, '009-user-profile-fields.sql'),
+      'utf-8'
+    );
+    await pool.query(userProfileFields);
+
+    // Add OIDC claim mapping fields
+    const oidcClaimMapping = fs.readFileSync(
+      path.join(__dirname, '010-oidc-claim-mapping.sql'),
+      'utf-8'
+    );
+    await pool.query(oidcClaimMapping);
+
+    // Add configurable callback base URL
+    const oidcCallbackUrl = fs.readFileSync(
+      path.join(__dirname, '011-oidc-callback-url.sql'),
+      'utf-8'
+    );
+    await pool.query(oidcCallbackUrl);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

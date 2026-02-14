@@ -46,13 +46,16 @@ class ApiClient {
   }
 
   // Auth
-  async login(username: string, password: string) {
+  async login(username: string, password: string): Promise<any> {
     const data = await this.fetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
+    if (data.requires_2fa) {
+      return { requires_2fa: true, ticket: data.ticket };
+    }
     this.setToken(data.token);
-    return data.user;
+    return { user: data.user };
   }
 
   async me(): Promise<User> {
@@ -279,6 +282,66 @@ class ApiClient {
 
   async markAllNotificationsRead(): Promise<void> {
     return this.fetch('/notifications/read-all', { method: 'PUT' });
+  }
+
+  // SSO
+  async getOidcPublicConfig(): Promise<{ enabled: boolean; button_label: string }> {
+    const response = await fetch('/api/auth/oidc/config');
+    return response.json();
+  }
+
+  // SSO Admin Settings
+  async getOidcSettings() {
+    return this.fetch('/settings/oidc');
+  }
+
+  async updateOidcSettings(settings: {
+    enabled?: boolean;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    button_label?: string;
+    claim_email?: string;
+    claim_name?: string;
+    claim_avatar?: string;
+    callback_base_url?: string;
+  }) {
+    return this.fetch('/settings/oidc', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // TOTP 2FA
+  async getTotpStatus(): Promise<{ enabled: boolean }> {
+    return this.fetch('/settings/totp/status');
+  }
+
+  async setupTotp(): Promise<{ qr_code: string; secret: string; backup_codes: string[] }> {
+    return this.fetch('/settings/totp/setup', { method: 'POST' });
+  }
+
+  async enableTotp(code: string): Promise<{ message: string }> {
+    return this.fetch('/settings/totp/enable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disableTotp(password: string): Promise<{ message: string }> {
+    return this.fetch('/settings/totp', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  async verify2fa(ticket: string, code: string) {
+    const data = await this.fetch('/auth/verify-2fa', {
+      method: 'POST',
+      body: JSON.stringify({ ticket, code }),
+    });
+    this.setToken(data.token);
+    return data.user;
   }
 }
 
