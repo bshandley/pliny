@@ -729,10 +729,10 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 {board.columns?.map((column, index) => {
                   const visibleCards = column.cards?.filter(filterCard) || [];
                   return (
-                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
+                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin || isMobile}>
                       {(provided) => (
                         <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
-                          <div className="column-header" {...provided.dragHandleProps}>
+                          <div className="column-header" {...(!isMobile ? provided.dragHandleProps : {})}>
                             {renamingColumnId === column.id ? (
                               <input
                                 className="column-rename-input"

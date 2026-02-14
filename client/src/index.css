@@ -3570,7 +3570,7 @@ button:disabled {
   .kanban-card {
     padding: 0.875rem;
     margin-bottom: 0.625rem;
-    touch-action: pan-y;
+    touch-action: auto;
     cursor: default;
   }
 
