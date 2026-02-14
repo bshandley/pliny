@@ -12,9 +12,10 @@ interface UnscheduledSidebarProps {
   onOpenInBoard: (cardId: string) => void;
   onChangeDate: (cardId: string, date: string) => void;
   onRemoveDate: (cardId: string) => void;
+  customOrder?: string[] | null;
 }
 
-export default function UnscheduledSidebar({ board, filterCard, onCardClick, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate }: UnscheduledSidebarProps) {
+export default function UnscheduledSidebar({ board, filterCard, onCardClick, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate, customOrder }: UnscheduledSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const unscheduledCards: { card: Card; columnName: string }[] = [];
@@ -23,6 +24,14 @@ export default function UnscheduledSidebar({ board, filterCard, onCardClick, isA
       unscheduledCards.push({ card, columnName: col.name });
     });
   });
+
+  if (customOrder) {
+    unscheduledCards.sort((a, b) => {
+      const ai = customOrder.indexOf(a.card.id);
+      const bi = customOrder.indexOf(b.card.id);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  }
 
   return (
     <div className={`unscheduled-sidebar${collapsed ? ' collapsed' : ''}`}>

@@ -3570,6 +3570,8 @@ button:disabled {
   .kanban-card {
     padding: 0.875rem;
     margin-bottom: 0.625rem;
+    touch-action: pan-y;
+    cursor: default;
   }
 
   /* Users table → list rows on mobile */

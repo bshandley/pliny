@@ -48,6 +48,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [initialCardId, setInitialCardId] = useState<string | null>(null);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -227,9 +228,10 @@ function App() {
     navigateTo('boards');
   };
 
-  const handleNavigateToBoard = async (boardId: string) => {
+  const handleNavigateToBoard = async (boardId: string, cardId?: string) => {
     try {
       const board = await api.getBoard(boardId);
+      setInitialCardId(cardId ?? null);
       navigateTo('board', boardId, board.name);
     } catch {
       // Board may have been deleted
@@ -284,7 +286,7 @@ function App() {
 
   const handleNotificationClick = async (notif: Notification) => {
     await handleMarkNotificationRead(notif.id);
-    handleNavigateToBoard(notif.board_id);
+    handleNavigateToBoard(notif.board_id, notif.card_id);
   };
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
@@ -342,6 +344,8 @@ function App() {
           userRole={user?.role || 'READ'}
           viewMode={boardViewMode}
           onViewChange={handleViewChange}
+          initialCardId={initialCardId}
+          onCardOpened={() => setInitialCardId(null)}
         />
       ) : page === 'users' && user?.role === 'ADMIN' ? (
         <UserManagement

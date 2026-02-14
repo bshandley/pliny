@@ -19,9 +19,11 @@ interface KanbanBoardProps {
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   viewMode: 'board' | 'calendar';
   onViewChange: (mode: 'board' | 'calendar') => void;
+  initialCardId?: string | null;
+  onCardOpened?: () => void;
 }
 
-export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onViewChange }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onViewChange, initialCardId, onCardOpened }: KanbanBoardProps) {
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -46,9 +48,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
   const [calendarPopoverCard, setCalendarPopoverCard] = useState<{ card: Card; columnName: string } | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [unscheduledOrder, setUnscheduledOrder] = useState<string[] | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
+  const newCardFormRef = useRef<HTMLFormElement>(null);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -109,6 +113,14 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     };
   }, [boardId]);
 
+  // Open a specific card when navigated from notification
+  useEffect(() => {
+    if (initialCardId && board) {
+      setEditingCardId(initialCardId);
+      onCardOpened?.();
+    }
+  }, [initialCardId, board]);
+
   // Close column kebab menu on outside click
   useEffect(() => {
     if (!columnMenuId) return;
@@ -132,6 +144,19 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [labelDropdownOpen]);
+
+  // Close add card form on outside click
+  useEffect(() => {
+    if (!showNewCard) return;
+    const handleClick = (e: MouseEvent) => {
+      if (newCardFormRef.current && !newCardFormRef.current.contains(e.target as Node)) {
+        setShowNewCard(null);
+        setNewCardTitle('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showNewCard]);
 
   // Close calendar popover on outside click or Escape
   useEffect(() => {
@@ -235,6 +260,28 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     if (type === 'CALENDAR') {
       const cardId = result.draggableId;
       const destId = destination.droppableId;
+
+      // Reordering within the unscheduled sidebar — local-only, no API call
+      if (source.droppableId === 'unscheduled' && destId === 'unscheduled') {
+        const unscheduledCards: string[] = [];
+        board.columns?.forEach(col => {
+          col.cards?.filter(c => !c.due_date && !c.archived).forEach(card => {
+            unscheduledCards.push(card.id);
+          });
+        });
+        // Apply existing custom order if any
+        const ordered = unscheduledOrder
+          ? [...unscheduledCards].sort((a, b) => {
+              const ai = unscheduledOrder.indexOf(a);
+              const bi = unscheduledOrder.indexOf(b);
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            })
+          : unscheduledCards;
+        const [moved] = ordered.splice(source.index, 1);
+        ordered.splice(destination.index, 0, moved);
+        setUnscheduledOrder(ordered);
+        return;
+      }
 
       let newDueDate: string | null = null;
       if (destId.startsWith('calendar-')) {
@@ -639,6 +686,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               onOpenInBoard={handleOpenInBoard}
               onChangeDate={handleCalendarChangeDate}
               onRemoveDate={handleCalendarRemoveDate}
+              customOrder={unscheduledOrder}
             />
             {calendarPopoverCard && popoverPos && (
               <div
@@ -780,7 +828,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
                           {isAdmin && !showArchived && (
                             showNewCard === column.id ? (
-                              <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
+                              <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form" ref={newCardFormRef}>
                                 <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
                                 <div className="form-actions">
                                   <button type="submit" className="btn-primary btn-sm">Add</button>
