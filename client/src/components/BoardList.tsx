@@ -9,9 +9,11 @@ interface BoardListProps {
   onLogout: () => void;
   onGoToUsers: () => void;
   user: User | null;
+  notificationCount?: number;
+  onGoToNotifications?: () => void;
 }
 
-export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }: BoardListProps) {
+export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user, notificationCount = 0, onGoToNotifications }: BoardListProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -127,6 +129,15 @@ export default function BoardList({ onSelectBoard, onLogout, onGoToUsers, user }
           <h1>Plank</h1>
         </div>
         <div className="header-actions">
+          {onGoToNotifications && (
+            <button onClick={onGoToNotifications} className="btn-icon header-bell mobile-only" aria-label="Notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {notificationCount > 0 && <span className="notification-badge">{notificationCount > 9 ? '9+' : notificationCount}</span>}
+            </button>
+          )}
           {isAdmin && (
             <>
               <button onClick={onGoToUsers} className="btn-secondary">

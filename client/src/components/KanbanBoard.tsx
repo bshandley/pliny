@@ -20,9 +20,11 @@ interface KanbanBoardProps {
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   viewMode: 'board' | 'calendar';
   onViewChange: (mode: 'board' | 'calendar') => void;
+  notificationCount?: number;
+  onGoToNotifications?: () => void;
 }
 
-export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewMode, onViewChange }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewMode, onViewChange, notificationCount = 0, onGoToNotifications }: KanbanBoardProps) {
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -511,6 +513,15 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole, viewM
               </svg>
             </button>
           </div>
+          {onGoToNotifications && (
+            <button onClick={onGoToNotifications} className="btn-icon header-bell mobile-only" aria-label="Notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {notificationCount > 0 && <span className="notification-badge">{notificationCount > 9 ? '9+' : notificationCount}</span>}
+            </button>
+          )}
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
             className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
