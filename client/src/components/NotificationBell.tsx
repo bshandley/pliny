@@ -5,7 +5,7 @@ interface NotificationBellProps {
   notifications: Notification[];
   onMarkRead: (id: string) => Promise<void>;
   onMarkAllRead: () => Promise<void>;
-  onNavigateToBoard: (boardId: string) => void;
+  onNavigateToBoard: (boardId: string, cardId?: string) => void;
 }
 
 function timeAgo(dateStr: string): string {
@@ -43,7 +43,7 @@ export default function NotificationBell({ notifications, onMarkRead, onMarkAllR
       await onMarkRead(notif.id);
     }
     setOpen(false);
-    onNavigateToBoard(notif.board_id);
+    onNavigateToBoard(notif.board_id, notif.card_id);
   };
 
   const getNotificationText = (notif: Notification) => {

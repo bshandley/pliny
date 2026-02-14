@@ -7,7 +7,7 @@ export interface AppBarContextType {
   unreadCount: number;
   onMarkRead: (id: string) => Promise<void>;
   onMarkAllRead: () => Promise<void>;
-  onNavigateToBoard: (boardId: string) => void;
+  onNavigateToBoard: (boardId: string, cardId?: string) => void;
   onGoToNotifications: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
