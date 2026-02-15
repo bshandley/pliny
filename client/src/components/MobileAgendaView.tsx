@@ -172,11 +172,13 @@ const MobileAgendaView = forwardRef<MobileAgendaHandle, MobileAgendaViewProps>(
         if (g.dateKey >= todayKey) { targetKey = g.dateKey; break; }
       }
 
-      if (targetKey) {
+      if (targetKey && scrollRef.current) {
         const el = headerRefs.current.get(targetKey);
         if (el) {
           requestAnimationFrame(() => {
-            el.scrollIntoView({ block: 'start' });
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = el.offsetTop - scrollRef.current.offsetTop;
+            }
           });
         }
       }
@@ -213,17 +215,24 @@ const MobileAgendaView = forwardRef<MobileAgendaHandle, MobileAgendaViewProps>(
     }, [overdueGroups, upcomingGroups, onActiveDateChange]);
 
     // Expose scrollToDate to parent via ref
+    const scrollToElement = (el: HTMLElement, smooth: boolean) => {
+      if (!scrollRef.current) return;
+      const top = el.offsetTop - scrollRef.current.offsetTop;
+      scrollRef.current.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+    };
+
     useImperativeHandle(ref, () => ({
       scrollToDate(dateKey: string) {
         const el = headerRefs.current.get(dateKey);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          scrollToElement(el, true);
           return;
         }
         const allKeys = upcomingGroups.map(g => g.dateKey);
         const nearest = allKeys.find(k => k >= dateKey);
         if (nearest) {
-          headerRefs.current.get(nearest)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const nearestEl = headerRefs.current.get(nearest);
+          if (nearestEl) scrollToElement(nearestEl, true);
         }
       }
     }), [upcomingGroups]);
