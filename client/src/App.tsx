@@ -290,6 +290,7 @@ function App() {
       {
         duration: 500,
         easing: 'ease-in-out',
+        fill: 'forwards',
         pseudoElement: '::view-transition-new(root)',
       }
     );
