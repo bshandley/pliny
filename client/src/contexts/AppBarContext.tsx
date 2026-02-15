@@ -10,7 +10,7 @@ export interface AppBarContextType {
   onNavigateToBoard: (boardId: string, cardId?: string) => void;
   onGoToNotifications: () => void;
   theme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
   onGoToProfile?: () => void;
 }

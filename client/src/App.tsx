@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { io, Socket } from 'socket.io-client';
 import { api } from './api';
 import { User, Notification } from './types';
@@ -51,6 +52,7 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [initialCardId, setInitialCardId] = useState<string | null>(null);
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [sso2faTicket, setSso2faTicket] = useState<string | null>(null);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -131,6 +133,16 @@ function App() {
     const hashParams = new URLSearchParams(hash);
     const ssoToken = hashParams.get('token');
     const ssoErrorParam = hashParams.get('sso_error');
+
+    const ssoRequires2fa = hashParams.get('requires_2fa') === 'true';
+    const sso2faTicketParam = hashParams.get('ticket');
+
+    if (ssoRequires2fa && sso2faTicketParam) {
+      window.history.replaceState(null, '', window.location.pathname);
+      setSso2faTicket(sso2faTicketParam);
+      setLoading(false);
+      return;
+    }
 
     if (ssoToken) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -234,8 +246,53 @@ function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = async (e?: React.MouseEvent) => {
+    // Fallback for browsers without View Transitions API or reduced motion
+    if (
+      !(document as any).startViewTransition ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      return;
+    }
+
+    // Get circle origin from the clicked button
+    let x = window.innerWidth - 24;
+    let y = 24;
+    if (e?.currentTarget) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      x = rect.left + rect.width / 2;
+      y = rect.top + rect.height / 2;
+    }
+
+    const transition = (document as any).startViewTransition(() => {
+      flushSync(() => {
+        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      });
+    });
+
+    await transition.ready;
+
+    const right = window.innerWidth - x;
+    const bottom = window.innerHeight - y;
+    const maxRadius = Math.hypot(
+      Math.max(x, right),
+      Math.max(y, bottom)
+    );
+
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${maxRadius}px at ${x}px ${y}px)`,
+        ],
+      },
+      {
+        duration: 500,
+        easing: 'ease-in-out',
+        pseudoElement: '::view-transition-new(root)',
+      }
+    );
   };
 
   const handleLogin = async (username: string, password: string) => {
@@ -369,10 +426,10 @@ function App() {
   if (!user && !api.getToken()) {
     return (
       <>
-        <Login onLogin={handleLogin} onSsoLogin={handleSsoLogin} ssoError={ssoError} />
+        <Login onLogin={handleLogin} onSsoLogin={handleSsoLogin} ssoError={ssoError} sso2faTicket={sso2faTicket} onSso2faComplete={() => setSso2faTicket(null)} />
         <button
           className="login-theme-toggle"
-          onClick={toggleTheme}
+          onClick={(e) => { toggleTheme(e); }}
           aria-label="Toggle theme"
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >

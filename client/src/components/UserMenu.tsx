@@ -5,7 +5,7 @@ import AppBarContext from '../contexts/AppBarContext';
 interface UserMenuProps {
   user: User;
   theme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
 }
 
@@ -49,7 +49,7 @@ export default function UserMenu({ user, theme, onToggleTheme, onLogout }: UserM
             <span className={`role-badge role-${user.role.toLowerCase()}`}>{user.role}</span>
           </div>
           <div className="user-menu-divider" />
-          <button onClick={() => { onToggleTheme(); setOpen(false); }} className="user-menu-item">
+          <button onClick={(e) => { setOpen(false); onToggleTheme(e); }} className="user-menu-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {theme === 'light' ? (
                 <><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></>

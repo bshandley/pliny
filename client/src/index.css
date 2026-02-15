@@ -65,6 +65,14 @@
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
+/* ---- View Transition (theme wipe) ---- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /* ---- Base ---- */
 
 body {

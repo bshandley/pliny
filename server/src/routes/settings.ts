@@ -87,6 +87,16 @@ router.put('/oidc', authenticate, requireAdmin, async (req: AuthRequest, res) =>
     if (callback_base_url !== undefined && typeof callback_base_url === 'string' && callback_base_url.length > 500) {
       return res.status(400).json({ error: 'Callback base URL must be 500 characters or fewer' });
     }
+    if (callback_base_url !== undefined && typeof callback_base_url === 'string' && callback_base_url !== '') {
+      try {
+        const parsed = new URL(callback_base_url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return res.status(400).json({ error: 'Callback base URL must use http or https' });
+        }
+      } catch {
+        return res.status(400).json({ error: 'Callback base URL must be a valid URL' });
+      }
+    }
     for (const [field, val] of [['claim_email', claim_email], ['claim_name', claim_name], ['claim_avatar', claim_avatar]] as const) {
       if (val !== undefined && typeof val === 'string' && val.length > 100) {
         return res.status(400).json({ error: `${field} must be 100 characters or fewer` });

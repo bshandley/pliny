@@ -6,9 +6,11 @@ interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
   onSsoLogin: (token: string) => Promise<void>;
   ssoError?: string | null;
+  sso2faTicket?: string | null;
+  onSso2faComplete?: () => void;
 }
 
-export default function Login({ onLogin, onSsoLogin, ssoError }: LoginProps) {
+export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onSso2faComplete }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,6 +33,13 @@ export default function Login({ onLogin, onSsoLogin, ssoError }: LoginProps) {
       setSsoButtonLabel(config.button_label);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (sso2faTicket) {
+      setTicket(sso2faTicket);
+      setAwaiting2fa(true);
+    }
+  }, [sso2faTicket]);
 
   useEffect(() => {
     if (ssoError) {
@@ -117,7 +126,7 @@ export default function Login({ onLogin, onSsoLogin, ssoError }: LoginProps) {
             <button
               type="button"
               className="btn-link login-back-link"
-              onClick={() => { setAwaiting2fa(false); setTotpCode(''); setError(''); }}
+              onClick={() => { setAwaiting2fa(false); setTotpCode(''); setError(''); onSso2faComplete?.(); }}
             >
               Back to login
             </button>

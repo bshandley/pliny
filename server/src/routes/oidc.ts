@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as client from 'openid-client';
 import pool from '../db';
 import { decrypt } from '../utils/crypto';
-import { generateToken } from '../middleware/auth';
+import { generateToken, signTicket } from '../middleware/auth';
 
 const router = Router();
 
@@ -279,6 +279,18 @@ router.get('/callback', async (req: Request, res: Response) => {
       } finally {
         dbClient.release();
       }
+    }
+
+    // Check if user has TOTP 2FA enabled
+    const totpResult = await pool.query(
+      'SELECT enabled FROM user_totp WHERE user_id = $1 AND enabled = true',
+      [userId]
+    );
+
+    if (totpResult.rows.length > 0) {
+      // Issue a short-lived 2FA ticket instead of a full JWT
+      const ticket = signTicket({ id: userId, purpose: '2fa' }, '5m');
+      return res.redirect(`${getClientRedirectUrl()}/#requires_2fa=true&ticket=${encodeURIComponent(ticket)}`);
     }
 
     // Issue a Plank JWT
