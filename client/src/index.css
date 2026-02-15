@@ -3674,6 +3674,10 @@ button:disabled {
     flex-direction: column;
   }
 
+  .calendar-container {
+    padding: 0;
+  }
+
   .cal-nav-arrow {
     width: 2.25rem;
     height: 2.25rem;
