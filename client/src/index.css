@@ -3836,7 +3836,7 @@ button:disabled {
   /* Mobile agenda view */
   .mobile-agenda {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
