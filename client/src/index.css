@@ -3838,6 +3838,7 @@ button:disabled {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .agenda-group {
