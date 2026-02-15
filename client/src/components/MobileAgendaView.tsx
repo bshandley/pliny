@@ -76,56 +76,6 @@ const MobileAgendaView = forwardRef<MobileAgendaHandle, MobileAgendaViewProps>(
       else onSwipeLeft?.();
     };
 
-    // Prevent scroll from leaking to parent/body at scroll boundaries (Firefox fix)
-    useEffect(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-
-      let startY = 0;
-      let startX = 0;
-
-      const onTouchStart = (e: TouchEvent) => {
-        startY = e.touches[0].clientY;
-        startX = e.touches[0].clientX;
-      };
-
-      const onTouchMove = (e: TouchEvent) => {
-        const dy = e.touches[0].clientY - startY;
-        const dx = e.touches[0].clientX - startX;
-
-        // Let horizontal swipes through for month navigation
-        if (Math.abs(dx) > Math.abs(dy)) return;
-
-        const { scrollTop, scrollHeight, clientHeight } = el;
-
-        // Content fits without scrolling — block vertical scroll
-        if (scrollHeight <= clientHeight) {
-          e.preventDefault();
-          return;
-        }
-
-        // At the top, pulling down
-        if (scrollTop <= 0 && dy > 0) {
-          e.preventDefault();
-          return;
-        }
-
-        // At the bottom, pushing up
-        if (scrollTop + clientHeight >= scrollHeight - 1 && dy < 0) {
-          e.preventDefault();
-          return;
-        }
-      };
-
-      el.addEventListener('touchstart', onTouchStart, { passive: true });
-      el.addEventListener('touchmove', onTouchMove, { passive: false });
-
-      return () => {
-        el.removeEventListener('touchstart', onTouchStart);
-        el.removeEventListener('touchmove', onTouchMove);
-      };
-    }, []);
-
     // Collect all cards into groups
     const { overdueGroups, upcomingGroups, unscheduledCards } = useMemo(() => {
       const todayKey = formatDateKey(new Date());
