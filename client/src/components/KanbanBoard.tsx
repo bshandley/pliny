@@ -677,17 +677,19 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               onChangeDate={handleCalendarChangeDate}
               onRemoveDate={handleCalendarRemoveDate}
             />
-            <UnscheduledSidebar
-              board={board}
-              filterCard={filterCard}
-              onCardClick={handleCalendarCardClick}
-              isAdmin={isAdmin}
-              isMobile={isMobile}
-              onOpenInBoard={handleOpenInBoard}
-              onChangeDate={handleCalendarChangeDate}
-              onRemoveDate={handleCalendarRemoveDate}
-              customOrder={unscheduledOrder}
-            />
+            {!isMobile && (
+              <UnscheduledSidebar
+                board={board}
+                filterCard={filterCard}
+                onCardClick={handleCalendarCardClick}
+                isAdmin={isAdmin}
+                isMobile={false}
+                onOpenInBoard={handleOpenInBoard}
+                onChangeDate={handleCalendarChangeDate}
+                onRemoveDate={handleCalendarRemoveDate}
+                customOrder={unscheduledOrder}
+              />
+            )}
             {calendarPopoverCard && popoverPos && (
               <div
                 className="calendar-popover"

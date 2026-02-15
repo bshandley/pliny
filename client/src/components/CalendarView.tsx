@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Board, Card } from '../types';
+import MiniCalStrip from './MiniCalStrip';
+import MobileAgendaView, { formatDateKey as agendaFormatDateKey, MobileAgendaHandle } from './MobileAgendaView';
 
 interface CalendarViewProps {
   board: Board;
@@ -182,22 +184,8 @@ export { CalendarCardChip, MobileCalendarCard };
 export default function CalendarView({ board, onCardClick, filterCard, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<'month' | 'week'>('month');
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-
-  // Keep selected date in sync when navigating months
-  useEffect(() => {
-    if (!isMobile || viewType !== 'month') return;
-    setSelectedDate(prev => {
-      const curMonth = currentDate.getMonth();
-      const curYear = currentDate.getFullYear();
-      if (prev.getMonth() !== curMonth || prev.getFullYear() !== curYear) {
-        const today = new Date();
-        if (today.getMonth() === curMonth && today.getFullYear() === curYear) return today;
-        return new Date(curYear, curMonth, 1);
-      }
-      return prev;
-    });
-  }, [currentDate, viewType, isMobile]);
+  const [activeDate, setActiveDate] = useState<Date>(() => new Date());
+  const agendaRef = useRef<MobileAgendaHandle>(null);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -234,24 +222,24 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
 
   const handleToday = () => {
     setCurrentDate(new Date());
-    if (isMobile) setSelectedDate(new Date());
+    if (isMobile) setActiveDate(new Date());
   };
 
-  // Swipe navigation for mobile
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const cardDateSet = useMemo(() => {
+    const s = new Set<string>();
+    board.columns?.forEach(col => {
+      col.cards?.forEach(card => {
+        if (card.archived || !card.due_date || !filterCard(card)) return;
+        s.add(card.due_date.split('T')[0]);
+      });
+    });
+    return s;
+  }, [board, filterCard]);
 
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
-
-  const handleSwipeEnd = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const dx = e.changedTouches[0].clientX - touchStart.current.x;
-    const dy = e.changedTouches[0].clientY - touchStart.current.y;
-    touchStart.current = null;
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
-    if (dx > 0) handlePrev();
-    else handleNext();
+  const handleMiniCalSelect = (date: Date) => {
+    setActiveDate(date);
+    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
+    agendaRef.current?.scrollToDate(formatDateKey(date));
   };
 
   const formatWeekRange = (date: Date): string => {
@@ -376,156 +364,51 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
     );
   };
 
-  const renderMobileMonthView = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const days = getMonthDays(year, month);
-    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const selectedCards = getCardsForDate(selectedDate);
-
-    return (
-      <div className="cal-mobile-month">
-        <div className="cal-mobile-grid" onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
-          {dayNames.map((d, i) => (
-            <div key={i} className="cal-m-day-header">{d}</div>
-          ))}
-          {days.map((date, i) => {
-            const cards = getCardsForDate(date);
-            const isCurrentMonth = date.getMonth() === month;
-            const isSelected = formatDateKey(selectedDate) === formatDateKey(date);
-            const today = isToday(date);
-            return (
-              <button
-                key={i}
-                className={`cal-m-day${today ? ' cal-m-today' : ''}${!isCurrentMonth ? ' cal-m-outside' : ''}${isSelected ? ' cal-m-selected' : ''}`}
-                onClick={() => {
-                  if (!isCurrentMonth) {
-                    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
-                  }
-                  setSelectedDate(date);
-                }}
-              >
-                <span className="cal-m-num">{date.getDate()}</span>
-                {cards.length > 0 && (
-                  <div className="cal-m-dots">
-                    {cards.slice(0, 3).map((_, j) => <span key={j} className="cal-m-dot" />)}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="cal-day-panel">
-          <div className="cal-day-panel-header">
-            <span className="cal-day-panel-date">
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </span>
-            {selectedCards.length > 0 && <span className="cal-day-panel-count">{selectedCards.length}</span>}
-          </div>
-          <div key={formatDateKey(selectedDate)} className="cal-day-panel-list">
-            {selectedCards.length === 0 ? (
-              <div className="cal-day-panel-empty">No cards scheduled</div>
-            ) : (
-              selectedCards.map(({ card, columnName }) => (
-                <MobileCalendarCard
-                  key={card.id}
-                  card={card}
-                  columnName={columnName}
-                  onOpenInBoard={onOpenInBoard}
-                  onChangeDate={onChangeDate}
-                  onRemoveDate={onRemoveDate}
-                  isAdmin={isAdmin}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderMobileWeekView = () => {
-    const days = getWeekDays(currentDate);
-
-    return (
-      <div className="cal-mobile-week" onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
-        {days.map((date, i) => {
-          const cards = getCardsForDate(date);
-          const today = isToday(date);
-          return (
-            <div key={i} className={`cal-week-section${today ? ' cal-week-today' : ''}${cards.length === 0 ? ' cal-week-empty' : ''}`}>
-              <div className="cal-week-section-header">
-                <span className="cal-week-section-date">
-                  {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                </span>
-                {cards.length > 0 && <span className="cal-week-section-count">{cards.length}</span>}
-              </div>
-              {cards.length > 0 && (
-                <div className="cal-week-section-cards">
-                  {cards.map(({ card, columnName }) => (
-                    <MobileCalendarCard
-                      key={card.id}
-                      card={card}
-                      columnName={columnName}
-                      onOpenInBoard={onOpenInBoard}
-                      onChangeDate={onChangeDate}
-                      onRemoveDate={onRemoveDate}
-                      isAdmin={isAdmin}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className="calendar-container">
       {isMobile ? (
-        <div className="cal-mobile-nav">
-          <div className="cal-mobile-nav-title">
-            <button className="cal-nav-arrow" onClick={handlePrev} aria-label="Previous">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <h2>
+        <>
+          <MiniCalStrip
+            currentDate={currentDate}
+            activeDate={activeDate}
+            onSelectDate={handleMiniCalSelect}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            onToday={handleToday}
+            cardDateSet={cardDateSet}
+          />
+          <MobileAgendaView
+            ref={agendaRef}
+            board={board}
+            filterCard={filterCard}
+            isAdmin={isAdmin}
+            onOpenInBoard={onOpenInBoard}
+            onChangeDate={onChangeDate}
+            onRemoveDate={onRemoveDate}
+            onActiveDateChange={setActiveDate}
+            onSwipeLeft={handleNext}
+            onSwipeRight={handlePrev}
+          />
+        </>
+      ) : (
+        <>
+          <div className="calendar-nav">
+            <button className="btn-icon" onClick={handlePrev} title="Previous">&larr;</button>
+            <button className="btn-secondary btn-sm" onClick={handleToday}>Today</button>
+            <button className="btn-icon" onClick={handleNext} title="Next">&rarr;</button>
+            <h2 className="calendar-nav-title">
               {viewType === 'month'
                 ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
                 : formatWeekRange(currentDate)}
             </h2>
-            <button className="cal-nav-arrow" onClick={handleNext} aria-label="Next">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          </div>
-          <div className="cal-mobile-nav-controls">
             <div className="calendar-view-type">
               <button className={`btn-sm${viewType === 'month' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('month')}>Month</button>
               <button className={`btn-sm${viewType === 'week' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('week')}>Week</button>
             </div>
-            <button className="cal-today-btn" onClick={handleToday}>Today</button>
           </div>
-        </div>
-      ) : (
-        <div className="calendar-nav">
-          <button className="btn-icon" onClick={handlePrev} title="Previous">&larr;</button>
-          <button className="btn-secondary btn-sm" onClick={handleToday}>Today</button>
-          <button className="btn-icon" onClick={handleNext} title="Next">&rarr;</button>
-          <h2 className="calendar-nav-title">
-            {viewType === 'month'
-              ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
-              : formatWeekRange(currentDate)}
-          </h2>
-          <div className="calendar-view-type">
-            <button className={`btn-sm${viewType === 'month' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('month')}>Month</button>
-            <button className={`btn-sm${viewType === 'week' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('week')}>Week</button>
-          </div>
-        </div>
+          {viewType === 'month' ? renderMonthView() : renderWeekView()}
+        </>
       )}
-      {isMobile
-        ? (viewType === 'month' ? renderMobileMonthView() : renderMobileWeekView())
-        : (viewType === 'month' ? renderMonthView() : renderWeekView())}
     </div>
   );
 }
