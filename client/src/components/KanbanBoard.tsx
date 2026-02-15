@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board, Card, Label, BoardMember } from '../types';

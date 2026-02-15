@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Droppable, Draggable } from 'react-beautiful-dnd';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '../types';
 import MiniCalStrip from './MiniCalStrip';
 import MobileAgendaView, { formatDateKey as agendaFormatDateKey, MobileAgendaHandle } from './MobileAgendaView';
