@@ -11,7 +11,6 @@ import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
 import AppBar from './AppBar';
 import CalendarView from './CalendarView';
-import UnscheduledSidebar from './UnscheduledSidebar';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -46,10 +45,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const [renameColumnValue, setRenameColumnValue] = useState('');
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
-  const [calendarPopoverCard, setCalendarPopoverCard] = useState<{ card: Card; columnName: string } | null>(null);
-  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const [unscheduledOrder, setUnscheduledOrder] = useState<string[] | null>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   const newCardFormRef = useRef<HTMLFormElement>(null);
@@ -158,28 +154,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showNewCard]);
 
-  // Close calendar popover on outside click or Escape
-  useEffect(() => {
-    if (!calendarPopoverCard) return;
-    const handleClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setCalendarPopoverCard(null);
-        setPopoverPos(null);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setCalendarPopoverCard(null);
-        setPopoverPos(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [calendarPopoverCard]);
 
   const loadBoard = async () => {
     try {
@@ -474,18 +448,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
-  const handleCalendarCardClick = (card: Card, columnName: string, event: React.MouseEvent) => {
-    if (isMobile) return; // Mobile uses kebab menu instead
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setPopoverPos({ top: rect.bottom + 4, left: rect.left });
-    setCalendarPopoverCard({ card, columnName });
+  const handleCalendarCardClick = (card: Card, _columnName: string, _event: React.MouseEvent) => {
+    if (isMobile) return;
+    handleOpenInBoard(card.id);
   };
 
   const handleOpenInBoard = (cardId: string) => {
-    setCalendarPopoverCard(null);
-    setPopoverPos(null);
     onViewChange('board');
-    // Small delay to let the board render, then open the card
     setTimeout(() => setEditingCardId(cardId), 100);
   };
 
@@ -677,52 +646,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               onChangeDate={handleCalendarChangeDate}
               onRemoveDate={handleCalendarRemoveDate}
             />
-            {!isMobile && (
-              <UnscheduledSidebar
-                board={board}
-                filterCard={filterCard}
-                onCardClick={handleCalendarCardClick}
-                isAdmin={isAdmin}
-                isMobile={false}
-                onOpenInBoard={handleOpenInBoard}
-                onChangeDate={handleCalendarChangeDate}
-                onRemoveDate={handleCalendarRemoveDate}
-                customOrder={unscheduledOrder}
-              />
-            )}
-            {calendarPopoverCard && popoverPos && (
-              <div
-                className="calendar-popover"
-                ref={popoverRef}
-                style={{ top: popoverPos.top, left: popoverPos.left }}
-              >
-                <h4 className="popover-title">{calendarPopoverCard.card.title}</h4>
-                <div className="popover-meta">
-                  <span className="popover-column">{calendarPopoverCard.columnName}</span>
-                  {calendarPopoverCard.card.due_date && (
-                    <span className="popover-due">{new Date(calendarPopoverCard.card.due_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                  )}
-                </div>
-                {calendarPopoverCard.card.labels && calendarPopoverCard.card.labels.length > 0 && (
-                  <div className="popover-labels">
-                    {calendarPopoverCard.card.labels.map(l => (
-                      <span key={l.id} className="popover-label" style={{ background: l.color }}>{l.name}</span>
-                    ))}
-                  </div>
-                )}
-                {calendarPopoverCard.card.checklist && (
-                  <div className="popover-checklist">
-                    Checklist: {calendarPopoverCard.card.checklist.checked}/{calendarPopoverCard.card.checklist.total}
-                  </div>
-                )}
-                {calendarPopoverCard.card.description && (
-                  <p className="popover-description">{calendarPopoverCard.card.description.slice(0, 120)}{calendarPopoverCard.card.description.length > 120 ? '...' : ''}</p>
-                )}
-                <button className="btn-secondary btn-sm popover-open-btn" onClick={() => handleOpenInBoard(calendarPopoverCard.card.id)}>
-                  Open in Board
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>

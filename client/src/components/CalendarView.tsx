@@ -177,6 +177,7 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<'month' | 'week'>('month');
   const [activeDate, setActiveDate] = useState<Date>(() => new Date());
+  const [unscheduledExpanded, setUnscheduledExpanded] = useState(false);
   const agendaRef = useRef<MobileAgendaHandle>(null);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -228,6 +229,16 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
     return s;
   }, [board, filterCard]);
 
+  const unscheduledCards = useMemo(() => {
+    const results: { card: Card; columnName: string }[] = [];
+    board.columns?.forEach(col => {
+      col.cards?.filter(c => !c.due_date && !c.archived && filterCard(c)).forEach(card => {
+        results.push({ card, columnName: col.name });
+      });
+    });
+    return results;
+  }, [board, filterCard]);
+
   const handleMiniCalSelect = (date: Date) => {
     setActiveDate(date);
     setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
@@ -257,7 +268,7 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
           const isCurrentMonth = date.getMonth() === month;
           const todayClass = isToday(date) ? ' calendar-today' : '';
           const outsideClass = !isCurrentMonth ? ' calendar-outside' : '';
-          const maxVisible = 2;
+          const maxVisible = 3;
 
           return (
             <Droppable key={i} droppableId={`calendar-${dateKey}`} type="CALENDAR">
@@ -277,7 +288,7 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                             <CalendarCardChip
                               card={card}
                               columnName={columnName}
-                              onClick={(e) => onCardClick(card, columnName, e)}
+                              onClick={() => onOpenInBoard(card.id)}
                               isMobile={isMobile}
                               isAdmin={isAdmin}
                               onOpenInBoard={onOpenInBoard}
@@ -334,7 +345,7 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                             <CalendarCardChip
                               card={card}
                               columnName={columnName}
-                              onClick={(e) => onCardClick(card, columnName, e)}
+                              onClick={() => onOpenInBoard(card.id)}
                               isMobile={isMobile}
                               isAdmin={isAdmin}
                               onOpenInBoard={onOpenInBoard}
@@ -385,19 +396,73 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
       ) : (
         <>
           <div className="calendar-nav">
-            <button className="btn-icon" onClick={handlePrev} title="Previous">&larr;</button>
-            <button className="btn-secondary btn-sm" onClick={handleToday}>Today</button>
-            <button className="btn-icon" onClick={handleNext} title="Next">&rarr;</button>
-            <h2 className="calendar-nav-title">
-              {viewType === 'month'
-                ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
-                : formatWeekRange(currentDate)}
-            </h2>
-            <div className="calendar-view-type">
-              <button className={`btn-sm${viewType === 'month' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('month')}>Month</button>
-              <button className={`btn-sm${viewType === 'week' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('week')}>Week</button>
+            <div className="calendar-nav-left">
+              <button className="btn-icon" onClick={handlePrev} title="Previous">&larr;</button>
+              <h2 className="calendar-nav-title">
+                {viewType === 'month'
+                  ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+                  : formatWeekRange(currentDate)}
+              </h2>
+              <button className="btn-icon" onClick={handleNext} title="Next">&rarr;</button>
+            </div>
+            <div className="calendar-nav-right">
+              <div className="calendar-view-type">
+                <button className={`btn-sm${viewType === 'month' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('month')}>Month</button>
+                <button className={`btn-sm${viewType === 'week' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('week')}>Week</button>
+              </div>
+              <button className="btn-secondary btn-sm" onClick={handleToday}>Today</button>
             </div>
           </div>
+          <Droppable droppableId="unscheduled" type="CALENDAR" direction={unscheduledExpanded ? undefined : 'horizontal'}>
+            {(provided, snapshot) => (
+              <div
+                className={`calendar-unscheduled-row${unscheduledExpanded ? ' expanded' : ''}${snapshot.isDraggingOver ? ' calendar-drag-over' : ''}`}
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                <span className="calendar-unscheduled-label">No date</span>
+                <div className="calendar-unscheduled-chips">
+                  {unscheduledCards.map(({ card, columnName }, index) => (
+                    <Draggable key={card.id} draggableId={card.id} index={index} isDragDisabled={!isAdmin}>
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          style={{
+                            ...dragProvided.draggableProps.style,
+                            ...(!dragSnapshot.isDragging ? { transform: 'none', transition: 'none' } : {}),
+                          }}
+                        >
+                          <CalendarCardChip
+                            card={card}
+                            columnName={columnName}
+                            onClick={() => onOpenInBoard(card.id)}
+                            isMobile={false}
+                            isAdmin={isAdmin}
+                            onOpenInBoard={onOpenInBoard}
+                            onChangeDate={onChangeDate}
+                            onRemoveDate={onRemoveDate}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  <span style={{ display: 'none' }}>{provided.placeholder}</span>
+                </div>
+                {unscheduledCards.length === 0 && (
+                  <span className="calendar-unscheduled-empty">No cards without dates</span>
+                )}
+                {unscheduledCards.length > 0 && (
+                  <button
+                    className={`calendar-unscheduled-toggle${unscheduledExpanded ? ' expanded' : ''}`}
+                    onClick={() => setUnscheduledExpanded(!unscheduledExpanded)}
+                    title={unscheduledExpanded ? 'Collapse' : 'Show all'}
+                  >&#x2039;</button>
+                )}
+              </div>
+            )}
+          </Droppable>
           {viewType === 'month' ? renderMonthView() : renderWeekView()}
         </>
       )}
