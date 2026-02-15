@@ -67,10 +67,15 @@
 
 /* ---- View Transition (theme wipe) ---- */
 
-::view-transition-old(root),
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+  clip-path: circle(0px at 50% 50%); /* Prevents Firefox flash before JS animation starts */
 }
 
 /* ---- Base ---- */
