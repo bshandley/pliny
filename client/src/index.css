@@ -4062,17 +4062,16 @@ button:disabled {
   }
 
   .mobile-cal-card-btn {
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: var(--font-ui);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg);
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background 0.1s, color 0.1s;
+    white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -4083,7 +4082,7 @@ button:disabled {
 
   .mobile-cal-remove {
     color: var(--danger);
-    border-color: transparent;
+    border-color: var(--danger-subtle);
     background: transparent;
   }
 
