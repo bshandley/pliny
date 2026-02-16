@@ -777,8 +777,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       </DragDropContext>
 
       {showNewColumn && (
-        <div className="modal-overlay" onClick={() => setShowNewColumn(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-centered" onClick={() => setShowNewColumn(false)}>
+          <div className="modal modal-centered" onClick={(e) => e.stopPropagation()}>
             <h2>New Column</h2>
             <form onSubmit={handleCreateColumn}>
               <div className="form-group">

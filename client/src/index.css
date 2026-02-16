@@ -3473,6 +3473,24 @@ button:disabled {
     font-size: 1.25rem;
   }
 
+  /* Centered modal variant — stays centered on mobile so keyboard doesn't obscure it */
+  .modal-overlay-centered {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .modal-centered {
+    border-radius: var(--radius-xl);
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    animation: modalIn 0.25s var(--ease-spring);
+  }
+
+  .modal-centered::before {
+    display: none;
+  }
+
   /* Typography */
   .app-bar-title {
     font-size: 1rem;
