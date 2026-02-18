@@ -11,14 +11,15 @@ import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
 import AppBar from './AppBar';
 import CalendarView from './CalendarView';
+import TableView from './TableView';
 import CustomFieldManager from './CustomFieldManager';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
-  viewMode: 'board' | 'calendar';
-  onViewChange: (mode: 'board' | 'calendar') => void;
+  viewMode: 'board' | 'calendar' | 'table';
+  onViewChange: (mode: 'board' | 'calendar' | 'table') => void;
   initialCardId?: string | null;
   onCardOpened?: () => void;
 }
@@ -535,6 +536,15 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
             </svg>
           </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'table' ? ' active' : ''}`}
+            onClick={() => onViewChange('table')}
+            title="Table view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+            </svg>
+          </button>
         </div>
         <button
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
@@ -708,6 +718,14 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               onRemoveDate={handleCalendarRemoveDate}
             />
           </div>
+        ) : viewMode === 'table' ? (
+          <TableView
+            board={board}
+            filterCard={filterCard}
+            isAdmin={isAdmin}
+            onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
+            onCardClick={(cardId) => setEditingCardId(cardId)}
+          />
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
             {(provided) => (
