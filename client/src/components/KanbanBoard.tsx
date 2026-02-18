@@ -11,6 +11,7 @@ import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
 import AppBar from './AppBar';
 import CalendarView from './CalendarView';
+import CustomFieldManager from './CustomFieldManager';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -36,6 +37,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [showMembers, setShowMembers] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [showFieldManager, setShowFieldManager] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -552,6 +554,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
                 <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
                 <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
+                <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
               </div>
             </div>
           )}
@@ -805,6 +808,14 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         <BoardLabels
           boardId={boardId}
           onClose={() => { setShowLabels(false); loadLabels(); loadBoard(); }}
+        />
+      )}
+      {showFieldManager && board && (
+        <CustomFieldManager
+          boardId={board.id}
+          fields={board.custom_fields || []}
+          onClose={() => setShowFieldManager(false)}
+          onFieldsChanged={() => { loadBoard(); setShowFieldManager(false); }}
         />
       )}
     </div>
