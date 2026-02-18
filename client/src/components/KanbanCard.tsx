@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField } from '../types';
+import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
@@ -86,6 +86,20 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
       return `changed due date from ${detail?.from} to ${detail?.to}`;
     }
     default: return action.replace(/_/g, ' ');
+  }
+}
+
+function formatFieldBadge(field: CustomField, value: string): string {
+  switch (field.field_type) {
+    case 'text': return value.length > 20 ? value.slice(0, 20) + '...' : value;
+    case 'number': return value;
+    case 'date': {
+      const d = new Date(value + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    case 'dropdown': return value;
+    case 'checkbox': return value === 'true' ? '\u2713' : '\u2717';
+    default: return value;
   }
 }
 
@@ -1156,29 +1170,42 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       {card.description && (
         <p className="card-description">{card.description}</p>
       )}
-      {(card.assignees?.length || card.members?.length || card.due_date || card.checklist) && (
-        <div className="card-footer">
-          <div className="card-footer-left">
-            {card.members?.map((member, index) => (
-              <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
-            ))}
-            {card.assignees?.map((name, index) => (
-              <span key={`a-${index}`} className="assignee-badge">{name}</span>
-            ))}
+      {(() => {
+        const showOnCardFields = customFields.filter(f => f.show_on_card && card.custom_field_values?.[f.id]?.value);
+        const hasFooter = card.assignees?.length || card.members?.length || card.due_date || card.checklist || showOnCardFields.length > 0;
+        if (!hasFooter) return null;
+        return (
+          <div className="card-footer">
+            <div className="card-footer-left">
+              {card.members?.map((member, index) => (
+                <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
+              ))}
+              {card.assignees?.map((name, index) => (
+                <span key={`a-${index}`} className="assignee-badge">{name}</span>
+              ))}
+              {showOnCardFields.slice(0, 3).map(field => (
+                <span key={field.id} className={`custom-field-badge field-type-${field.field_type}`}>
+                  {formatFieldBadge(field, card.custom_field_values![field.id].value)}
+                </span>
+              ))}
+              {showOnCardFields.length > 3 && (
+                <span className="custom-field-badge">+{showOnCardFields.length - 3}</span>
+              )}
+            </div>
+            <div className="card-footer-right">
+              {card.due_date && (() => {
+                const badge = getDueBadge(card.due_date);
+                return badge ? <span className={badge.className}>{badge.label}</span> : null;
+              })()}
+              {card.checklist && card.checklist.total > 0 && (
+                <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
+                  {card.checklist.checked}/{card.checklist.total}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="card-footer-right">
-            {card.due_date && (() => {
-              const badge = getDueBadge(card.due_date);
-              return badge ? <span className={badge.className}>{badge.label}</span> : null;
-            })()}
-            {card.checklist && card.checklist.total > 0 && (
-              <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
-                {card.checklist.checked}/{card.checklist.total}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
