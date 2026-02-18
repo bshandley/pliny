@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField } from './types';
 
 const API_URL = '/api';
 
@@ -254,6 +254,36 @@ class ApiClient {
   async deleteChecklistItem(id: string): Promise<void> {
     return this.fetch(`/checklist/${id}`, { method: 'DELETE' });
   }
+  // Custom Fields
+  async getCustomFields(boardId: string): Promise<CustomField[]> {
+    return this.fetch(`/boards/${boardId}/custom-fields`);
+  }
+
+  async createCustomField(boardId: string, data: { name: string; field_type: string; options?: string[]; show_on_card?: boolean }): Promise<CustomField> {
+    return this.fetch(`/boards/${boardId}/custom-fields`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCustomField(fieldId: string, data: Partial<{ name: string; options: string[]; position: number; show_on_card: boolean }>): Promise<CustomField> {
+    return this.fetch(`/custom-fields/${fieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCustomField(fieldId: string): Promise<void> {
+    return this.fetch(`/custom-fields/${fieldId}`, { method: 'DELETE' });
+  }
+
+  async setCardCustomFields(cardId: string, values: Record<string, string | null>): Promise<void> {
+    return this.fetch(`/cards/${cardId}/custom-fields`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+  }
+
   // Card Members
   async getCardMembers(cardId: string): Promise<CardMember[]> {
     return this.fetch(`/cards/${cardId}/members`);

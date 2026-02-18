@@ -17,6 +17,7 @@ export interface Board {
   created_at: string;
   updated_at: string;
   columns?: Column[];
+  custom_fields?: CustomField[];
 }
 
 export interface BoardMember {
@@ -88,6 +89,22 @@ export interface Notification {
   created_at: string;
 }
 
+export interface CustomField {
+  id: string;
+  board_id: string;
+  name: string;
+  field_type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox';
+  options: string[] | null;
+  position: number;
+  show_on_card: boolean;
+}
+
+export interface CustomFieldValue {
+  value: string;
+  field_type: string;
+  name: string;
+}
+
 export interface Card {
   id: string;
   column_id: string;
@@ -100,6 +117,7 @@ export interface Card {
   archived?: boolean;
   checklist?: { total: number; checked: number } | null;
   members?: CardMember[];
+  custom_field_values?: Record<string, CustomFieldValue>;
   position: number;
   created_at: string;
   updated_at: string;
