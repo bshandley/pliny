@@ -93,16 +93,28 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
-    // Fetch checklist counts for all cards
+    // Fetch checklist counts for all cards (including overdue count)
     const checklistResult = await pool.query(
       `SELECT ci.card_id,
               COUNT(*)::int as total,
-              COUNT(*) FILTER (WHERE ci.checked)::int as checked
+              COUNT(*) FILTER (WHERE ci.checked)::int as checked,
+              COUNT(*) FILTER (WHERE ci.due_date < CURRENT_DATE AND ci.checked = false)::int as overdue
        FROM card_checklist_items ci
        INNER JOIN cards c ON ci.card_id = c.id
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1
        GROUP BY ci.card_id`,
+      [id]
+    );
+
+    // Fetch checklist items with due dates (for calendar subtask chips)
+    const datedChecklistResult = await pool.query(
+      `SELECT ci.id, ci.card_id, ci.text, ci.checked, ci.due_date, ci.assignee_name, ci.priority
+       FROM card_checklist_items ci
+       INNER JOIN cards c ON ci.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1 AND ci.due_date IS NOT NULL
+       ORDER BY ci.due_date, ci.position`,
       [id]
     );
 
@@ -160,9 +172,16 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     });
 
     // Group checklist counts by card_id
-    const checklistByCard: Record<string, { total: number; checked: number }> = {};
+    const checklistByCard: Record<string, { total: number; checked: number; overdue: number }> = {};
     checklistResult.rows.forEach(row => {
-      checklistByCard[row.card_id] = { total: row.total, checked: row.checked };
+      checklistByCard[row.card_id] = { total: row.total, checked: row.checked, overdue: row.overdue };
+    });
+
+    // Group dated checklist items by card_id
+    const datedChecklistByCard: Record<string, any[]> = {};
+    datedChecklistResult.rows.forEach((row: any) => {
+      if (!datedChecklistByCard[row.card_id]) datedChecklistByCard[row.card_id] = [];
+      datedChecklistByCard[row.card_id].push(row);
     });
 
     // Group custom field values by card_id
@@ -184,7 +203,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       labels: labelsByCard[card.id] || [],
       checklist: checklistByCard[card.id] || null,
       members: membersByCard[card.id] || [],
-      custom_field_values: customFieldValuesByCard[card.id] || {}
+      custom_field_values: customFieldValuesByCard[card.id] || {},
+      dated_checklist_items: datedChecklistByCard[card.id] || [],
     }));
 
     res.json({

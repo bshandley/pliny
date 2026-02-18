@@ -135,6 +135,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [loadingChecklist, setLoadingChecklist] = useState(false);
   const [showChecklist, setShowChecklist] = useState(!!(card.checklist && card.checklist.total > 0));
   const [showComments, setShowComments] = useState(false);
+  const [assigneeDropdownItemId, setAssigneeDropdownItemId] = useState<string | null>(null);
 
   // Comment @mention state
   const [commentMentionActive, setCommentMentionActive] = useState(false);
@@ -421,6 +422,42 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     }
   };
 
+  const handleChecklistItemUpdate = async (itemId: string, updates: Partial<ChecklistItem>) => {
+    try {
+      const updated = await api.updateChecklistItem(itemId, updates);
+      setChecklistItems(checklistItems.map(i => i.id === itemId ? updated : i));
+    } catch (err) {
+      console.error('Failed to update checklist item:', err);
+    }
+  };
+
+  const cyclePriority = (item: ChecklistItem) => {
+    const cycle: (string | null)[] = [null, 'low', 'medium', 'high'];
+    const currentIdx = cycle.indexOf(item.priority || null);
+    const next = cycle[(currentIdx + 1) % cycle.length];
+    handleChecklistItemUpdate(item.id, { priority: next } as any);
+  };
+
+  const openChecklistDatePicker = (itemId: string, currentDate?: string | null) => {
+    const input = document.createElement('input');
+    input.type = 'date';
+    if (currentDate) input.value = currentDate;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', () => {
+      handleChecklistItemUpdate(itemId, { due_date: input.value || null } as any);
+      if (document.body.contains(input)) document.body.removeChild(input);
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.body.contains(input)) document.body.removeChild(input);
+      }, 200);
+    });
+    input.showPicker();
+  };
+
   const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setNewComment(value);
@@ -685,10 +722,51 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           ) : (
             <>
               {checklistItems.map(item => (
-                <div key={item.id} className="checklist-item">
-                  <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
-                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
-                  <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                <div key={item.id} className="checklist-item-group">
+                  <div className="checklist-item">
+                    <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
+                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                    <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                  </div>
+                  <div className="checklist-meta-row">
+                    <div className="checklist-meta-assignee-wrapper">
+                      <button
+                        type="button"
+                        className={`checklist-meta-chip${item.assignee_name ? '' : ' placeholder'}`}
+                        onClick={() => setAssigneeDropdownItemId(assigneeDropdownItemId === item.id ? null : item.id)}
+                      >
+                        {item.assignee_name || 'Assign'}
+                      </button>
+                      {assigneeDropdownItemId === item.id && (
+                        <div className="checklist-assignee-dropdown">
+                          <button type="button" className="checklist-assignee-option" onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: null } as any); setAssigneeDropdownItemId(null); }}>
+                            Unassign
+                          </button>
+                          {(assignees || []).map(a => (
+                            <button type="button" key={a.id} className={`checklist-assignee-option${item.assignee_name === a.name ? ' selected' : ''}`} onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: a.name } as any); setAssigneeDropdownItemId(null); }}>
+                              {a.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={`checklist-meta-chip${item.due_date && new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}${!item.due_date ? ' placeholder' : ''}`}
+                      onClick={() => openChecklistDatePicker(item.id, item.due_date)}
+                    >
+                      {item.due_date
+                        ? new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : 'Date'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`checklist-meta-chip priority-${item.priority || 'none'}`}
+                      onClick={() => cyclePriority(item)}
+                    >
+                      {item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : 'Priority'}
+                    </button>
+                  </div>
                 </div>
               ))}
               <div className="checklist-add">
@@ -911,9 +989,22 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
             <>
               {checklistItems.length === 0 && <p className="empty-comments">No checklist items.</p>}
               {checklistItems.map(item => (
-                <div key={item.id} className="checklist-item">
-                  <input type="checkbox" checked={item.checked} disabled />
-                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                <div key={item.id} className="checklist-item-group">
+                  <div className="checklist-item">
+                    <input type="checkbox" checked={item.checked} disabled />
+                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                  </div>
+                  {(item.assignee_name || item.due_date || item.priority) && (
+                    <div className="checklist-meta-row read-only">
+                      {item.assignee_name && <span className="checklist-meta-chip">{item.assignee_name}</span>}
+                      {item.due_date && (
+                        <span className={`checklist-meta-chip${new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}`}>
+                          {new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                      {item.priority && <span className={`checklist-meta-chip priority-${item.priority}`}>{item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}</span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -1224,6 +1315,11 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
               {card.checklist && card.checklist.total > 0 && (
                 <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
                   {card.checklist.checked}/{card.checklist.total}
+                </span>
+              )}
+              {card.checklist && card.checklist.overdue && card.checklist.overdue > 0 && (
+                <span className="checklist-overdue-badge">
+                  {card.checklist.overdue} overdue
                 </span>
               )}
             </div>

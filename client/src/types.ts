@@ -58,6 +58,9 @@ export interface ChecklistItem {
   text: string;
   checked: boolean;
   position: number;
+  assignee_name?: string | null;
+  due_date?: string | null;
+  priority?: 'low' | 'medium' | 'high' | null;
 }
 
 export interface CardMember {
@@ -116,7 +119,8 @@ export interface Card {
   due_date?: string | null;
   start_date?: string | null;
   archived?: boolean;
-  checklist?: { total: number; checked: number } | null;
+  checklist?: { total: number; checked: number; overdue?: number } | null;
+  dated_checklist_items?: ChecklistItem[];
   members?: CardMember[];
   custom_field_values?: Record<string, CustomFieldValue>;
   position: number;

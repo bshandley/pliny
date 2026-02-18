@@ -24,12 +24,15 @@ router.get('/cards/:cardId/checklist', authenticate, async (req: AuthRequest, re
 router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
-    const { text } = req.body;
+    const { text, assignee_name, due_date, priority } = req.body;
     if (!text?.trim()) {
       return res.status(400).json({ error: 'Item text is required' });
     }
     if (text.length > 500) {
       return res.status(400).json({ error: 'Checklist item text must be 500 characters or fewer' });
+    }
+    if (priority && !['low', 'medium', 'high'].includes(priority)) {
+      return res.status(400).json({ error: 'Priority must be low, medium, or high' });
     }
     // Get next position
     const posResult = await pool.query(
@@ -38,8 +41,8 @@ router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: 
     );
     const position = posResult.rows[0].next_pos;
     const result = await pool.query(
-      'INSERT INTO card_checklist_items (card_id, text, position) VALUES ($1, $2, $3) RETURNING *',
-      [cardId, text.trim(), position]
+      'INSERT INTO card_checklist_items (card_id, text, position, assignee_name, due_date, priority) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [cardId, text.trim(), position, assignee_name || null, due_date || null, priority || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -52,7 +55,7 @@ router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: 
 router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { checked, text } = req.body;
+    const { checked, text, assignee_name, due_date, priority } = req.body;
 
     const updates: string[] = [];
     const values: any[] = [];
@@ -68,6 +71,21 @@ router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest
       }
       updates.push(`text = $${paramCount++}`);
       values.push(text);
+    }
+    if (assignee_name !== undefined) {
+      updates.push(`assignee_name = $${paramCount++}`);
+      values.push(assignee_name || null);
+    }
+    if (due_date !== undefined) {
+      updates.push(`due_date = $${paramCount++}`);
+      values.push(due_date || null);
+    }
+    if (priority !== undefined) {
+      if (priority && !['low', 'medium', 'high'].includes(priority)) {
+        return res.status(400).json({ error: 'Priority must be low, medium, or high' });
+      }
+      updates.push(`priority = $${paramCount++}`);
+      values.push(priority || null);
     }
 
     if (updates.length === 0) {

@@ -95,6 +95,13 @@ async function runMigrations() {
     );
     await pool.query(cardStartDate);
 
+    // Advanced checklists
+    const advancedChecklists = fs.readFileSync(
+      path.join(__dirname, '014-advanced-checklists.sql'),
+      'utf-8'
+    );
+    await pool.query(advancedChecklists);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

@@ -231,6 +231,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     if (filterDue === 'none') {
       if (card.due_date) return false;
     }
+    if (filterDue === 'overdue-subtasks') {
+      if (!card.checklist?.overdue || card.checklist.overdue === 0) return false;
+    }
     // Custom field filters
     for (const [fieldId, filterValue] of Object.entries(customFieldFilters)) {
       if (!filterValue) continue;
@@ -674,6 +677,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <option value="overdue">Overdue</option>
           <option value="soon">Due soon</option>
           <option value="none">No date</option>
+          <option value="overdue-subtasks">Overdue subtasks</option>
         </select>
         {board?.custom_fields?.map(field => {
           if (field.field_type === 'dropdown') {

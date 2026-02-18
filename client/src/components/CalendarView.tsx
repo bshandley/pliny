@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
-import { Board, Card } from '../types';
+import { Board, Card, ChecklistItem } from '../types';
 import MiniCalStrip from './MiniCalStrip';
 import MobileAgendaView, { formatDateKey as agendaFormatDateKey, MobileAgendaHandle } from './MobileAgendaView';
 
@@ -178,6 +178,7 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
   const [viewType, setViewType] = useState<'month' | 'week'>('month');
   const [activeDate, setActiveDate] = useState<Date>(() => new Date());
   const [unscheduledExpanded, setUnscheduledExpanded] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(false);
   const agendaRef = useRef<MobileAgendaHandle>(null);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -238,6 +239,23 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
     });
     return results;
   }, [board, filterCard]);
+
+  // Collect subtask chips by date (from dated_checklist_items on cards)
+  const subtasksByDate = useMemo(() => {
+    if (!showSubtasks) return {} as Record<string, { item: ChecklistItem; cardTitle: string; cardId: string }[]>;
+    const byDate: Record<string, { item: ChecklistItem; cardTitle: string; cardId: string }[]> = {};
+    board.columns?.forEach(col => {
+      col.cards?.filter(c => !c.archived && filterCard(c)).forEach(card => {
+        card.dated_checklist_items?.forEach(item => {
+          if (!item.due_date) return;
+          const key = item.due_date.split('T')[0];
+          if (!byDate[key]) byDate[key] = [];
+          byDate[key].push({ item, cardTitle: card.title, cardId: card.id });
+        });
+      });
+    });
+    return byDate;
+  }, [board, showSubtasks, filterCard]);
 
   const handleMiniCalSelect = (date: Date) => {
     setActiveDate(date);
@@ -302,6 +320,16 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                     {cards.length > maxVisible && (
                       <span className="calendar-more-btn">+{cards.length - maxVisible} more</span>
                     )}
+                    {showSubtasks && subtasksByDate[dateKey]?.map(({ item, cardId }) => (
+                      <div
+                        key={item.id}
+                        className={`calendar-subtask-chip${item.checked ? ' checked' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onOpenInBoard(cardId); }}
+                      >
+                        <span className="subtask-check">{item.checked ? '\u2611' : '\u2610'}</span>
+                        <span className="chip-title">{item.text}</span>
+                      </div>
+                    ))}
                     {provided.placeholder}
                   </div>
                 </div>
@@ -355,6 +383,16 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                           </div>
                         )}
                       </Draggable>
+                    ))}
+                    {showSubtasks && subtasksByDate[dateKey]?.map(({ item, cardId }) => (
+                      <div
+                        key={item.id}
+                        className={`calendar-subtask-chip${item.checked ? ' checked' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onOpenInBoard(cardId); }}
+                      >
+                        <span className="subtask-check">{item.checked ? '\u2611' : '\u2610'}</span>
+                        <span className="chip-title">{item.text}</span>
+                      </div>
                     ))}
                     {provided.placeholder}
                   </div>
@@ -411,6 +449,10 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                 <button className={`btn-sm${viewType === 'week' ? ' btn-primary' : ' btn-secondary'}`} onClick={() => setViewType('week')}>Week</button>
               </div>
               <button className="btn-secondary btn-sm" onClick={handleToday}>Today</button>
+              <label className="calendar-subtask-toggle">
+                <input type="checkbox" checked={showSubtasks} onChange={e => setShowSubtasks(e.target.checked)} />
+                Subtasks
+              </label>
             </div>
           </div>
           <Droppable droppableId="unscheduled" type="CALENDAR" direction={unscheduledExpanded ? undefined : 'horizontal'}>
