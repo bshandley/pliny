@@ -57,11 +57,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [filterAssignee, setFilterAssignee] = useState('');
   const [filterLabel, setFilterLabel] = useState('');
   const [filterDue, setFilterDue] = useState('');
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
   const isAdmin = userRole === 'ADMIN';
-  const hasFilters = filterText || filterAssignee || filterLabel || filterDue;
+  const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
+  const hasFilters = filterText || filterAssignee || filterLabel || filterDue || hasCustomFieldFilters;
 
   // On mobile, push a history entry when a card is opened so the browser
   // back button/gesture closes the card instead of leaving the board.
@@ -223,6 +225,18 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
     if (filterDue === 'none') {
       if (card.due_date) return false;
+    }
+    // Custom field filters
+    for (const [fieldId, filterValue] of Object.entries(customFieldFilters)) {
+      if (!filterValue) continue;
+      const cardValue = card.custom_field_values?.[fieldId]?.value;
+      const field = board?.custom_fields?.find(f => f.id === fieldId);
+      if (!field) continue;
+      if (field.field_type === 'text') {
+        if (!cardValue || !cardValue.toLowerCase().includes(filterValue.toLowerCase())) return false;
+      } else {
+        if (!cardValue || cardValue !== filterValue) return false;
+      }
     }
     return true;
   };
@@ -629,8 +643,52 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <option value="soon">Due soon</option>
           <option value="none">No date</option>
         </select>
+        {board?.custom_fields?.map(field => {
+          if (field.field_type === 'dropdown') {
+            return (
+              <select
+                key={field.id}
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                className="filter-select"
+              >
+                <option value="">All {field.name}</option>
+                {field.options?.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            );
+          }
+          if (field.field_type === 'checkbox') {
+            return (
+              <select
+                key={field.id}
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                className="filter-select"
+              >
+                <option value="">{field.name}</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            );
+          }
+          if (field.field_type === 'text') {
+            return (
+              <input
+                key={field.id}
+                type="text"
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                placeholder={field.name}
+                className="filter-input filter-input-sm"
+              />
+            );
+          }
+          return null;
+        })}
         {hasFilters && (
-          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); }} className="btn-secondary btn-sm">
+          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); setCustomFieldFilters({}); }} className="btn-secondary btn-sm">
             Clear
           </button>
         )}

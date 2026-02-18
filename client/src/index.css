@@ -4871,3 +4871,7 @@ button:disabled {
   text-overflow: ellipsis;
   max-width: 100px;
 }
+
+.filter-input-sm {
+  max-width: 120px;
+}
