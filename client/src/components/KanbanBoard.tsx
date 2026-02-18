@@ -751,6 +751,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             isAdmin={isAdmin}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => setEditingCardId(cardId)}
+            boardMembers={boardMembers}
+            assignees={assignees}
           />
         ) : viewMode === 'timeline' ? (
           <TimelineView
@@ -895,6 +897,32 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           </Droppable>
         )}
       </DragDropContext>
+
+      {editingCardId && viewMode !== 'board' && (() => {
+        const editCard = board.columns?.flatMap(c => c.cards || []).find(c => c.id === editingCardId);
+        if (!editCard) return null;
+        return (
+          <KanbanCard
+            card={editCard}
+            userRole={userRole}
+            isEditing={true}
+            onEditStart={() => {}}
+            onEditEnd={closeCard}
+            onDelete={() => handleDeleteCard(editCard.id)}
+            onArchive={() => handleArchiveCard(editCard.id)}
+            onUpdate={(updates) => handleUpdateCard(editCard.id, updates)}
+            assignees={assignees}
+            boardLabels={boardLabels}
+            boardId={boardId}
+            onAddAssignee={handleAddAssignee}
+            isMobile={true}
+            columns={board?.columns}
+            onMoveToColumn={handleMoveToColumn}
+            boardMembers={boardMembers}
+            customFields={board?.custom_fields}
+          />
+        );
+      })()}
 
       {showNewColumn && (
         <div className="modal-overlay modal-overlay-centered" onClick={() => setShowNewColumn(false)}>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Board, Card, Column, Label } from '../types';
+import { Board, Card, Column, Label, BoardMember } from '../types';
 import TableCell from './TableCell';
 
 interface TableViewProps {
@@ -8,6 +8,8 @@ interface TableViewProps {
   isAdmin: boolean;
   onCardUpdate: () => void;
   onCardClick: (cardId: string) => void;
+  boardMembers: BoardMember[];
+  assignees: { id: string; name: string }[];
 }
 
 type SortDir = 'asc' | 'desc';
@@ -34,7 +36,7 @@ interface GroupData {
   cards: { card: Card; column: Column }[];
 }
 
-export default function TableView({ board, filterCard, isAdmin, onCardUpdate, onCardClick }: TableViewProps) {
+export default function TableView({ board, filterCard, isAdmin, onCardUpdate, onCardClick, boardMembers, assignees }: TableViewProps) {
   const storageKey = `table-columns-${board.id}`;
   const [columns, setColumns] = useState<ColumnDef[]>(() => {
     const saved = localStorage.getItem(storageKey);
@@ -258,6 +260,8 @@ export default function TableView({ board, filterCard, isAdmin, onCardUpdate, on
                 onCardUpdate={onCardUpdate}
                 onCardClick={onCardClick}
                 showGroupHeader={groupBy !== 'none'}
+                boardMembers={boardMembers}
+                assignees={assignees}
               />
             ))}
           </tbody>
@@ -278,6 +282,8 @@ function GroupRows({
   onCardUpdate,
   onCardClick,
   showGroupHeader,
+  boardMembers,
+  assignees,
 }: {
   group: GroupData;
   visibleColumns: ColumnDef[];
@@ -289,6 +295,8 @@ function GroupRows({
   onCardUpdate: () => void;
   onCardClick: (cardId: string) => void;
   showGroupHeader: boolean;
+  boardMembers: BoardMember[];
+  assignees: { id: string; name: string }[];
 }) {
   return (
     <>
@@ -314,6 +322,8 @@ function GroupRows({
               boardLabels={boardLabels}
               onUpdate={onCardUpdate}
               onCardClick={onCardClick}
+              boardMembers={boardMembers}
+              assignees={assignees}
             />
           ))}
         </tr>

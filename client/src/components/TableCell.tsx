@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, Column, Label } from '../types';
+import { Card, Column, Label, BoardMember } from '../types';
 import { api } from '../api';
 
 interface TableCellProps {
@@ -11,16 +11,18 @@ interface TableCellProps {
   boardLabels: Label[];
   onUpdate: () => void;
   onCardClick: (cardId: string) => void;
+  boardMembers: BoardMember[];
+  assignees: { id: string; name: string }[];
 }
 
-export default function TableCell({ card, column, field, isAdmin, boardColumns, boardLabels, onUpdate, onCardClick }: TableCellProps) {
+export default function TableCell({ card, column, field, isAdmin, boardColumns, boardLabels, onUpdate, onCardClick, boardMembers, assignees }: TableCellProps) {
   switch (field) {
     case 'title':
       return <TitleCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} onCardClick={onCardClick} />;
     case 'status':
       return <StatusCell card={card} column={column} isAdmin={isAdmin} boardColumns={boardColumns} onUpdate={onUpdate} />;
     case 'assignees':
-      return <AssigneesCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} />;
+      return <AssigneesCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} boardMembers={boardMembers} assignees={assignees} />;
     case 'due_date':
       return <DueDateCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} />;
     case 'labels':
@@ -132,50 +134,112 @@ function StatusCell({ card, column, isAdmin, boardColumns, onUpdate }: {
   );
 }
 
-function AssigneesCell({ card, isAdmin, onUpdate }: {
+function AssigneesCell({ card, isAdmin, onUpdate, boardMembers, assignees }: {
   card: Card; isAdmin: boolean; onUpdate: () => void;
+  boardMembers: BoardMember[]; assignees: { id: string; name: string }[];
 }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState((card.assignees || []).join(', '));
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filter, setFilter] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setValue((card.assignees || []).join(', ')); }, [card.assignees]);
-  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
-
-  const handleSave = async () => {
-    const newAssignees = value.split(',').map(s => s.trim()).filter(Boolean);
-    const oldAssignees = card.assignees || [];
-    const changed = newAssignees.length !== oldAssignees.length || newAssignees.some((a, i) => a !== oldAssignees[i]);
-    if (changed) {
-      try {
-        await api.updateCard(card.id, { assignees: newAssignees } as any);
-        onUpdate();
-      } catch {
-        setValue((card.assignees || []).join(', '));
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+        setFilter('');
       }
-    }
-    setEditing(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (showDropdown) filterRef.current?.focus();
+  }, [showDropdown]);
+
+  const currentMemberIds = new Set(card.members?.map(m => m.id) || []);
+  const currentAssigneeNames = new Set(card.assignees || []);
+
+  const toggleMember = async (memberId: string) => {
+    const memberIds = card.members?.map(m => m.id) || [];
+    const newMemberIds = currentMemberIds.has(memberId)
+      ? memberIds.filter(id => id !== memberId)
+      : [...memberIds, memberId];
+    try {
+      await api.setCardMembers(card.id, newMemberIds);
+      onUpdate();
+    } catch { /* revert handled by board reload */ }
   };
 
-  if (editing) {
-    return (
-      <td className="table-cell editing">
-        <input
-          ref={inputRef}
-          className="table-cell-input"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') { setValue((card.assignees || []).join(', ')); setEditing(false); } }}
-          placeholder="Name1, Name2..."
-        />
-      </td>
-    );
-  }
+  const toggleAssignee = async (name: string) => {
+    const current = card.assignees || [];
+    const newAssignees = currentAssigneeNames.has(name)
+      ? current.filter(a => a !== name)
+      : [...current, name];
+    try {
+      await api.updateCard(card.id, { assignees: newAssignees } as any);
+      onUpdate();
+    } catch { /* revert handled by board reload */ }
+  };
+
+  const lowerFilter = filter.toLowerCase();
+  const memberUsernames = new Set(boardMembers.map(m => m.username));
+  const filteredMembers = boardMembers.filter(m =>
+    m.username.toLowerCase().includes(lowerFilter)
+  );
+  const filteredAssignees = assignees.filter(a =>
+    a.name.toLowerCase().includes(lowerFilter) && !memberUsernames.has(a.name)
+  );
+
+  const displayNames = [
+    ...(card.members?.map(m => m.username) || []),
+    ...(card.assignees || [])
+  ].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <td className={`table-cell${isAdmin ? ' editable' : ''}`} onClick={() => isAdmin && setEditing(true)}>
-      {card.assignees?.length ? card.assignees.join(', ') : <span className="table-empty-cell">—</span>}
+    <td className={`table-cell${isAdmin ? ' editable' : ''}`}>
+      <div className="table-assignee-editor" ref={wrapperRef} onClick={() => isAdmin && !showDropdown && setShowDropdown(true)}>
+        {displayNames.length ? displayNames.join(', ') : <span className="table-empty-cell">—</span>}
+        {showDropdown && (
+          <div className="table-assignee-dropdown" onClick={e => e.stopPropagation()}>
+            <input
+              ref={filterRef}
+              className="table-assignee-filter"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              placeholder="Filter members..."
+              onKeyDown={e => { if (e.key === 'Escape') { setShowDropdown(false); setFilter(''); } }}
+            />
+            {filteredMembers.length > 0 && (
+              <>
+                <div className="table-assignee-group-header">Members</div>
+                {filteredMembers.map(member => (
+                  <button key={member.id} className="table-assignee-option" onClick={() => toggleMember(member.id)}>
+                    {member.username}
+                    {currentMemberIds.has(member.id) && <span className="table-assignee-check">✓</span>}
+                  </button>
+                ))}
+              </>
+            )}
+            {filteredAssignees.length > 0 && (
+              <>
+                <div className="table-assignee-group-header">Assignees</div>
+                {filteredAssignees.map(assignee => (
+                  <button key={assignee.id} className="table-assignee-option" onClick={() => toggleAssignee(assignee.name)}>
+                    {assignee.name}
+                    {currentAssigneeNames.has(assignee.name) && <span className="table-assignee-check">✓</span>}
+                  </button>
+                ))}
+              </>
+            )}
+            {filteredMembers.length === 0 && filteredAssignees.length === 0 && (
+              <div className="table-assignee-empty">No matches</div>
+            )}
+          </div>
+        )}
+      </div>
     </td>
   );
 }

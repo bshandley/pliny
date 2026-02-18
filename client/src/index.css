@@ -3566,6 +3566,76 @@ button:disabled {
   flex-shrink: 0;
 }
 
+.table-assignee-editor {
+  position: relative;
+}
+
+.table-assignee-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.25rem 0;
+  min-width: 180px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.table-assignee-filter {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.table-assignee-group-header {
+  padding: 0.3rem 0.5rem 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.table-assignee-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+  color: var(--text);
+}
+
+.table-assignee-option:hover {
+  background: var(--bg-raised);
+}
+
+.table-assignee-check {
+  margin-left: auto;
+  color: var(--primary);
+}
+
+.table-assignee-empty {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+  font-style: italic;
+}
+
 .table-empty-cell {
   color: var(--text-secondary);
   font-size: 0.75rem;
