@@ -18,6 +18,7 @@ import notificationRoutes from './routes/notifications';
 import settingsRoutes from './routes/settings';
 import totpRoutes from './routes/totp';
 import oidcRoutes from './routes/oidc';
+import customFieldRoutes from './routes/customFields';
 import cookieParser from 'cookie-parser';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -52,6 +53,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/settings/totp', totpRoutes);
 app.use('/api/auth/oidc', oidcRoutes);
+app.use('/api', customFieldRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
