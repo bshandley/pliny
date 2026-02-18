@@ -14,13 +14,14 @@ import CalendarView from './CalendarView';
 import TableView from './TableView';
 import TimelineView from './TimelineView';
 import CustomFieldManager from './CustomFieldManager';
+import DashboardView from './DashboardView';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
-  viewMode: 'board' | 'calendar' | 'table' | 'timeline';
-  onViewChange: (mode: 'board' | 'calendar' | 'table' | 'timeline') => void;
+  viewMode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard';
+  onViewChange: (mode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard') => void;
   initialCardId?: string | null;
   onCardOpened?: () => void;
 }
@@ -50,6 +51,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [renameColumnValue, setRenameColumnValue] = useState('');
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
   const [unscheduledOrder, setUnscheduledOrder] = useState<string[] | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   const newCardFormRef = useRef<HTMLFormElement>(null);
@@ -107,6 +109,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       loadAssignees();
       loadLabels();
       loadBoardMembers();
+      setRefreshKey(k => k + 1);
     });
     setSocket(newSocket);
     return () => {
@@ -555,6 +558,15 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               <path d="M4 6h16M4 12h10M4 18h14"/>
             </svg>
           </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'dashboard' ? ' active' : ''}`}
+            onClick={() => onViewChange('dashboard')}
+            title="Dashboard"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+          </button>
         </div>
         <button
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
@@ -744,6 +756,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             isMobile={isMobile}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => { handleOpenInBoard(cardId); }}
+          />
+        ) : viewMode === 'dashboard' ? (
+          <DashboardView
+            boardId={boardId}
+            refreshKey={refreshKey}
           />
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>

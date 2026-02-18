@@ -296,6 +296,11 @@ class ApiClient {
     });
   }
 
+  // Analytics
+  async getBoardAnalytics(boardId: string, days: number = 30): Promise<any> {
+    return this.fetch(`/boards/${boardId}/analytics?days=${days}`);
+  }
+
   // Activity
   async getCardActivity(cardId: string): Promise<ActivityEntry[]> {
     return this.fetch(`/cards/${cardId}/activity`);
