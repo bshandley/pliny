@@ -81,6 +81,13 @@ async function runMigrations() {
     );
     await pool.query(oidcCallbackUrl);
 
+    // Custom fields
+    const customFields = fs.readFileSync(
+      path.join(__dirname, '012-custom-fields.sql'),
+      'utf-8'
+    );
+    await pool.query(customFields);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {
