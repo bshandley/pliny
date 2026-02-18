@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 
+interface DashboardFilter {
+  assignee?: string;
+  label?: string;
+  due?: string;
+  column?: string;
+}
+
 interface DashboardViewProps {
   boardId: string;
   refreshKey: number;
+  onFilterNavigate?: (filters: DashboardFilter) => void;
 }
 
 interface Analytics {
@@ -34,7 +42,7 @@ function aggregateWeekly(data: { date: string; created: number; completed: numbe
   return weeks;
 }
 
-function BarChart({ title, data }: { title: string; data: { label: string; value: number; color?: string }[] }) {
+function BarChart({ title, data, onBarClick }: { title: string; data: { label: string; value: number; color?: string; key?: string }[]; onBarClick?: (key: string) => void }) {
   const max = Math.max(...data.map(d => d.value), 1);
 
   return (
@@ -42,7 +50,11 @@ function BarChart({ title, data }: { title: string; data: { label: string; value
       <h3 className="chart-title">{title}</h3>
       <div className="chart-bars">
         {data.map((item, i) => (
-          <div key={i} className="chart-bar-row">
+          <div
+            key={i}
+            className={`chart-bar-row${onBarClick ? ' chart-bar-clickable' : ''}`}
+            onClick={() => onBarClick?.(item.key || item.label)}
+          >
             <span className="chart-bar-label" title={item.label}>{item.label}</span>
             <div className="chart-bar-track">
               <div
@@ -93,7 +105,7 @@ function OverTimeChart({ title, data }: { title: string; data: { date: string; c
   );
 }
 
-export default function DashboardView({ boardId, refreshKey }: DashboardViewProps) {
+export default function DashboardView({ boardId, refreshKey, onFilterNavigate }: DashboardViewProps) {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,15 +140,24 @@ export default function DashboardView({ boardId, refreshKey }: DashboardViewProp
       ) : data ? (
         <>
           <div className="stat-cards">
-            <div className="stat-card">
+            <div
+              className={`stat-card${onFilterNavigate ? ' stat-card-clickable' : ''}`}
+              onClick={() => onFilterNavigate?.({})}
+            >
               <div className="stat-number">{data.summary.total_cards}</div>
               <div className="stat-label">Total Cards</div>
             </div>
-            <div className="stat-card stat-card-success">
+            <div
+              className={`stat-card stat-card-success${onFilterNavigate ? ' stat-card-clickable' : ''}`}
+              onClick={() => onFilterNavigate?.({})}
+            >
               <div className="stat-number">{data.summary.completed_cards}</div>
               <div className="stat-label">Completed</div>
             </div>
-            <div className={`stat-card${data.summary.overdue_cards > 0 ? ' stat-card-danger' : ''}`}>
+            <div
+              className={`stat-card${data.summary.overdue_cards > 0 ? ' stat-card-danger' : ''}${onFilterNavigate ? ' stat-card-clickable' : ''}`}
+              onClick={() => onFilterNavigate?.({ due: 'overdue' })}
+            >
               <div className="stat-number">{data.summary.overdue_cards}</div>
               <div className="stat-label">Overdue</div>
             </div>
@@ -147,14 +168,26 @@ export default function DashboardView({ boardId, refreshKey }: DashboardViewProp
           </div>
 
           <div className="chart-row">
-            <BarChart title="Cards by Status" data={data.cards_by_column.map(c => ({ label: c.column_name, value: c.count }))} />
-            <BarChart title="Cards by Assignee" data={data.cards_by_assignee.map(a => ({ label: a.assignee, value: a.total }))} />
+            <BarChart
+              title="Cards by Status"
+              data={data.cards_by_column.map(c => ({ label: c.column_name, value: c.count, key: c.column_id }))}
+              onBarClick={onFilterNavigate ? (key) => onFilterNavigate({ column: key }) : undefined}
+            />
+            <BarChart
+              title="Cards by Assignee"
+              data={data.cards_by_assignee.map(a => ({ label: a.assignee, value: a.total }))}
+              onBarClick={onFilterNavigate ? (key) => onFilterNavigate({ assignee: key }) : undefined}
+            />
           </div>
 
           <div className="chart-row">
             <OverTimeChart title="Created vs Completed" data={data.cards_over_time} />
             <div className="chart-stack">
-              <BarChart title="Cards by Label" data={data.cards_by_label.map(l => ({ label: l.label_name, value: l.count, color: l.label_color }))} />
+              <BarChart
+                title="Cards by Label"
+                data={data.cards_by_label.map(l => ({ label: l.label_name, value: l.count, color: l.label_color, key: l.label_id }))}
+                onBarClick={onFilterNavigate ? (key) => onFilterNavigate({ label: key }) : undefined}
+              />
               <BarChart title="Cycle Time Distribution" data={data.cycle_time_distribution.map(c => ({ label: c.range, value: c.count }))} />
             </div>
           </div>

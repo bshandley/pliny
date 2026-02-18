@@ -61,13 +61,14 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [filterAssignee, setFilterAssignee] = useState('');
   const [filterLabel, setFilterLabel] = useState('');
   const [filterDue, setFilterDue] = useState('');
+  const [filterColumn, setFilterColumn] = useState('');
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
   const isAdmin = userRole === 'ADMIN';
   const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
-  const hasFilters = filterText || filterAssignee || filterLabel || filterDue || hasCustomFieldFilters;
+  const hasFilters = filterText || filterAssignee || filterLabel || filterDue || filterColumn || hasCustomFieldFilters;
 
   // On mobile, push a history entry when a card is opened so the browser
   // back button/gesture closes the card instead of leaving the board.
@@ -212,6 +213,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const filterCard = (card: Card): boolean => {
     if (!showArchived && card.archived) return false;
     if (showArchived && !card.archived) return false;
+    if (filterColumn && card.column_id !== filterColumn) return false;
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
     if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
     if (filterLabel && (!card.labels || !card.labels.some(l => l.id === filterLabel))) return false;
@@ -518,6 +520,16 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
+  const handleDashboardFilterNavigate = (filters: { assignee?: string; label?: string; due?: string; column?: string }) => {
+    setFilterText('');
+    setFilterAssignee(filters.assignee || '');
+    setFilterLabel(filters.label || '');
+    setFilterDue(filters.due || '');
+    setFilterColumn(filters.column || '');
+    setCustomFieldFilters({});
+    onViewChange('board');
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!board) return <div>Board not found</div>;
 
@@ -679,6 +691,12 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <option value="none">No date</option>
           <option value="overdue-subtasks">Overdue subtasks</option>
         </select>
+        {board?.columns && board.columns.length > 0 && (
+          <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)} className="filter-select">
+            <option value="">All lists</option>
+            {board.columns.map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+          </select>
+        )}
         {board?.custom_fields?.map(field => {
           if (field.field_type === 'dropdown') {
             return (
@@ -724,7 +742,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           return null;
         })}
         {hasFilters && (
-          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); setCustomFieldFilters({}); }} className="btn-secondary btn-sm">
+          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); setFilterColumn(''); setCustomFieldFilters({}); }} className="btn-secondary btn-sm">
             Clear
           </button>
         )}
@@ -765,12 +783,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <DashboardView
             boardId={boardId}
             refreshKey={refreshKey}
+            onFilterNavigate={handleDashboardFilterNavigate}
           />
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
             {(provided) => (
               <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
-                {board.columns?.map((column, index) => {
+                {board.columns?.filter(col => !filterColumn || col.id === filterColumn).map((column, index) => {
                   const visibleCards = column.cards?.filter(filterCard) || [];
                   return (
                     <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin || isMobile}>
