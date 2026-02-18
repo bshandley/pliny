@@ -45,8 +45,8 @@ function App() {
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('boards');
   const [adminSubRoute, setAdminSubRoute] = useState<string | null>(null);
-  const [boardViewMode, setBoardViewMode] = useState<'board' | 'calendar' | 'table'>('board');
-  const [prevPage, setPrevPage] = useState<{ page: Page; boardId: string | null; viewMode: 'board' | 'calendar' | 'table' }>({ page: 'boards', boardId: null, viewMode: 'board' });
+  const [boardViewMode, setBoardViewMode] = useState<'board' | 'calendar' | 'table' | 'timeline'>('board');
+  const [prevPage, setPrevPage] = useState<{ page: Page; boardId: string | null; viewMode: 'board' | 'calendar' | 'table' | 'timeline' }>({ page: 'boards', boardId: null, viewMode: 'board' });
   const [loading, setLoading] = useState(true);
   const [notifSocket, setNotifSocket] = useState<Socket | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -59,7 +59,7 @@ function App() {
     return (saved as 'light' | 'dark') || 'light';
   });
 
-  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null, viewMode?: 'board' | 'calendar' | 'table') => {
+  const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null, viewMode?: 'board' | 'calendar' | 'table' | 'timeline') => {
     setPage(newPage);
     setCurrentBoardId(boardId ?? null);
     setAdminSubRoute(newPage === 'users' ? (adminSub ?? null) : null);
@@ -100,13 +100,16 @@ function App() {
 
     // Try to match slug to a board name (with optional /calendar or /table suffix)
     let boardSlug = slug;
-    let resolvedViewMode: 'board' | 'calendar' | 'table' = 'board';
+    let resolvedViewMode: 'board' | 'calendar' | 'table' | 'timeline' = 'board';
     if (slug.endsWith('/calendar')) {
       boardSlug = slug.slice(0, -'/calendar'.length);
       resolvedViewMode = 'calendar';
     } else if (slug.endsWith('/table')) {
       boardSlug = slug.slice(0, -'/table'.length);
       resolvedViewMode = 'table';
+    } else if (slug.endsWith('/timeline')) {
+      boardSlug = slug.slice(0, -'/timeline'.length);
+      resolvedViewMode = 'timeline';
     }
 
     try {
@@ -354,9 +357,9 @@ function App() {
     navigateTo('users', null, undefined, sub);
   };
 
-  const handleViewChange = (viewMode: 'board' | 'calendar' | 'table') => {
+  const handleViewChange = (viewMode: 'board' | 'calendar' | 'table' | 'timeline') => {
     if (!currentBoardId) return;
-    const slug = getPathSlug().replace(/\/(calendar|table)$/, '');
+    const slug = getPathSlug().replace(/\/(calendar|table|timeline)$/, '');
     const suffix = viewMode === 'board' ? '' : '/' + viewMode;
     const path = '/' + slug + suffix;
     setBoardViewMode(viewMode);

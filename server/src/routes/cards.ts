@@ -36,7 +36,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { column_id, title, description, assignees, position, due_date } = req.body;
+    const { column_id, title, description, assignees, position, due_date, start_date } = req.body;
 
     if (title !== undefined && title.length > 255) {
       return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
@@ -88,6 +88,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     if (due_date !== undefined) {
       updates.push(`due_date = $${paramCount++}`);
       values.push(due_date || null); // Empty string or null clears the date
+    }
+    if (start_date !== undefined) {
+      updates.push(`start_date = $${paramCount++}`);
+      values.push(start_date || null);
     }
     if (req.body.archived !== undefined) {
       updates.push(`archived = $${paramCount++}`);
@@ -170,6 +174,14 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       const newDue = due_date || null;
       if (oldDue !== newDue) {
         logActivity(id, req.user!.id, 'due_date_changed', { from: oldDue, to: newDue });
+      }
+    }
+
+    if (start_date !== undefined) {
+      const oldStart = old.start_date ? old.start_date.toISOString().split('T')[0] : null;
+      const newStart = start_date || null;
+      if (oldStart !== newStart) {
+        logActivity(id, req.user!.id, 'start_date_changed', { from: oldStart, to: newStart });
       }
     }
 

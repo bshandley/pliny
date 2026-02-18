@@ -85,6 +85,11 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
       if (detail?.from && !detail?.to) return 'removed the due date';
       return `changed due date from ${detail?.from} to ${detail?.to}`;
     }
+    case 'start_date_changed': {
+      if (!detail?.from && detail?.to) return `set start date to ${detail.to}`;
+      if (detail?.from && !detail?.to) return 'removed the start date';
+      return `changed start date from ${detail?.from} to ${detail?.to}`;
+    }
     default: return action.replace(/_/g, ' ');
   }
 }
@@ -110,6 +115,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
   const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
+  const [editStartDate, setEditStartDate] = useState(card.start_date ? card.start_date.split(' ')[0].split('T')[0] : '');
   const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
   const [editLabels, setEditLabels] = useState<string[]>(card.labels?.map(l => l.id) || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -225,6 +231,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       description: editDescription,
       assignees: editAssignees,
       labels: editLabels as any,
+      start_date: editStartDate || null,
       due_date: editDueDate || null
     });
     // Save members separately
@@ -622,13 +629,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
 
       <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000} />
 
-      <div className="due-date-picker">
-        <label htmlFor={`due-date-${card.id}`}>Due date</label>
-        <div className="due-date-input-row">
-          <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
-          {editDueDate && (
-            <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
-          )}
+      <div className="date-range-picker">
+        <div className="due-date-picker">
+          <label htmlFor={`start-date-${card.id}`}>Start date</label>
+          <div className="due-date-input-row">
+            <input type="date" id={`start-date-${card.id}`} value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="due-date-input" />
+            {editStartDate && (
+              <button type="button" onClick={() => setEditStartDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear start date">×</button>
+            )}
+          </div>
+        </div>
+        <div className="due-date-picker">
+          <label htmlFor={`due-date-${card.id}`}>Due date</label>
+          <div className="due-date-input-row">
+            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
+            {editDueDate && (
+              <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -840,7 +858,13 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         <p className="card-detail-description">{card.description}</p>
       )}
 
-      {/* Due date */}
+      {/* Dates */}
+      {card.start_date && (
+        <div className="card-detail-field">
+          <span className="card-detail-field-label">Start date</span>
+          <span>{new Date(card.start_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        </div>
+      )}
       {card.due_date && (() => {
         const badge = getDueBadge(card.due_date);
         return badge ? (

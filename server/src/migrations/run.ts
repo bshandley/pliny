@@ -88,6 +88,13 @@ async function runMigrations() {
     );
     await pool.query(customFields);
 
+    // Card start date for timeline
+    const cardStartDate = fs.readFileSync(
+      path.join(__dirname, '013-card-start-date.sql'),
+      'utf-8'
+    );
+    await pool.query(cardStartDate);
+
     console.log('Migrations completed successfully');
     process.exit(0);
   } catch (error) {

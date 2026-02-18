@@ -12,14 +12,15 @@ import BoardLabels from './BoardLabels';
 import AppBar from './AppBar';
 import CalendarView from './CalendarView';
 import TableView from './TableView';
+import TimelineView from './TimelineView';
 import CustomFieldManager from './CustomFieldManager';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
-  viewMode: 'board' | 'calendar' | 'table';
-  onViewChange: (mode: 'board' | 'calendar' | 'table') => void;
+  viewMode: 'board' | 'calendar' | 'table' | 'timeline';
+  onViewChange: (mode: 'board' | 'calendar' | 'table' | 'timeline') => void;
   initialCardId?: string | null;
   onCardOpened?: () => void;
 }
@@ -545,6 +546,15 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
             </svg>
           </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'timeline' ? ' active' : ''}`}
+            onClick={() => onViewChange('timeline')}
+            title="Timeline view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h16M4 12h10M4 18h14"/>
+            </svg>
+          </button>
         </div>
         <button
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
@@ -725,6 +735,15 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             isAdmin={isAdmin}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => setEditingCardId(cardId)}
+          />
+        ) : viewMode === 'timeline' ? (
+          <TimelineView
+            board={board}
+            filterCard={filterCard}
+            isAdmin={isAdmin}
+            isMobile={isMobile}
+            onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
+            onCardClick={(cardId) => { handleOpenInBoard(cardId); }}
           />
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>

@@ -114,6 +114,7 @@ export interface Card {
   assignees?: string[];
   labels?: Label[];
   due_date?: string | null;
+  start_date?: string | null;
   archived?: boolean;
   checklist?: { total: number; checked: number } | null;
   members?: CardMember[];
