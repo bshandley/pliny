@@ -5645,8 +5645,23 @@ button:disabled {
   text-align: center;
 }
 
+.stat-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card-clickable:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .stat-card-success {
   border-color: var(--success);
+}
+
+.stat-card-success.stat-card-clickable:hover {
+  border-color: var(--success);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .stat-card-danger .stat-number {
@@ -5704,6 +5719,18 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.chart-bar-clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.15s ease;
+}
+
+.chart-bar-clickable:hover {
+  background: var(--bg-raised);
 }
 
 .chart-bar-label {
