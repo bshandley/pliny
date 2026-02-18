@@ -4789,3 +4789,70 @@ button:disabled {
   align-self: flex-start;
   margin-top: 0.15rem;
 }
+
+/* ---- Custom Field Editors (Card Detail) ---- */
+
+.custom-fields-section {
+  margin: 0.75rem 0;
+}
+
+.section-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+
+.custom-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.custom-field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-field-input {
+  flex: 1;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  min-width: 0;
+}
+
+.custom-field-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.custom-field-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.custom-field-value {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.custom-field-empty {
+  color: var(--text-secondary);
+}

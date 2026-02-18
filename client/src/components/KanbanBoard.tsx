@@ -743,6 +743,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             columns={board?.columns}
                                             onMoveToColumn={handleMoveToColumn}
                                             boardMembers={boardMembers}
+                                            customFields={board?.custom_fields}
                                           />
                                         )}
                                       </div>

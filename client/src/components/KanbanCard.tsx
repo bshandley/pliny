@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember } from '../types';
+import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
+import CustomFieldEditor from './CustomFieldEditor';
 
 interface KanbanCardProps {
   card: Card;
@@ -22,6 +23,7 @@ interface KanbanCardProps {
   columns?: Column[];
   onMoveToColumn?: (cardId: string, columnId: string) => void;
   boardMembers?: BoardMember[];
+  customFields?: CustomField[];
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
@@ -87,7 +89,7 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
   }
 }
 
-export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
@@ -271,6 +273,15 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     onEditEnd();
     setShowAutocomplete(false);
     setAutocompleteFilter('');
+  };
+
+  const handleCustomFieldChange = async (fieldId: string, value: string | null) => {
+    try {
+      await api.setCardCustomFields(card.id, { [fieldId]: value });
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to update custom field:', err);
+    }
   };
 
   const handleAssigneeInputChange = (value: string) => {
@@ -607,6 +618,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       </div>
 
+      {/* Custom Fields */}
+      {customFields.length > 0 && (
+        <div className="custom-fields-section">
+          <span className="section-label">Custom Fields</span>
+          {customFields.map(field => (
+            <div key={field.id} className="custom-field-row">
+              <label className="custom-field-label">{field.name}</label>
+              <CustomFieldEditor
+                field={field}
+                value={card.custom_field_values?.[field.id]?.value || null}
+                onChange={(val) => handleCustomFieldChange(field.id, val)}
+                readOnly={!canWrite}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Checklist */}
       <div className="checklist-section">
         <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
@@ -807,6 +836,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           </div>
         ) : null;
       })()}
+
+      {/* Custom Fields */}
+      {customFields.length > 0 && (
+        <div className="custom-fields-section">
+          <span className="section-label">Custom Fields</span>
+          {customFields.map(field => (
+            <div key={field.id} className="custom-field-row">
+              <label className="custom-field-label">{field.name}</label>
+              <CustomFieldEditor
+                field={field}
+                value={card.custom_field_values?.[field.id]?.value || null}
+                onChange={(val) => handleCustomFieldChange(field.id, val)}
+                readOnly={true}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="checklist-section">
