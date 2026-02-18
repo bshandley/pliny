@@ -106,6 +106,21 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
+    // Fetch custom field definitions for this board
+    const customFieldsResult = await pool.query(
+      'SELECT * FROM board_custom_fields WHERE board_id = $1 ORDER BY position',
+      [id]
+    );
+
+    // Fetch custom field values for all cards in this board
+    const customFieldValuesResult = await pool.query(
+      `SELECT v.card_id, v.field_id, v.value, f.name, f.field_type
+       FROM card_custom_field_values v
+       JOIN board_custom_fields f ON v.field_id = f.id
+       WHERE f.board_id = $1`,
+      [id]
+    );
+
     // Fetch card members for all cards
     const cardMembersResult = await pool.query(
       `SELECT cm.card_id, u.id, u.username
@@ -150,6 +165,17 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       checklistByCard[row.card_id] = { total: row.total, checked: row.checked };
     });
 
+    // Group custom field values by card_id
+    const customFieldValuesByCard: Record<string, Record<string, { value: string; field_type: string; name: string }>> = {};
+    customFieldValuesResult.rows.forEach((row: any) => {
+      if (!customFieldValuesByCard[row.card_id]) customFieldValuesByCard[row.card_id] = {};
+      customFieldValuesByCard[row.card_id][row.field_id] = {
+        value: row.value,
+        field_type: row.field_type,
+        name: row.name,
+      };
+    });
+
     const board = boardResult.rows[0];
     const columns = columnsResult.rows;
     const cards = cardsResult.rows.map(card => ({
@@ -157,11 +183,13 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       assignees: assigneesByCard[card.id] || [],
       labels: labelsByCard[card.id] || [],
       checklist: checklistByCard[card.id] || null,
-      members: membersByCard[card.id] || []
+      members: membersByCard[card.id] || [],
+      custom_field_values: customFieldValuesByCard[card.id] || {}
     }));
 
     res.json({
       ...board,
+      custom_fields: customFieldsResult.rows,
       columns: columns.map(col => ({
         ...col,
         cards: cards.filter(card => card.column_id === col.id)
