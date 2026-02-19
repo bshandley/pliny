@@ -151,3 +151,34 @@ export interface TotpSetupResponse {
   secret: string;
   backup_codes: string[];
 }
+
+export interface BoardTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  is_builtin: boolean;
+  data: {
+    columns: {
+      name: string;
+      position: number;
+      cards: {
+        title: string;
+        description: string;
+        position: number;
+        checklist_items?: { text: string; position: number }[];
+      }[];
+    }[];
+    labels: { name: string; color: string }[];
+    custom_fields: {
+      name: string;
+      field_type: string;
+      options?: string[];
+      position: number;
+      show_on_card: boolean;
+    }[];
+  };
+  column_count?: number;
+  card_count?: number;
+  created_by?: string;
+  created_at: string;
+}

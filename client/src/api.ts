@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate } from './types';
 
 const API_URL = '/api';
 
@@ -344,6 +344,41 @@ class ApiClient {
     return this.fetch('/settings/oidc', {
       method: 'PUT',
       body: JSON.stringify(settings),
+    });
+  }
+
+  // Templates
+  async getTemplates(): Promise<BoardTemplate[]> {
+    return this.fetch('/templates');
+  }
+
+  async createTemplateFromBoard(boardId: string, name: string, description?: string): Promise<BoardTemplate> {
+    return this.fetch('/templates', {
+      method: 'POST',
+      body: JSON.stringify({ board_id: boardId, name, description }),
+    });
+  }
+
+  async useTemplate(templateId: string, name: string, description?: string): Promise<Board> {
+    return this.fetch(`/templates/${templateId}/use`, {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    return this.fetch(`/templates/${templateId}`, { method: 'DELETE' });
+  }
+
+  // App Settings
+  async getAppSettings(): Promise<Record<string, any>> {
+    return this.fetch('/app-settings');
+  }
+
+  async updateAppSetting(key: string, value: any): Promise<void> {
+    return this.fetch(`/app-settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
     });
   }
 
