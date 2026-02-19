@@ -21,6 +21,7 @@ import oidcRoutes from './routes/oidc';
 import customFieldRoutes from './routes/customFields';
 import analyticsRoutes from './routes/analytics';
 import cookieParser from 'cookie-parser';
+import { seedBuiltinTemplates } from './templates/seed';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -122,6 +123,7 @@ app.set('io', io);
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  seedBuiltinTemplates().catch(err => console.error('Failed to seed templates:', err));
 });
 
 export { io };
