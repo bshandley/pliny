@@ -23,6 +23,7 @@ import analyticsRoutes from './routes/analytics';
 import templateRoutes from './routes/templates';
 import appSettingsRoutes from './routes/appSettings';
 import cookieParser from 'cookie-parser';
+import { runMigrations } from './migrations/run';
 import { seedBuiltinTemplates } from './templates/seed';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -125,9 +126,14 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  seedBuiltinTemplates().catch(err => console.error('Failed to seed templates:', err));
+  try {
+    await runMigrations();
+    await seedBuiltinTemplates();
+  } catch (err) {
+    console.error('Startup tasks failed:', err);
+  }
 });
 
 export { io };
