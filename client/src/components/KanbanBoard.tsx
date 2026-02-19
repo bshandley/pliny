@@ -779,7 +779,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             filterCard={filterCard}
             isAdmin={isAdmin}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
-            onCardClick={(cardId) => setEditingCardId(cardId)}
+            onCardClick={(cardId) => handleOpenInBoard(cardId)}
             boardMembers={boardMembers}
             assignees={assignees}
           />
