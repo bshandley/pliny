@@ -7,7 +7,7 @@ import AppBarContext from './contexts/AppBarContext';
 import Login from './components/Login';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
-import UserManagement from './components/UserManagement';
+import AdminPage from './components/AdminPage';
 import ProfileSettings from './components/ProfileSettings';
 import AppBar from './components/AppBar';
 
@@ -470,7 +470,7 @@ function App() {
           onCardOpened={() => setInitialCardId(null)}
         />
       ) : page === 'users' && user?.role === 'ADMIN' ? (
-        <UserManagement
+        <AdminPage
           onBack={handleBackToBoards}
           currentUser={user}
           subRoute={adminSubRoute}
