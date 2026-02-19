@@ -33,7 +33,7 @@ async function snapshotBoard(boardId: string): Promise<TemplateData> {
      FROM card_checklist_items ci
      INNER JOIN cards c ON ci.card_id = c.id
      INNER JOIN columns col ON c.column_id = col.id
-     WHERE col.board_id = $1
+     WHERE col.board_id = $1 AND c.archived = false
      ORDER BY ci.position`,
     [boardId]
   );
@@ -178,66 +178,67 @@ router.post('/:id/use', authenticate, requireAdmin, async (req: AuthRequest, res
       ? JSON.parse(template.data)
       : template.data;
 
-    // Create board
-    const boardResult = await pool.query(
-      'INSERT INTO boards (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
-      [name.trim(), description || null, req.user!.id]
-    );
-    const board = boardResult.rows[0];
+    // Use a transaction so partial failures don't leave orphaned data
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Create labels
-    if (data.labels && data.labels.length > 0) {
-      for (const label of data.labels) {
-        await pool.query(
+      // Create board
+      const boardResult = await client.query(
+        'INSERT INTO boards (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
+        [name.trim(), description || null, req.user!.id]
+      );
+      const board = boardResult.rows[0];
+
+      // Create labels
+      for (const label of (data.labels || [])) {
+        await client.query(
           'INSERT INTO board_labels (board_id, name, color) VALUES ($1, $2, $3)',
           [board.id, label.name, label.color]
         );
       }
-    }
 
-    // Create custom fields
-    if (data.custom_fields && data.custom_fields.length > 0) {
-      for (const field of data.custom_fields) {
-        await pool.query(
+      // Create custom fields
+      for (const field of (data.custom_fields || [])) {
+        await client.query(
           `INSERT INTO board_custom_fields (board_id, name, field_type, options, position, show_on_card)
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [board.id, field.name, field.field_type, field.options ? JSON.stringify(field.options) : null, field.position, field.show_on_card]
         );
       }
-    }
 
-    // Create columns and cards
-    if (data.columns && data.columns.length > 0) {
-      for (const col of data.columns) {
-        const colResult = await pool.query(
+      // Create columns and cards
+      for (const col of (data.columns || [])) {
+        const colResult = await client.query(
           'INSERT INTO columns (board_id, name, position) VALUES ($1, $2, $3) RETURNING id',
           [board.id, col.name, col.position]
         );
         const columnId = colResult.rows[0].id;
 
-        if (col.cards && col.cards.length > 0) {
-          for (const card of col.cards) {
-            const cardResult = await pool.query(
-              'INSERT INTO cards (column_id, title, description, position) VALUES ($1, $2, $3, $4) RETURNING id',
-              [columnId, card.title, card.description || '', card.position]
-            );
-            const cardId = cardResult.rows[0].id;
+        for (const card of (col.cards || [])) {
+          const cardResult = await client.query(
+            'INSERT INTO cards (column_id, title, description, position) VALUES ($1, $2, $3, $4) RETURNING id',
+            [columnId, card.title, card.description || '', card.position]
+          );
+          const cardId = cardResult.rows[0].id;
 
-            // Create checklist items
-            if (card.checklist_items && card.checklist_items.length > 0) {
-              for (const item of card.checklist_items) {
-                await pool.query(
-                  'INSERT INTO card_checklist_items (card_id, text, position) VALUES ($1, $2, $3)',
-                  [cardId, item.text, item.position]
-                );
-              }
-            }
+          for (const item of (card.checklist_items || [])) {
+            await client.query(
+              'INSERT INTO card_checklist_items (card_id, text, position) VALUES ($1, $2, $3)',
+              [cardId, item.text, item.position]
+            );
           }
         }
       }
-    }
 
-    res.status(201).json(board);
+      await client.query('COMMIT');
+      res.status(201).json(board);
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      throw txError;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error('Use template error:', error);
     res.status(500).json({ error: 'Internal server error' });

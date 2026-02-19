@@ -95,7 +95,7 @@ export default function TemplateGallery() {
     <div className="template-gallery">
       <div className="panel-header">
         <h2>Templates</h2>
-        <button onClick={() => setShowSaveModal(true)} className="btn-primary btn-sm">
+        <button onClick={() => { setShowSaveModal(true); setError(''); }} className="btn-primary btn-sm">
           + Save Board as Template
         </button>
       </div>
