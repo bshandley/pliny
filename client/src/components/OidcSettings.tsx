@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 
-interface OidcSettingsProps {
-  onBack: () => void;
-}
-
-export default function OidcSettings({ onBack }: OidcSettingsProps) {
+export default function OidcSettings() {
   const [enabled, setEnabled] = useState(false);
   const [issuerUrl, setIssuerUrl] = useState('');
   const [clientId, setClientId] = useState('');

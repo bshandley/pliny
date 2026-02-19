@@ -3,16 +3,14 @@ import { api } from '../api';
 import { User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import AppBar from './AppBar';
-import OidcSettings from './OidcSettings';
 
 interface UserManagementProps {
-  onBack: () => void;
   currentUser: User;
   subRoute: string | null;
   onNavigate: (sub: string | null) => void;
 }
 
-export default function UserManagement({ onBack, currentUser, subRoute, onNavigate }: UserManagementProps) {
+export default function UserManagement({ currentUser, subRoute, onNavigate }: UserManagementProps) {
   const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,7 +177,7 @@ export default function UserManagement({ onBack, currentUser, subRoute, onNaviga
     }
 
     return (
-      <div className="board-list-container">
+      <div className="user-management-panel">
         <AppBar title={title} onBack={() => onNavigate(null)}>
           <button type="submit" form="user-form" className="btn-primary btn-sm">{submitLabel}</button>
         </AppBar>
@@ -192,34 +190,16 @@ export default function UserManagement({ onBack, currentUser, subRoute, onNaviga
     );
   };
 
-  if (subRoute === 'settings') {
-    return (
-      <div className="user-management">
-        <AppBar title="SSO Settings" onBack={() => onNavigate(null)}>
-          <span></span>
-        </AppBar>
-        <div className="user-management-content">
-          <OidcSettings onBack={() => onNavigate(null)} />
-        </div>
-      </div>
-    );
-  }
-
   if (subRoute) {
     return renderFormPage();
   }
 
   return (
-    <div className="board-list-container">
-      <AppBar title="Users" onBack={onBack}>
-        <button onClick={() => onNavigate('settings')} className="btn-secondary btn-sm">
-          SSO Settings
-        </button>
-        <button onClick={() => onNavigate('new')} className="btn-primary btn-sm">
-          + New User
-        </button>
-      </AppBar>
-
+    <div className="user-management-panel">
+      <div className="panel-header">
+        <h2>Members</h2>
+        <button onClick={() => onNavigate('new')} className="btn-primary btn-sm">+ New User</button>
+      </div>
       <div className="users-table-container">
         <table className="users-table">
           <thead>
