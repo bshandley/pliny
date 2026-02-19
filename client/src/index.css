@@ -830,6 +830,7 @@ button:disabled {
   overflow: hidden;
   background: var(--card-bg);
   transition: background 0.1s;
+  position: relative;
 }
 
 .calendar-day:hover {
@@ -864,7 +865,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-card-chip {
