@@ -382,6 +382,28 @@ class ApiClient {
     });
   }
 
+  async testSmtp(to: string): Promise<{ message: string }> {
+    return this.fetch('/app-settings/smtp-test', {
+      method: 'POST',
+      body: JSON.stringify({ to }),
+    });
+  }
+
+  async getNotificationPreferences(): Promise<Record<string, boolean>> {
+    return this.fetch('/notifications/preferences');
+  }
+
+  async updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>> {
+    return this.fetch('/notifications/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(prefs),
+    });
+  }
+
+  async getSmtpStatus(): Promise<{ configured: boolean }> {
+    return this.fetch('/app-settings/smtp-status');
+  }
+
   // TOTP 2FA
   async getTotpStatus(): Promise<{ enabled: boolean }> {
     return this.fetch('/settings/totp/status');

@@ -4864,6 +4864,19 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.notification-prefs-banner {
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* TOTP setup */
 .totp-qr {
   display: flex;

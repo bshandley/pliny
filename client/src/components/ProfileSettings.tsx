@@ -8,6 +8,16 @@ interface ProfileSettingsProps {
   onBack: () => void;
 }
 
+const NOTIFICATION_TOGGLES = [
+  { key: 'email_assigned_card', label: 'Assigned to card', desc: 'When someone adds you to a card', defaultOn: true },
+  { key: 'email_mention_comment', label: 'Mentioned in comment', desc: 'When someone @mentions you in a comment', defaultOn: true },
+  { key: 'email_due_date_reminder', label: 'Due date reminder', desc: '24 hours before a card you\'re on is due', defaultOn: true },
+  { key: 'email_card_completed', label: 'Card completed', desc: 'When a card you\'re on is moved to done', defaultOn: false },
+  { key: 'email_comment_added', label: 'New comment', desc: 'When someone comments on a card you\'re on', defaultOn: false },
+  { key: 'email_checklist_assigned', label: 'Subtask assigned', desc: 'When a checklist item is assigned to you', defaultOn: true },
+  { key: 'email_description_changed', label: 'Description updated', desc: 'When a card you\'re on has its description changed', defaultOn: false },
+];
+
 export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) {
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,12 +38,37 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
   const [disableError, setDisableError] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
 
+  // Notification preferences
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
+  const [prefsLoading, setPrefsLoading] = useState(true);
+
   useEffect(() => {
     api.getTotpStatus()
       .then(data => setTotpEnabled(data.enabled))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Load SMTP status and notification preferences
+    Promise.all([
+      api.getSmtpStatus().catch(() => ({ configured: false })),
+      api.getNotificationPreferences().catch(() => ({})),
+    ]).then(([smtpData, prefs]) => {
+      setSmtpConfigured(smtpData.configured);
+      setNotifPrefs(prefs);
+    }).finally(() => setPrefsLoading(false));
   }, []);
+
+  const handleToggleNotifPref = (key: string) => {
+    const currentValue = notifPrefs[key] ?? NOTIFICATION_TOGGLES.find(t => t.key === key)?.defaultOn ?? false;
+    const newValue = !currentValue;
+    // Optimistic update
+    setNotifPrefs(prev => ({ ...prev, [key]: newValue }));
+    api.updateNotificationPreferences({ [key]: newValue }).catch(() => {
+      // Revert on error
+      setNotifPrefs(prev => ({ ...prev, [key]: currentValue }));
+    });
+  };
 
   const handleStartSetup = async () => {
     setSetupLoading(true);
@@ -225,6 +260,52 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 {setupLoading ? 'Setting up...' : 'Set up 2FA'}
               </button>
             </div>
+          )}
+        </section>
+
+        <section className="profile-section">
+          <h2>Email Notifications</h2>
+
+          {prefsLoading ? (
+            <p className="profile-loading">Loading...</p>
+          ) : (
+            <>
+              {!smtpConfigured && (
+                <div className="notification-prefs-banner">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M8 5v3M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  Email notifications have not been configured by your administrator.
+                </div>
+              )}
+              <div className={`settings-card${!smtpConfigured ? ' settings-card-disabled' : ''}`}>
+                <div className="settings-card-header">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <h3>Notification Preferences</h3>
+                </div>
+                {NOTIFICATION_TOGGLES.map((toggle, idx) => {
+                  const value = notifPrefs[toggle.key] ?? toggle.defaultOn;
+                  return (
+                    <div
+                      key={toggle.key}
+                      className={`setting-row${idx === NOTIFICATION_TOGGLES.length - 1 ? ' setting-row-last' : ''}`}
+                    >
+                      <div className="setting-info">
+                        <div className="setting-label">{toggle.label}</div>
+                        <div className="setting-desc">{toggle.desc}</div>
+                      </div>
+                      <button
+                        className={`toggle-switch${value ? ' active' : ''}`}
+                        onClick={() => handleToggleNotifPref(toggle.key)}
+                        disabled={!smtpConfigured}
+                        role="switch"
+                        aria-checked={value}
+                      >
+                        <span className="toggle-knob" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
       </div>

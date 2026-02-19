@@ -6,6 +6,20 @@ export default function GeneralSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // SMTP fields
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUsername, setSmtpUsername] = useState('');
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const [smtpFromAddress, setSmtpFromAddress] = useState('');
+  const [smtpTls, setSmtpTls] = useState(true);
+  const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
+
+  // Test connection
+  const [smtpTestEmail, setSmtpTestEmail] = useState('');
+  const [smtpTestStatus, setSmtpTestStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [smtpTestSending, setSmtpTestSending] = useState(false);
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -14,6 +28,16 @@ export default function GeneralSettings() {
     try {
       const settings = await api.getAppSettings();
       setRegistrationEnabled(settings.registration_enabled ?? true);
+      setSmtpHost(settings.smtp_host || '');
+      setSmtpPort(settings.smtp_port || '587');
+      setSmtpUsername(settings.smtp_username || '');
+      setSmtpFromAddress(settings.smtp_from_address || '');
+      setSmtpTls(settings.smtp_tls !== false);
+      // If password is masked, it means one is set
+      if (settings.smtp_password && settings.smtp_password !== '') {
+        setSmtpPasswordSet(true);
+        setSmtpPassword('');
+      }
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
@@ -31,6 +55,47 @@ export default function GeneralSettings() {
       console.error('Failed to update setting:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveSmtpField = async (key: string, value: any) => {
+    try {
+      await api.updateAppSetting(key, value);
+    } catch (err) {
+      console.error(`Failed to save ${key}:`, err);
+    }
+  };
+
+  const handleSmtpBlur = (key: string, value: string) => {
+    saveSmtpField(key, value);
+  };
+
+  const handlePasswordBlur = () => {
+    // Only save if user actually typed something new
+    if (smtpPassword) {
+      saveSmtpField('smtp_password', smtpPassword);
+      setSmtpPasswordSet(true);
+      setSmtpPassword('');
+    }
+  };
+
+  const handleToggleTls = async () => {
+    const newValue = !smtpTls;
+    setSmtpTls(newValue);
+    await saveSmtpField('smtp_tls', newValue);
+  };
+
+  const handleTestConnection = async () => {
+    if (!smtpTestEmail) return;
+    setSmtpTestSending(true);
+    setSmtpTestStatus(null);
+    try {
+      const result = await api.testSmtp(smtpTestEmail);
+      setSmtpTestStatus({ type: 'success', message: result.message });
+    } catch (err: any) {
+      setSmtpTestStatus({ type: 'error', message: err.message || 'Failed to send test email' });
+    } finally {
+      setSmtpTestSending(false);
     }
   };
 
@@ -68,37 +133,135 @@ export default function GeneralSettings() {
         </div>
       </div>
 
-      <div className="settings-card settings-card-disabled">
+      <div className="settings-card">
         <div className="settings-card-header">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
           </svg>
           <h3>Email (SMTP)</h3>
-          <span className="coming-soon-pill">Coming soon</span>
         </div>
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">SMTP Host</div>
+            <div className="setting-desc">Your mail server hostname</div>
           </div>
-          <input type="text" disabled placeholder="smtp.example.com" className="setting-input" />
+          <input
+            type="text"
+            className="setting-input"
+            placeholder="smtp.example.com"
+            value={smtpHost}
+            onChange={(e) => setSmtpHost(e.target.value)}
+            onBlur={() => handleSmtpBlur('smtp_host', smtpHost)}
+          />
         </div>
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Port</div>
+            <div className="setting-desc">Usually 587 (TLS) or 465 (SSL)</div>
           </div>
-          <input type="text" disabled placeholder="587" className="setting-input" />
+          <input
+            type="text"
+            className="setting-input"
+            placeholder="587"
+            value={smtpPort}
+            onChange={(e) => setSmtpPort(e.target.value)}
+            onBlur={() => handleSmtpBlur('smtp_port', smtpPort)}
+          />
         </div>
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Username</div>
+            <div className="setting-desc">SMTP authentication username</div>
           </div>
-          <input type="text" disabled placeholder="user@example.com" className="setting-input" />
+          <input
+            type="text"
+            className="setting-input"
+            placeholder="user@example.com"
+            value={smtpUsername}
+            onChange={(e) => setSmtpUsername(e.target.value)}
+            onBlur={() => handleSmtpBlur('smtp_username', smtpUsername)}
+          />
+        </div>
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">Password</div>
+            <div className="setting-desc">SMTP authentication password</div>
+          </div>
+          <input
+            type="password"
+            className="setting-input"
+            placeholder={smtpPasswordSet ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : ''}
+            value={smtpPassword}
+            onChange={(e) => setSmtpPassword(e.target.value)}
+            onBlur={handlePasswordBlur}
+          />
+        </div>
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">From Address</div>
+            <div className="setting-desc">Sender email address for outgoing mail</div>
+          </div>
+          <input
+            type="email"
+            className="setting-input"
+            placeholder="noreply@example.com"
+            value={smtpFromAddress}
+            onChange={(e) => setSmtpFromAddress(e.target.value)}
+            onBlur={() => handleSmtpBlur('smtp_from_address', smtpFromAddress)}
+          />
+        </div>
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">TLS</div>
+            <div className="setting-desc">Use a secure TLS connection</div>
+          </div>
+          <button
+            className={`toggle-switch${smtpTls ? ' active' : ''}`}
+            onClick={handleToggleTls}
+            role="switch"
+            aria-checked={smtpTls}
+          >
+            <span className="toggle-knob" />
+          </button>
         </div>
         <div className="setting-row setting-row-last">
           <div className="setting-info">
-            <div className="setting-label">From Address</div>
+            <div className="setting-label">Test Connection</div>
+            <div className="setting-desc">Send a test email to verify your SMTP settings</div>
           </div>
-          <input type="text" disabled placeholder="noreply@example.com" className="setting-input" />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="email"
+              className="setting-input"
+              placeholder="test@example.com"
+              value={smtpTestEmail}
+              onChange={(e) => setSmtpTestEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleTestConnection(); }}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={handleTestConnection}
+              disabled={smtpTestSending || !smtpTestEmail}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {smtpTestSending ? 'Sending...' : 'Send Test'}
+            </button>
+          </div>
+          {smtpTestStatus && (
+            <div
+              className={`smtp-test-status ${smtpTestStatus.type}`}
+              style={{
+                marginTop: '8px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                backgroundColor: smtpTestStatus.type === 'success' ? 'var(--bg-success, #d4edda)' : 'var(--bg-error, #f8d7da)',
+                color: smtpTestStatus.type === 'success' ? 'var(--text-success, #155724)' : 'var(--text-error, #721c24)',
+              }}
+            >
+              {smtpTestStatus.message}
+            </div>
+          )}
         </div>
       </div>
     </div>
