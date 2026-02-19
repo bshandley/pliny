@@ -20,6 +20,7 @@ import totpRoutes from './routes/totp';
 import oidcRoutes from './routes/oidc';
 import customFieldRoutes from './routes/customFields';
 import analyticsRoutes from './routes/analytics';
+import templateRoutes from './routes/templates';
 import cookieParser from 'cookie-parser';
 import { seedBuiltinTemplates } from './templates/seed';
 
@@ -57,6 +58,7 @@ app.use('/api/settings/totp', totpRoutes);
 app.use('/api/auth/oidc', oidcRoutes);
 app.use('/api', customFieldRoutes);
 app.use('/api', analyticsRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
