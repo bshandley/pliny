@@ -671,7 +671,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         }}
       />
       {editDescription !== (card.description || '') && (
-        <button type="button" onClick={handleSaveDescription} className="btn-primary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>Save description</button>
+        <button type="button" onClick={handleSaveDescription} className="btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 0, marginBottom: '0.5rem' }}>Save description</button>
       )}
 
       <div className="date-range-picker">
