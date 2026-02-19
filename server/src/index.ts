@@ -21,6 +21,7 @@ import oidcRoutes from './routes/oidc';
 import customFieldRoutes from './routes/customFields';
 import analyticsRoutes from './routes/analytics';
 import templateRoutes from './routes/templates';
+import appSettingsRoutes from './routes/appSettings';
 import cookieParser from 'cookie-parser';
 import { seedBuiltinTemplates } from './templates/seed';
 
@@ -59,6 +60,7 @@ app.use('/api/auth/oidc', oidcRoutes);
 app.use('/api', customFieldRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/app-settings', appSettingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
