@@ -28,14 +28,28 @@ export async function initTransporter(): Promise<boolean> {
       return false;
     }
 
+    // smtp_tls is stored as a string in app_settings; coerce correctly.
+    // Port 465 = implicit SSL (secure: true). Any other port with TLS = STARTTLS
+    // (secure: false + requireTLS: true). No TLS = plain.
+    const port = Number(settings.smtp_port);
+    const tlsEnabled = settings.smtp_tls == null
+      ? true
+      : String(settings.smtp_tls) === 'true';
+    const implicitSsl = port === 465;
+
     const transportConfig: any = {
       host: settings.smtp_host,
-      port: Number(settings.smtp_port),
-      secure: settings.smtp_tls !== false,
+      port,
+      secure: implicitSsl && tlsEnabled,
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
     };
+
+    if (tlsEnabled && !implicitSsl) {
+      // STARTTLS — upgrade the connection after greeting
+      transportConfig.requireTLS = true;
+    }
 
     if (settings.smtp_username) {
       let password = settings.smtp_password || '';
@@ -109,12 +123,12 @@ export async function sendTestEmail(
     await transporter.sendMail({
       from: fromAddress,
       to: toEmail,
-      subject: 'Plank — Test Email',
+      subject: 'Cork — Test Email',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #1a1a2e; margin-bottom: 16px;">SMTP Configuration Working</h2>
           <p style="color: #555; line-height: 1.5;">
-            This test email confirms that your Plank SMTP settings are configured correctly.
+            This test email confirms that your Cork SMTP settings are configured correctly.
             Email notifications are now active.
           </p>
         </div>

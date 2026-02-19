@@ -32,7 +32,8 @@ export default function GeneralSettings() {
       setSmtpPort(settings.smtp_port || '587');
       setSmtpUsername(settings.smtp_username || '');
       setSmtpFromAddress(settings.smtp_from_address || '');
-      setSmtpTls(settings.smtp_tls !== false);
+      // smtp_tls may come back as a string from the API; coerce correctly; default true
+      setSmtpTls(settings.smtp_tls == null ? true : String(settings.smtp_tls) === 'true');
       // If password is masked, it means one is set
       if (settings.smtp_password && settings.smtp_password !== '') {
         setSmtpPasswordSet(true);
@@ -157,7 +158,7 @@ export default function GeneralSettings() {
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Port</div>
-            <div className="setting-desc">Usually 587 (TLS) or 465 (SSL)</div>
+            <div className="setting-desc">587 (STARTTLS) or 465 (implicit SSL)</div>
           </div>
           <input
             type="text"
@@ -213,7 +214,7 @@ export default function GeneralSettings() {
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">TLS</div>
-            <div className="setting-desc">Use a secure TLS connection</div>
+            <div className="setting-desc">Encrypt connections — SSL on port 465, STARTTLS on port 587</div>
           </div>
           <button
             className={`toggle-switch${smtpTls ? ' active' : ''}`}
