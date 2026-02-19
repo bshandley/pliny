@@ -21,6 +21,9 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
   const [editBoardName, setEditBoardName] = useState('');
   const [editBoardDesc, setEditBoardDesc] = useState('');
   const [showArchivedBoards, setShowArchivedBoards] = useState(false);
+  const [savingBoard, setSavingBoard] = useState<Board | null>(null);
+  const [saveTemplateName, setSaveTemplateName] = useState('');
+  const [saveTemplateDesc, setSaveTemplateDesc] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const confirm = useConfirm();
@@ -111,6 +114,24 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
     }
   };
 
+  const handleSaveAsTemplate = (board: Board) => {
+    setSavingBoard(board);
+    setSaveTemplateName(board.name + ' Template');
+    setSaveTemplateDesc('');
+  };
+
+  const handleConfirmSaveTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!savingBoard) return;
+    try {
+      await api.createTemplateFromBoard(savingBoard.id, saveTemplateName, saveTemplateDesc);
+      setSavingBoard(null);
+      alert('Template saved!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to save template');
+    }
+  };
+
   const activeBoards = boards.filter(b => !b.archived);
   const archivedBoards = boards.filter(b => b.archived);
 
@@ -169,6 +190,7 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
                         setEditBoardDesc(board.description || '');
                         setEditingBoard(board);
                       }}>Edit Board</button>
+                      <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleSaveAsTemplate(board); }}>Save as Template</button>
                       <button onClick={(e) => { e.stopPropagation(); handleArchiveBoard(board); }}>Archive</button>
                       <div className="kebab-divider" />
                       <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteBoard(board); }}>Delete</button>
@@ -290,6 +312,43 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
                 <button type="submit" className="btn-primary">
                   Save
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Save as Template Modal */}
+      {savingBoard && (
+        <div className="modal-overlay" onClick={() => setSavingBoard(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Save "{savingBoard.name}" as Template</h3>
+            <form onSubmit={handleConfirmSaveTemplate}>
+              <div className="form-group">
+                <label htmlFor="save-tpl-name">Template Name</label>
+                <input
+                  id="save-tpl-name"
+                  type="text"
+                  value={saveTemplateName}
+                  onChange={e => setSaveTemplateName(e.target.value)}
+                  required
+                  maxLength={255}
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="save-tpl-desc">Description (optional)</label>
+                <textarea
+                  id="save-tpl-desc"
+                  value={saveTemplateDesc}
+                  onChange={e => setSaveTemplateDesc(e.target.value)}
+                  maxLength={10000}
+                  rows={3}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setSavingBoard(null)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Template</button>
               </div>
             </form>
           </div>
