@@ -5,6 +5,8 @@ export default function GeneralSettings() {
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpSaved, setSmtpSaved] = useState(false);
 
   // SMTP fields
   const [smtpHost, setSmtpHost] = useState('');
@@ -80,10 +82,33 @@ export default function GeneralSettings() {
     }
   };
 
-  const handleToggleTls = async () => {
-    const newValue = !smtpTls;
-    setSmtpTls(newValue);
-    await saveSmtpField('smtp_tls', newValue);
+  const handleToggleTls = () => {
+    setSmtpTls(prev => !prev);
+  };
+
+  const handleSaveSmtp = async () => {
+    setSmtpSaving(true);
+    setSmtpSaved(false);
+    try {
+      await Promise.all([
+        saveSmtpField('smtp_host', smtpHost),
+        saveSmtpField('smtp_port', smtpPort),
+        saveSmtpField('smtp_username', smtpUsername),
+        saveSmtpField('smtp_from_address', smtpFromAddress),
+        saveSmtpField('smtp_tls', smtpTls),
+        ...(smtpPassword ? [saveSmtpField('smtp_password', smtpPassword)] : []),
+      ]);
+      if (smtpPassword) {
+        setSmtpPasswordSet(true);
+        setSmtpPassword('');
+      }
+      setSmtpSaved(true);
+      setTimeout(() => setSmtpSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save SMTP settings:', err);
+    } finally {
+      setSmtpSaving(false);
+    }
   };
 
   const handleTestConnection = async () => {
@@ -152,7 +177,6 @@ export default function GeneralSettings() {
             placeholder="smtp.example.com"
             value={smtpHost}
             onChange={(e) => setSmtpHost(e.target.value)}
-            onBlur={() => handleSmtpBlur('smtp_host', smtpHost)}
           />
         </div>
         <div className="setting-row">
@@ -166,7 +190,6 @@ export default function GeneralSettings() {
             placeholder="587"
             value={smtpPort}
             onChange={(e) => setSmtpPort(e.target.value)}
-            onBlur={() => handleSmtpBlur('smtp_port', smtpPort)}
           />
         </div>
         <div className="setting-row">
@@ -180,7 +203,6 @@ export default function GeneralSettings() {
             placeholder="user@example.com"
             value={smtpUsername}
             onChange={(e) => setSmtpUsername(e.target.value)}
-            onBlur={() => handleSmtpBlur('smtp_username', smtpUsername)}
           />
         </div>
         <div className="setting-row">
@@ -194,7 +216,6 @@ export default function GeneralSettings() {
             placeholder={smtpPasswordSet ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : ''}
             value={smtpPassword}
             onChange={(e) => setSmtpPassword(e.target.value)}
-            onBlur={handlePasswordBlur}
           />
         </div>
         <div className="setting-row">
@@ -208,7 +229,6 @@ export default function GeneralSettings() {
             placeholder="noreply@example.com"
             value={smtpFromAddress}
             onChange={(e) => setSmtpFromAddress(e.target.value)}
-            onBlur={() => handleSmtpBlur('smtp_from_address', smtpFromAddress)}
           />
         </div>
         <div className="setting-row">
@@ -223,6 +243,22 @@ export default function GeneralSettings() {
             aria-checked={smtpTls}
           >
             <span className="toggle-knob" />
+          </button>
+        </div>
+        <div className="setting-row" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+          {smtpSaved && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-success, #2d7a46)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Saved
+            </span>
+          )}
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveSmtp}
+            disabled={smtpSaving}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {smtpSaving ? 'Saving...' : 'Save'}
           </button>
         </div>
         <div className="setting-row setting-row-last" style={{ alignItems: 'flex-start' }}>
