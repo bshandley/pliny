@@ -215,7 +215,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     if (showArchived && !card.archived) return false;
     if (filterColumn && card.column_id !== filterColumn) return false;
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
-    if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
+    if (filterAssignee === '__unassigned__') {
+      if (card.assignees && card.assignees.length > 0) return false;
+    } else if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
     if (filterLabel && (!card.labels || !card.labels.some(l => l.id === filterLabel))) return false;
     if (filterDue === 'overdue') {
       if (!card.due_date) return false;
@@ -645,6 +647,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         />
         <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="filter-select">
           <option value="">All assignees</option>
+          <option value="__unassigned__">Unassigned</option>
           {assignees.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
         </select>
         {boardLabels.length > 0 && (

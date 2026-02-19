@@ -171,11 +171,11 @@ export default function DashboardView({ boardId, refreshKey, onFilterNavigate }:
             <BarChart
               title="Cards by Status"
               data={data.cards_by_column.map(c => ({ label: c.column_name, value: c.count, key: c.column_id }))}
-              onBarClick={onFilterNavigate ? (key) => onFilterNavigate({ column: key }) : undefined}
+              onBarClick={onFilterNavigate ? () => onFilterNavigate({}) : undefined}
             />
             <BarChart
               title="Cards by Assignee"
-              data={data.cards_by_assignee.map(a => ({ label: a.assignee, value: a.total }))}
+              data={data.cards_by_assignee.map(a => ({ label: a.assignee, value: a.total, key: a.assignee === 'Unassigned' ? '__unassigned__' : a.assignee }))}
               onBarClick={onFilterNavigate ? (key) => onFilterNavigate({ assignee: key }) : undefined}
             />
           </div>
