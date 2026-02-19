@@ -253,6 +253,7 @@ export default function GeneralSettings() {
             </span>
           )}
           <button
+            type="button"
             className="btn btn-primary"
             onClick={handleSaveSmtp}
             disabled={smtpSaving}
@@ -274,9 +275,10 @@ export default function GeneralSettings() {
                 placeholder="test@example.com"
                 value={smtpTestEmail}
                 onChange={(e) => setSmtpTestEmail(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTestConnection(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleTestConnection(); } }}
               />
               <button
+                type="button"
                 className="btn btn-primary"
                 onClick={handleTestConnection}
                 disabled={smtpTestSending || !smtpTestEmail}
