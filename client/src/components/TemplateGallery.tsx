@@ -106,29 +106,41 @@ export default function TemplateGallery() {
         <div className="templates-grid">
           {templates.map(tpl => (
             <div key={tpl.id} className="template-card">
-              <div className="template-card-header">
-                <h3>{tpl.name}</h3>
-                {tpl.is_builtin && <span className="template-badge">Built-in</span>}
+              <div className="template-card-preview">
+                {(tpl.data?.columns || []).map((col, i) => (
+                  <div key={i} className="template-col-preview">
+                    <div className="template-col-name">{col.name}</div>
+                    {(col.cards || []).slice(0, 3).map((_, j) => (
+                      <div key={j} className="template-card-line" />
+                    ))}
+                  </div>
+                ))}
               </div>
-              {tpl.description && <p className="template-desc">{tpl.description}</p>}
-              <div className="template-meta">
-                {tpl.column_count} columns · {tpl.card_count} cards
-              </div>
-              <div className="template-actions">
-                <button
-                  className="btn-primary btn-sm"
-                  onClick={() => { setUsingTemplate(tpl); setNewBoardName(''); setNewBoardDesc(''); setError(''); }}
-                >
-                  Use Template
-                </button>
-                {!tpl.is_builtin && (
+              <div className="template-card-body">
+                <div className="template-card-header">
+                  <h3>{tpl.name}</h3>
+                  {tpl.is_builtin && <span className="template-badge">Built-in</span>}
+                </div>
+                {tpl.description && <p className="template-desc">{tpl.description}</p>}
+                <div className="template-meta">
+                  {tpl.column_count} columns · {tpl.card_count} cards
+                </div>
+                <div className="template-actions">
                   <button
-                    className="btn-danger btn-sm"
-                    onClick={() => handleDeleteTemplate(tpl)}
+                    className="btn-primary btn-sm"
+                    onClick={() => { setUsingTemplate(tpl); setNewBoardName(''); setNewBoardDesc(''); setError(''); }}
                   >
-                    Delete
+                    Use Template
                   </button>
-                )}
+                  {!tpl.is_builtin && (
+                    <button
+                      className="btn-danger btn-sm"
+                      onClick={() => handleDeleteTemplate(tpl)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

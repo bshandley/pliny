@@ -44,8 +44,13 @@ export default function GeneralSettings() {
         <h2>General</h2>
       </div>
 
-      <div className="settings-section">
-        <h3>Registration</h3>
+      <div className="settings-card">
+        <div className="settings-card-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <h3>Registration</h3>
+        </div>
         <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Open registration</div>
@@ -63,32 +68,37 @@ export default function GeneralSettings() {
         </div>
       </div>
 
-      <div className="settings-section disabled-section">
-        <h3>Email (SMTP)</h3>
-        <p className="coming-soon-label">Coming soon</p>
-        <div className="setting-row disabled">
+      <div className="settings-card settings-card-disabled">
+        <div className="settings-card-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+          </svg>
+          <h3>Email (SMTP)</h3>
+          <span className="coming-soon-pill">Coming soon</span>
+        </div>
+        <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">SMTP Host</div>
           </div>
-          <input type="text" disabled placeholder="smtp.example.com" />
+          <input type="text" disabled placeholder="smtp.example.com" className="setting-input" />
         </div>
-        <div className="setting-row disabled">
+        <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Port</div>
           </div>
-          <input type="text" disabled placeholder="587" />
+          <input type="text" disabled placeholder="587" className="setting-input" />
         </div>
-        <div className="setting-row disabled">
+        <div className="setting-row">
           <div className="setting-info">
             <div className="setting-label">Username</div>
           </div>
-          <input type="text" disabled placeholder="user@example.com" />
+          <input type="text" disabled placeholder="user@example.com" className="setting-input" />
         </div>
-        <div className="setting-row disabled">
+        <div className="setting-row setting-row-last">
           <div className="setting-info">
             <div className="setting-label">From Address</div>
           </div>
-          <input type="text" disabled placeholder="noreply@example.com" />
+          <input type="text" disabled placeholder="noreply@example.com" className="setting-input" />
         </div>
       </div>
     </div>
