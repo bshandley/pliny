@@ -1317,9 +1317,9 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                   {card.checklist.checked}/{card.checklist.total}
                 </span>
               )}
-              {card.checklist && card.checklist.overdue && card.checklist.overdue > 0 && (
+              {(card.checklist?.overdue ?? 0) > 0 && (
                 <span className="checklist-overdue-badge">
-                  {card.checklist.overdue} overdue
+                  {card.checklist!.overdue} overdue
                 </span>
               )}
             </div>
