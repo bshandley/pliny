@@ -3,6 +3,7 @@ import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
+import { notifyCardMembers } from '../services/notificationHelper';
 
 const router = Router();
 
@@ -159,6 +160,17 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
         from_column: colMap[old.column_id] || old.column_id,
         to_column: colMap[column_id] || column_id
       });
+
+      // Check if moved to last (rightmost) column = "done"
+      const lastCol = await pool.query(
+        'SELECT id FROM columns WHERE board_id = (SELECT board_id FROM columns WHERE id = $1) ORDER BY position DESC LIMIT 1',
+        [column_id]
+      );
+      if (lastCol.rows.length > 0 && lastCol.rows[0].id === column_id) {
+        const io = req.app.get('io');
+        const userSockets: Map<string, string[]> = req.app.get('userSockets');
+        notifyCardMembers(id, 'card_completed', req.user!.id, req.user!.username, {}, io, userSockets);
+      }
     }
 
     if (title !== undefined && title !== old.title) {
@@ -167,6 +179,9 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 
     if (description !== undefined && (description || null) !== (old.description || null)) {
       logActivity(id, req.user!.id, 'description_changed');
+      const io = req.app.get('io');
+      const userSockets: Map<string, string[]> = req.app.get('userSockets');
+      notifyCardMembers(id, 'description_changed', req.user!.id, req.user!.username, {}, io, userSockets);
     }
 
     if (due_date !== undefined) {

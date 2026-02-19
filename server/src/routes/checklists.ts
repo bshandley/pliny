@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { createNotification } from '../services/notificationHelper';
 
 const router = Router();
 
@@ -100,6 +101,38 @@ router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Item not found' });
     }
+
+    // Notify assignee when assigned to a checklist item
+    if (assignee_name !== undefined && assignee_name) {
+      const assignee = await pool.query('SELECT id FROM users WHERE username = $1', [assignee_name]);
+      if (assignee.rows.length > 0) {
+        const item = result.rows[0];
+        const cardInfo = await pool.query(
+          `SELECT c.title, col.board_id, b.name as board_name
+           FROM cards c JOIN columns col ON c.column_id = col.id
+           JOIN boards b ON col.board_id = b.id
+           WHERE c.id = $1`,
+          [item.card_id]
+        );
+        if (cardInfo.rows.length > 0) {
+          const { title, board_id, board_name } = cardInfo.rows[0];
+          const io = req.app.get('io');
+          const userSockets: Map<string, string[]> = req.app.get('userSockets');
+          await createNotification({
+            userId: assignee.rows[0].id,
+            type: 'checklist_assigned',
+            cardId: item.card_id,
+            boardId: board_id,
+            actorId: req.user!.id,
+            actorUsername: req.user!.username,
+            detail: { card_title: title, board_name },
+            io,
+            userSockets,
+          });
+        }
+      }
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update checklist item error:', error);
