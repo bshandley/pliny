@@ -73,11 +73,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   // On mobile, push a history entry when a card is opened so the browser
   // back button/gesture closes the card instead of leaving the board.
   const cardHistoryPushed = useRef(false);
-  // Push a history entry whenever a card overlay is open (mobile always; desktop only in non-board views).
-  // This makes the browser back button close the card instead of navigating away.
   useEffect(() => {
-    const needsHistoryEntry = isMobile || viewMode !== 'board';
-    if (!needsHistoryEntry) return;
+    if (!isMobile) return;
     if (editingCardId) {
       window.history.pushState({ cardOpen: true }, '');
       cardHistoryPushed.current = true;
@@ -88,10 +85,16 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
     }
-  }, [isMobile, viewMode, editingCardId]);
+  }, [isMobile, editingCardId]);
+
+  // Clear any open card when the view changes (e.g. browser back from board → calendar
+  // after opening a card via handleOpenInBoard — prevents stale overlay, issue #8).
+  useEffect(() => {
+    setEditingCardId(null);
+  }, [viewMode]);
 
   const closeCard = () => {
-    if (cardHistoryPushed.current) {
+    if (isMobile && cardHistoryPushed.current) {
       // Let history.back() trigger the popstate handler which clears editingCardId
       window.history.back();
     } else {
@@ -485,9 +488,10 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   };
 
   const handleOpenInBoard = (cardId: string) => {
-    // Open card as overlay in current view — do not switch to board view.
-    // Switching views caused a stale editingCardId after browser-back (issue #8).
-    setEditingCardId(cardId);
+    // Switch to board view then open the card. The viewMode useEffect above clears
+    // editingCardId on any view change, so browser-back won't leave a stale overlay (#8).
+    onViewChange('board');
+    setTimeout(() => setEditingCardId(cardId), 100);
   };
 
   const handleCalendarChangeDate = async (cardId: string, date: string) => {
