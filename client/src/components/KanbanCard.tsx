@@ -214,42 +214,45 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     }
   };
 
-  const removeMember = (id: string) => {
-    setEditMembers(editMembers.filter(m => m !== id));
+  const removeMember = async (id: string) => {
+    const newMembers = editMembers.filter(m => m !== id);
+    setEditMembers(newMembers);
+    try {
+      await api.setCardMembers(card.id, newMembers);
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to save members:', err);
+    }
   };
 
-  const selectMember = (id: string) => {
-    if (!editMembers.includes(id)) setEditMembers([...editMembers, id]);
+  const selectMember = async (id: string) => {
+    const newMembers = editMembers.includes(id) ? editMembers : [...editMembers, id];
+    setEditMembers(newMembers);
+    try {
+      await api.setCardMembers(card.id, newMembers);
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to save members:', err);
+    }
     setShowAutocomplete(false);
     setAutocompleteFilter('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const handleSave = async () => {
-    if (!editTitle.trim()) return;
-    onUpdate({
-      title: editTitle,
-      description: editDescription,
-      assignees: editAssignees,
-      labels: editLabels as any,
-      start_date: editStartDate || null,
-      due_date: editDueDate || null
-    });
-    // Save members separately
-    const originalMemberIds = card.members?.map(m => m.id) || [];
-    if (JSON.stringify([...editMembers].sort()) !== JSON.stringify([...originalMemberIds].sort())) {
-      try {
-        await api.setCardMembers(card.id, editMembers);
-      } catch (err) {
-        console.error('Failed to save members:', err);
-      }
+  const handleSaveDescription = () => {
+    onUpdate({ description: editDescription });
+  };
+
+  const handleClose = () => {
+    if (editDescription !== (card.description || '')) {
+      if (!window.confirm('You have unsaved description changes. Discard?')) return;
+      setEditDescription(card.description || '');
     }
     onEditEnd();
   };
 
-  // Keep a ref to the latest handleSave so the click-outside effect always calls current state
-  const handleSaveRef = useRef(handleSave);
-  useEffect(() => { handleSaveRef.current = handleSave; });
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => { handleCloseRef.current = handleClose; });
 
   // Close edit/detail panel when clicking outside the card
   useEffect(() => {
@@ -257,7 +260,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     const handleClickOutside = (e: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
         if (canWrite) {
-          handleSaveRef.current();
+          handleCloseRef.current();
         } else {
           onEditEnd();
         }
@@ -285,17 +288,6 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     };
   }, [showCardMenu]);
 
-  const handleCancel = () => {
-    setEditTitle(card.title);
-    setEditDescription(card.description || '');
-    setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
-    setEditAssignees(card.assignees || []);
-    setEditLabels(card.labels?.map(l => l.id) || []);
-    setEditMembers(card.members?.map(m => m.id) || []);
-    onEditEnd();
-    setShowAutocomplete(false);
-    setAutocompleteFilter('');
-  };
 
   const handleCustomFieldChange = async (fieldId: string, value: string | null) => {
     try {
@@ -323,20 +315,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   );
 
   const selectAssignee = (name: string) => {
-    if (!editAssignees.includes(name)) setEditAssignees([...editAssignees, name]);
+    const newAssignees = editAssignees.includes(name) ? editAssignees : [...editAssignees, name];
+    setEditAssignees(newAssignees);
+    onUpdate({ assignees: newAssignees });
     setShowAutocomplete(false);
     setAutocompleteFilter('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
   const removeAssignee = (name: string) => {
-    setEditAssignees(editAssignees.filter(a => a !== name));
+    const newAssignees = editAssignees.filter(a => a !== name);
+    setEditAssignees(newAssignees);
+    onUpdate({ assignees: newAssignees });
   };
 
   const toggleLabel = (labelId: string) => {
-    setEditLabels(prev =>
-      prev.includes(labelId) ? prev.filter(id => id !== labelId) : [...prev, labelId]
-    );
+    const newLabels = editLabels.includes(labelId) ? editLabels.filter(id => id !== labelId) : [...editLabels, labelId];
+    setEditLabels(newLabels);
+    onUpdate({ labels: newLabels as any });
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
@@ -548,9 +544,14 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         className="card-edit-title"
         placeholder="Card title"
         autoFocus={!isMobile}
+        onBlur={() => {
+          if (editTitle.trim() && editTitle !== card.title) {
+            onUpdate({ title: editTitle });
+          }
+        }}
         onKeyDown={(e) => {
-          if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); handleSave(); }
-          else if (!isMobile && e.key === 'Escape') handleCancel();
+          if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+          else if (!isMobile && e.key === 'Escape') handleClose();
         }}
         maxLength={255}
       />
@@ -664,24 +665,31 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000} />
+      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000}
+        onKeyDown={(e) => {
+          if (!isMobile && e.key === 'Escape') { e.preventDefault(); handleClose(); }
+        }}
+      />
+      {editDescription !== (card.description || '') && (
+        <button type="button" onClick={handleSaveDescription} className="btn-primary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }}>Save description</button>
+      )}
 
       <div className="date-range-picker">
         <div className="due-date-picker">
           <label htmlFor={`start-date-${card.id}`}>Start date</label>
           <div className="due-date-input-row">
-            <input type="date" id={`start-date-${card.id}`} value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className="due-date-input" />
+            <input type="date" id={`start-date-${card.id}`} value={editStartDate} onChange={(e) => { setEditStartDate(e.target.value); onUpdate({ start_date: e.target.value || null }); }} className="due-date-input" />
             {editStartDate && (
-              <button type="button" onClick={() => setEditStartDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear start date">×</button>
+              <button type="button" onClick={() => { setEditStartDate(''); onUpdate({ start_date: null }); }} className="btn-icon btn-sm due-date-clear" aria-label="Clear start date">×</button>
             )}
           </div>
         </div>
         <div className="due-date-picker">
           <label htmlFor={`due-date-${card.id}`}>Due date</label>
           <div className="due-date-input-row">
-            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
+            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => { setEditDueDate(e.target.value); onUpdate({ due_date: e.target.value || null }); }} className="due-date-input" />
             {editDueDate && (
-              <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
+              <button type="button" onClick={() => { setEditDueDate(''); onUpdate({ due_date: null }); }} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
             )}
           </div>
         </div>
@@ -1164,7 +1172,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       return createPortal(
         <div className="card-fullscreen-overlay">
           <div className="card-fullscreen-header">
-            <button onClick={handleCancel} className="btn-icon" aria-label="Back">←</button>
+            <button onClick={handleClose} className="btn-icon" aria-label="Back">←</button>
             <h2>{card.title}</h2>
             <div className="card-edit-actions-menu" ref={showCardMenu ? cardMenuRef : undefined}>
               <button
@@ -1182,7 +1190,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 </div>
               )}
             </div>
-            <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
+            <button onClick={handleClose} className="btn-primary btn-sm">Done</button>
           </div>
           <div className="card-fullscreen-body">
             {renderEditFields()}
@@ -1197,8 +1205,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       <div ref={cardRef} className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
         {renderEditFields()}
         <div className="card-edit-actions">
-          <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
-          <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
+          <button onClick={handleClose} className="btn-primary btn-sm">Done</button>
           <div className="card-edit-actions-menu">
             <button
               ref={cardMenuBtnRef}
