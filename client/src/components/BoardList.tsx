@@ -145,7 +145,7 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
         {isAdmin && (
           <>
             <button onClick={onGoToUsers} className="btn-secondary btn-sm">
-              Users
+              Admin
             </button>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
               + New Board
