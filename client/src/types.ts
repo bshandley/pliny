@@ -81,7 +81,7 @@ export interface ActivityEntry {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'mention_card' | 'mention_comment';
+  type: 'assigned_card' | 'mention_card' | 'mention_comment' | 'due_date_reminder' | 'card_completed' | 'comment_added' | 'checklist_assigned' | 'description_changed';
   card_id: string;
   board_id: string;
   actor_id: string;

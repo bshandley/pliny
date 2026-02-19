@@ -48,10 +48,25 @@ export default function NotificationBell({ notifications, onMarkRead, onMarkAllR
 
   const getNotificationText = (notif: Notification) => {
     const cardTitle = notif.detail?.card_title || 'a card';
-    if (notif.type === 'mention_card') {
-      return { action: 'added you to', target: cardTitle };
+    switch (notif.type) {
+      case 'assigned_card':
+      case 'mention_card':
+        return { action: 'added you to', target: cardTitle };
+      case 'mention_comment':
+        return { action: 'mentioned you on', target: cardTitle };
+      case 'due_date_reminder':
+        return { action: 'reminder:', target: `${cardTitle} is due soon` };
+      case 'card_completed':
+        return { action: 'completed', target: cardTitle };
+      case 'comment_added':
+        return { action: 'commented on', target: cardTitle };
+      case 'checklist_assigned':
+        return { action: 'assigned you a subtask on', target: cardTitle };
+      case 'description_changed':
+        return { action: 'updated description of', target: cardTitle };
+      default:
+        return { action: 'updated', target: cardTitle };
     }
-    return { action: 'mentioned you on', target: cardTitle };
   };
 
   return (
