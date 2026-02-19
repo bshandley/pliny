@@ -225,44 +225,45 @@ export default function GeneralSettings() {
             <span className="toggle-knob" />
           </button>
         </div>
-        <div className="setting-row setting-row-last">
+        <div className="setting-row setting-row-last" style={{ alignItems: 'flex-start' }}>
           <div className="setting-info">
             <div className="setting-label">Test Connection</div>
             <div className="setting-desc">Send a test email to verify your SMTP settings</div>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="email"
-              className="setting-input"
-              placeholder="test@example.com"
-              value={smtpTestEmail}
-              onChange={(e) => setSmtpTestEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleTestConnection(); }}
-            />
-            <button
-              className="btn btn-primary"
-              onClick={handleTestConnection}
-              disabled={smtpTestSending || !smtpTestEmail}
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              {smtpTestSending ? 'Sending...' : 'Send Test'}
-            </button>
-          </div>
-          {smtpTestStatus && (
-            <div
-              className={`smtp-test-status ${smtpTestStatus.type}`}
-              style={{
-                marginTop: '8px',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                fontSize: '13px',
-                backgroundColor: smtpTestStatus.type === 'success' ? 'var(--bg-success, #d4edda)' : 'var(--bg-error, #f8d7da)',
-                color: smtpTestStatus.type === 'success' ? 'var(--text-success, #155724)' : 'var(--text-error, #721c24)',
-              }}
-            >
-              {smtpTestStatus.message}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="email"
+                className="setting-input"
+                placeholder="test@example.com"
+                value={smtpTestEmail}
+                onChange={(e) => setSmtpTestEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleTestConnection(); }}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleTestConnection}
+                disabled={smtpTestSending || !smtpTestEmail}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {smtpTestSending ? 'Sending...' : 'Send Test'}
+              </button>
             </div>
-          )}
+            {smtpTestStatus && (
+              <div
+                className={`smtp-test-status ${smtpTestStatus.type}`}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  backgroundColor: smtpTestStatus.type === 'success' ? 'var(--bg-success, #d4edda)' : 'var(--bg-error, #f8d7da)',
+                  color: smtpTestStatus.type === 'success' ? 'var(--text-success, #155724)' : 'var(--text-error, #721c24)',
+                }}
+              >
+                {smtpTestStatus.message}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
