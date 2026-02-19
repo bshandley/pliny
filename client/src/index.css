@@ -6104,7 +6104,6 @@ button:disabled {
   font-size: 0.7rem;
   line-height: 1.2;
   overflow: hidden;
-  margin: 0 -2px;
   padding: 0 4px;
 }
 
@@ -6120,35 +6119,44 @@ button:disabled {
   font-weight: 500;
 }
 
-/* Span position variants */
+/* Span position variants
+   Grid gap=1px + cell padding=0.375rem → bleed by calc(0.375rem + 1px) on connecting sides */
 .calendar-span-strip.span-start {
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   margin-left: 2px;
-  margin-right: 0;
+  margin-right: calc(-0.375rem - 1px);
+  padding-right: calc(0.375rem + 1px);
 }
 
 .calendar-span-strip.span-end {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  margin-left: 0;
+  margin-left: calc(-0.375rem - 1px);
   margin-right: 2px;
+  padding-left: 0;
 }
 
 .calendar-span-strip.span-middle {
   border-radius: 0;
-  margin-left: 0;
-  margin-right: 0;
+  margin-left: calc(-0.375rem - 1px);
+  margin-right: calc(-0.375rem - 1px);
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .calendar-span-strip.span-row-start {
   border-radius: 0;
-  margin-left: 0;
-  margin-right: 0;
+  margin-left: calc(-0.375rem - 1px);
+  margin-right: calc(-0.375rem - 1px);
+  padding-left: 0.25rem;
+  padding-right: 0;
 }
 
 .calendar-span-strip.span-row-end {
   border-radius: 0;
-  margin-left: 0;
-  margin-right: 0;
+  margin-left: calc(-0.375rem - 1px);
+  margin-right: calc(-0.375rem - 1px);
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .calendar-span-strip.span-single {
