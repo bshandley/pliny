@@ -27,6 +27,57 @@ function isToday(date: Date): boolean {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
 }
 
+type SpanPosition = 'single' | 'start' | 'middle' | 'end' | 'row-start' | 'row-end';
+
+interface CardWithSpan {
+  card: Card;
+  columnName: string;
+  spanPosition: SpanPosition;
+  spanDays: number;
+}
+
+function getCardSpanPosition(
+  card: Card,
+  date: Date,
+  rowStartDay: number, // 0=Sun for weekly rows in month view
+  rowEndDay: number    // 6=Sat
+): SpanPosition | null {
+  const startStr = card.start_date?.split('T')[0];
+  const endStr = card.due_date?.split('T')[0];
+  const dateKey = formatDateKey(date);
+  const dayOfWeek = date.getDay();
+
+  // Single-day scenarios
+  if (!startStr && endStr === dateKey) return 'single';
+  if (startStr && !endStr && startStr === dateKey) return 'single';
+  if (startStr && endStr && startStr === endStr && startStr === dateKey) return 'single';
+
+  // Multi-day span
+  if (startStr && endStr && startStr !== endStr) {
+    const start = new Date(startStr + 'T00:00:00');
+    const end = new Date(endStr + 'T00:00:00');
+    const current = new Date(dateKey + 'T00:00:00');
+
+    if (current < start || current > end) return null;
+
+    const isSpanStart = dateKey === startStr;
+    const isSpanEnd = dateKey === endStr;
+    const isRowStart = dayOfWeek === rowStartDay;
+    const isRowEnd = dayOfWeek === rowEndDay;
+
+    if (isSpanStart && isSpanEnd) return 'single';
+    if (isSpanStart) return isRowEnd ? 'row-end' : 'start';
+    if (isSpanEnd) return isRowStart ? 'row-start' : 'end';
+    if (isRowStart) return 'row-start';
+    if (isRowEnd) return 'row-end';
+    return 'middle';
+  }
+
+  // No match
+  if (!endStr || endStr !== dateKey) return null;
+  return 'single';
+}
+
 function getMonthDays(year: number, month: number): Date[] {
   const firstDay = new Date(year, month, 1);
   const startOffset = firstDay.getDay(); // 0=Sun
@@ -171,6 +222,21 @@ function MobileCalendarCard({ card, columnName, onOpenInBoard, onChangeDate, onR
   );
 }
 
+function CalendarSpanStrip({ card, spanPosition, onClick }: {
+  card: Card;
+  spanPosition: SpanPosition;
+  onClick: () => void;
+}) {
+  const showTitle = spanPosition === 'start' || spanPosition === 'row-start';
+  const posClass = `span-${spanPosition}`;
+
+  return (
+    <div className={`calendar-span-strip ${posClass}`} onClick={onClick}>
+      {showTitle && <span className="span-title">{card.title}</span>}
+    </div>
+  );
+}
+
 export { CalendarCardChip, MobileCalendarCard };
 
 export default function CalendarView({ board, onCardClick, filterCard, isAdmin, isMobile, onOpenInBoard, onChangeDate, onRemoveDate }: CalendarViewProps) {
@@ -184,19 +250,39 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Collect all scheduled cards from all columns, filtered
-  const getCardsForDate = (date: Date): { card: Card; columnName: string }[] => {
-    const dateKey = formatDateKey(date);
-    const results: { card: Card; columnName: string }[] = [];
+  // Collect all scheduled cards from all columns, filtered, with span info
+  const getCardsForDate = (date: Date, rowStartDay = 0, rowEndDay = 6): CardWithSpan[] => {
+    const results: CardWithSpan[] = [];
     board.columns?.forEach(col => {
       col.cards?.forEach(card => {
-        if (card.archived || !card.due_date || !filterCard(card)) return;
-        const cardDate = card.due_date.split('T')[0];
-        if (cardDate === dateKey) {
-          results.push({ card, columnName: col.name });
+        if (card.archived || !filterCard(card)) return;
+        // Card needs at least one date
+        if (!card.due_date && !card.start_date) return;
+
+        const spanPosition = getCardSpanPosition(card, date, rowStartDay, rowEndDay);
+        if (!spanPosition) return;
+
+        // Calculate span duration for sorting
+        let spanDays = 1;
+        if (card.start_date && card.due_date && card.start_date !== card.due_date) {
+          const start = new Date(card.start_date.split('T')[0] + 'T00:00:00');
+          const end = new Date(card.due_date.split('T')[0] + 'T00:00:00');
+          spanDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         }
+
+        results.push({ card, columnName: col.name, spanPosition, spanDays });
       });
     });
+
+    // Sort: multi-day spans first (by duration desc), then single-day
+    results.sort((a, b) => {
+      const aMulti = a.spanPosition !== 'single' ? 1 : 0;
+      const bMulti = b.spanPosition !== 'single' ? 1 : 0;
+      if (aMulti !== bMulti) return bMulti - aMulti;
+      if (aMulti && bMulti) return b.spanDays - a.spanDays;
+      return 0;
+    });
+
     return results;
   };
 
@@ -282,11 +368,14 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
         {dayNames.map(d => <div key={d} className="calendar-day-header">{d}</div>)}
         {days.map((date, i) => {
           const dateKey = formatDateKey(date);
-          const cards = getCardsForDate(date);
+          const cards = getCardsForDate(date, 0, 6); // Sun-Sat row boundaries
+          const spans = cards.filter(c => c.spanPosition !== 'single');
+          const singles = cards.filter(c => c.spanPosition === 'single');
           const isCurrentMonth = date.getMonth() === month;
           const todayClass = isToday(date) ? ' calendar-today' : '';
           const outsideClass = !isCurrentMonth ? ' calendar-outside' : '';
           const maxVisible = 3;
+          const allItems = [...spans, ...singles];
 
           return (
             <Droppable key={i} droppableId={`calendar-${dateKey}`} type="CALENDAR">
@@ -299,26 +388,35 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                 >
                   <div className="calendar-day-number">{date.getDate()}</div>
                   <div className="calendar-day-cards">
-                    {cards.slice(0, maxVisible).map(({ card, columnName }, cardIndex) => (
-                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
-                        {(provided) => (
-                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                            <CalendarCardChip
-                              card={card}
-                              columnName={columnName}
-                              onClick={() => onOpenInBoard(card.id)}
-                              isMobile={isMobile}
-                              isAdmin={isAdmin}
-                              onOpenInBoard={onOpenInBoard}
-                              onChangeDate={onChangeDate}
-                              onRemoveDate={onRemoveDate}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
+                    {allItems.slice(0, maxVisible).map(({ card, columnName, spanPosition }, cardIndex) => (
+                      spanPosition !== 'single' ? (
+                        <CalendarSpanStrip
+                          key={card.id}
+                          card={card}
+                          spanPosition={spanPosition}
+                          onClick={() => onOpenInBoard(card.id)}
+                        />
+                      ) : (
+                        <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
+                          {(dragProvided) => (
+                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps}>
+                              <CalendarCardChip
+                                card={card}
+                                columnName={columnName}
+                                onClick={() => onOpenInBoard(card.id)}
+                                isMobile={isMobile}
+                                isAdmin={isAdmin}
+                                onOpenInBoard={onOpenInBoard}
+                                onChangeDate={onChangeDate}
+                                onRemoveDate={onRemoveDate}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      )
                     ))}
-                    {cards.length > maxVisible && (
-                      <span className="calendar-more-btn">+{cards.length - maxVisible} more</span>
+                    {allItems.length > maxVisible && (
+                      <span className="calendar-more-btn">+{allItems.length - maxVisible} more</span>
                     )}
                     {showSubtasks && subtasksByDate[dateKey]?.map(({ item, cardId }) => (
                       <div
@@ -349,7 +447,10 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
       <div className="calendar-grid week-grid">
         {days.map((date, i) => {
           const dateKey = formatDateKey(date);
-          const cards = getCardsForDate(date);
+          const cards = getCardsForDate(date, 0, 6); // Sun-Sat row boundaries
+          const spans = cards.filter(c => c.spanPosition !== 'single');
+          const singles = cards.filter(c => c.spanPosition === 'single');
+          const allItems = [...spans, ...singles];
           const todayClass = isToday(date) ? ' calendar-today' : '';
 
           return (
@@ -366,23 +467,32 @@ export default function CalendarView({ board, onCardClick, filterCard, isAdmin, 
                     <span className="calendar-day-number">{date.getDate()}</span>
                   </div>
                   <div className="calendar-day-cards">
-                    {cards.map(({ card, columnName }, cardIndex) => (
-                      <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
-                        {(provided) => (
-                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                            <CalendarCardChip
-                              card={card}
-                              columnName={columnName}
-                              onClick={() => onOpenInBoard(card.id)}
-                              isMobile={isMobile}
-                              isAdmin={isAdmin}
-                              onOpenInBoard={onOpenInBoard}
-                              onChangeDate={onChangeDate}
-                              onRemoveDate={onRemoveDate}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
+                    {allItems.map(({ card, columnName, spanPosition }, cardIndex) => (
+                      spanPosition !== 'single' ? (
+                        <CalendarSpanStrip
+                          key={card.id}
+                          card={card}
+                          spanPosition={spanPosition}
+                          onClick={() => onOpenInBoard(card.id)}
+                        />
+                      ) : (
+                        <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || isMobile}>
+                          {(dragProvided) => (
+                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps}>
+                              <CalendarCardChip
+                                card={card}
+                                columnName={columnName}
+                                onClick={() => onOpenInBoard(card.id)}
+                                isMobile={isMobile}
+                                isAdmin={isAdmin}
+                                onOpenInBoard={onOpenInBoard}
+                                onChangeDate={onChangeDate}
+                                onRemoveDate={onRemoveDate}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      )
                     ))}
                     {showSubtasks && subtasksByDate[dateKey]?.map(({ item, cardId }) => (
                       <div

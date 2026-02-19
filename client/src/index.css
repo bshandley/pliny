@@ -6093,3 +6093,65 @@ button:disabled {
   font-size: 0.7rem;
   flex-shrink: 0;
 }
+
+/* Multi-day span strips */
+.calendar-span-strip {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  overflow: hidden;
+  margin: 0 -2px;
+  padding: 0 4px;
+}
+
+.calendar-span-strip:hover {
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.calendar-span-strip .span-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Span position variants */
+.calendar-span-strip.span-start {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  margin-left: 2px;
+  margin-right: 0;
+}
+
+.calendar-span-strip.span-end {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-left: 0;
+  margin-right: 2px;
+}
+
+.calendar-span-strip.span-middle {
+  border-radius: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar-span-strip.span-row-start {
+  border-radius: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar-span-strip.span-row-end {
+  border-radius: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar-span-strip.span-single {
+  border-radius: var(--radius-sm);
+  margin: 0 2px;
+}
