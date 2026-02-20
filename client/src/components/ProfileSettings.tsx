@@ -35,6 +35,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
   // Disable flow
   const [disableMode, setDisableMode] = useState(false);
   const [disablePassword, setDisablePassword] = useState('');
+  const [showDisablePassword, setShowDisablePassword] = useState(false);
   const [disableError, setDisableError] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
 
@@ -227,14 +228,23 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 <form onSubmit={handleDisable}>
                   <div className="form-group">
                     <label htmlFor="disable-password">Enter your password to disable 2FA</label>
-                    <input
-                      type="password"
-                      id="disable-password"
-                      value={disablePassword}
-                      onChange={(e) => setDisablePassword(e.target.value)}
-                      autoComplete="current-password"
-                      required
-                    />
+                    <div className="password-input-wrapper">
+                      <input
+                        type={showDisablePassword ? 'text' : 'password'}
+                        id="disable-password"
+                        value={disablePassword}
+                        onChange={(e) => setDisablePassword(e.target.value)}
+                        autoComplete="current-password"
+                        required
+                      />
+                      <button type="button" className="password-toggle" onClick={() => setShowDisablePassword(v => !v)} tabIndex={-1} aria-label={showDisablePassword ? 'Hide password' : 'Show password'}>
+                        {showDisablePassword ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   {disableError && <div className="error">{disableError}</div>}
                   <div className="profile-actions">
