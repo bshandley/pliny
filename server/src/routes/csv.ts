@@ -80,7 +80,8 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
       `SELECT v.card_id, v.field_id, v.value
        FROM card_custom_field_values v
        JOIN board_custom_fields f ON v.field_id = f.id
-       WHERE f.board_id = $1`,
+       INNER JOIN cards c ON v.card_id = c.id
+       WHERE f.board_id = $1 AND c.archived = false`,
       [boardId]
     );
     const cfValuesByCard = new Map<string, Map<string, string>>();
@@ -119,11 +120,11 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
     const csv = stringify([headers, ...rows]);
 
     // Sanitize board name for filename
-    const safeName = boardName.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '-').toLowerCase();
+    const safeName = boardName.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '-').toLowerCase().replace(/^-+|-+$/g, '') || 'board';
     const date = new Date().toISOString().split('T')[0];
     const filename = `${safeName}-${date}.csv`;
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
   } catch (error) {
