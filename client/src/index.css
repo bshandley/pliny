@@ -6643,6 +6643,63 @@ button:disabled {
   max-width: 640px;
 }
 
+.csv-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.csv-step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s var(--ease);
+}
+
+.csv-step.active {
+  color: var(--primary);
+}
+
+.csv-step.completed {
+  color: var(--text-secondary);
+}
+
+.csv-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.2s var(--ease);
+}
+
+.csv-step.active .csv-step-num {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.csv-step.completed .csv-step-num {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.csv-step-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .csv-drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
@@ -6656,7 +6713,39 @@ button:disabled {
 .csv-drop-zone:hover,
 .csv-drop-zone.drag-over {
   border-color: var(--primary);
-  background: rgba(87, 70, 175, 0.04);
+  background: var(--primary-subtle);
+}
+
+.csv-upload-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  transition: color 0.2s var(--ease);
+}
+
+.csv-drop-zone:hover .csv-upload-icon,
+.csv-drop-zone.drag-over .csv-upload-icon {
+  color: var(--primary);
+}
+
+.csv-drop-title {
+  margin: 0 0 0.35rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.csv-drop-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.csv-filename {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary);
 }
 
 .csv-mapping-table {
@@ -6670,12 +6759,16 @@ button:disabled {
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   padding: 0.5rem 0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 1;
 }
 
 .csv-mapping-row {
@@ -6685,10 +6778,11 @@ button:disabled {
   align-items: center;
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border-light, rgba(0,0,0,0.06));
+  transition: background 0.15s var(--ease);
 }
 
 .csv-mapping-row.mapped {
-  background: rgba(87, 70, 175, 0.03);
+  background: var(--primary-subtle);
 }
 
 .csv-header-name {
@@ -6705,10 +6799,17 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--card-bg);
+  color: var(--text);
 }
 
 .csv-preview {
   margin-bottom: 1rem;
+}
+
+.csv-preview-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
 }
 
 .csv-preview-scroll {
@@ -6746,11 +6847,41 @@ button:disabled {
   padding: 1.5rem 0;
 }
 
+.csv-success-icon {
+  width: 3rem;
+  height: 3rem;
+  color: #059669;
+  margin-bottom: 0.75rem;
+  animation: csvCheckIn 0.4s var(--ease-spring);
+}
+
+@keyframes csvCheckIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+[data-theme="dark"] .csv-success-icon {
+  color: #34d399;
+}
+
+.csv-result-count {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin: 0;
+}
+
 .csv-import-warnings {
   text-align: left;
   margin-top: 1rem;
   font-size: 0.8rem;
   color: var(--text-secondary);
+}
+
+.csv-warnings-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
 }
 
 .csv-import-warnings ul {
@@ -6766,7 +6897,7 @@ button:disabled {
   padding: 0.6rem 1rem;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  background: rgba(197, 48, 48, 0.08);
+  background: var(--danger-subtle);
   color: var(--danger);
   border-left: 3px solid var(--danger);
   margin-bottom: 1rem;

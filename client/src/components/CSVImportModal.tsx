@@ -29,12 +29,13 @@ const PLANK_FIELDS = [
 ];
 
 export default function CSVImportModal({ boardId, onClose, onImportComplete }: CSVImportModalProps) {
-  const [step, setStep] = useState<'upload' | 'map'>('upload');
+  const [step, setStep] = useState<'upload' | 'map' | 'done'>('upload');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [dragOver, setDragOver] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<{ created: number; errors: { row: number; field: string; message: string }[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +51,7 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
 
     setLoading(true);
     setError(null);
+    setFileName(file.name);
 
     try {
       const formData = new FormData();
@@ -73,6 +75,7 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
       setStep('map');
     } catch (err: any) {
       setError(err.message || 'Failed to parse CSV');
+      setFileName(null);
     } finally {
       setLoading(false);
     }
@@ -109,11 +112,8 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
 
       const result = await response.json();
       setImportResult(result);
-
-      setTimeout(() => {
-        onImportComplete();
-        onClose();
-      }, 3000);
+      setStep('done');
+      onImportComplete();
     } catch (err: any) {
       setError(err.message || 'Import failed');
     } finally {
@@ -134,15 +134,29 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
   ];
 
   const mappedTitleCount = Object.values(mapping).filter(v => v === 'title').length;
+  const mappedCount = Object.values(mapping).filter(v => v !== 'skip').length;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className={`modal ${step === 'map' ? 'modal-csv-import' : ''}`} onClick={(e) => e.stopPropagation()}>
         <h2>Import Cards from CSV</h2>
 
+        {step !== 'done' && (
+          <div className="csv-steps">
+            <div className={`csv-step ${step === 'upload' ? 'active' : 'completed'}`}>
+              <span className="csv-step-num">{step === 'upload' ? '1' : '\u2713'}</span>
+              Upload
+            </div>
+            <div className="csv-step-line" />
+            <div className={`csv-step ${step === 'map' ? 'active' : ''}`}>
+              <span className="csv-step-num">2</span>
+              Map & Preview
+            </div>
+          </div>
+        )}
+
         {step === 'upload' && (
           <>
-            <p className="modal-subtitle">Upload a CSV file to import cards into this board.</p>
             <div
               className={`csv-drop-zone${dragOver ? ' drag-over' : ''}`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -161,17 +175,30 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
                 <div className="loading-inline"><div className="spinner"></div></div>
               ) : (
                 <>
-                  <p style={{ margin: '0 0 0.5rem', fontWeight: 500 }}>Drop CSV file here</p>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>or click to browse (max 5MB)</p>
+                  <svg className="csv-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  {fileName ? (
+                    <p className="csv-filename">{fileName}</p>
+                  ) : (
+                    <>
+                      <p className="csv-drop-title">Drop CSV file here</p>
+                      <p className="csv-drop-hint">or click to browse (max 5MB)</p>
+                    </>
+                  )}
                 </>
               )}
             </div>
           </>
         )}
 
-        {step === 'map' && preview && !importResult && (
+        {step === 'map' && preview && (
           <>
-            <p className="modal-subtitle">{preview.rowCount} rows found. Map CSV columns to card fields.</p>
+            <p className="modal-subtitle">
+              {preview.rowCount} rows from <strong>{fileName}</strong>. {mappedCount} of {preview.headers.length} columns mapped.
+            </p>
 
             <div className="csv-mapping-table">
               <div className="csv-mapping-header">
@@ -180,7 +207,7 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
               </div>
               {preview.headers.map(header => (
                 <div key={header} className={`csv-mapping-row${mapping[header] !== 'skip' ? ' mapped' : ''}`}>
-                  <span className="csv-header-name">{header}</span>
+                  <span className="csv-header-name" title={header}>{header}</span>
                   <select
                     value={mapping[header] || 'skip'}
                     onChange={(e) => updateMapping(header, e.target.value)}
@@ -193,9 +220,13 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
               ))}
             </div>
 
+            {mappedTitleCount === 0 && (
+              <div className="csv-error">A column must be mapped to Title to import cards.</div>
+            )}
+
             {preview.sampleRows.length > 0 && (
               <div className="csv-preview">
-                <p style={{ fontWeight: 500, fontSize: '0.85rem', marginBottom: '0.5rem' }}>Preview (first {preview.sampleRows.length} rows)</p>
+                <p className="csv-preview-label">Preview (first {preview.sampleRows.length} rows)</p>
                 <div className="csv-preview-scroll">
                   <table>
                     <thead>
@@ -209,7 +240,7 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
                       {preview.sampleRows.map((row, i) => (
                         <tr key={i}>
                           {preview.headers.filter(h => mapping[h] !== 'skip').map(h => (
-                            <td key={h}>{row[h] || ''}</td>
+                            <td key={h} title={row[h] || ''}>{row[h] || ''}</td>
                           ))}
                         </tr>
                       ))}
@@ -221,14 +252,18 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
           </>
         )}
 
-        {importResult && (
+        {step === 'done' && importResult && (
           <div className="csv-import-result">
-            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--primary)' }}>
+            <svg className="csv-success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="8 12 11 15 16 9" />
+            </svg>
+            <p className="csv-result-count">
               Imported {importResult.created} card{importResult.created !== 1 ? 's' : ''}
             </p>
             {importResult.errors.length > 0 && (
               <div className="csv-import-warnings">
-                <p style={{ fontWeight: 500, fontSize: '0.85rem', marginBottom: '0.25rem' }}>{importResult.errors.length} warning{importResult.errors.length !== 1 ? 's' : ''}:</p>
+                <p className="csv-warnings-label">{importResult.errors.length} warning{importResult.errors.length !== 1 ? 's' : ''}:</p>
                 <ul>
                   {importResult.errors.slice(0, 10).map((err, i) => (
                     <li key={i}>Row {err.row}: {err.message}</li>
@@ -245,15 +280,15 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
         )}
 
         <div className="modal-actions">
-          {step === 'map' && !importResult && (
-            <button onClick={() => { setStep('upload'); setPreview(null); setError(null); }} className="btn-secondary" style={{ marginRight: 'auto' }}>
+          {step === 'map' && (
+            <button onClick={() => { setStep('upload'); setPreview(null); setError(null); setFileName(null); }} className="btn-secondary" style={{ marginRight: 'auto' }}>
               Back
             </button>
           )}
           <button onClick={onClose} className="btn-secondary">
-            {importResult ? 'Close' : 'Cancel'}
+            {step === 'done' ? 'Close' : 'Cancel'}
           </button>
-          {step === 'map' && !importResult && (
+          {step === 'map' && (
             <button
               onClick={handleConfirm}
               className="btn-primary"
