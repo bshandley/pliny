@@ -46,6 +46,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [columnMenuId, setColumnMenuId] = useState<string | null>(null);
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const [renameColumnValue, setRenameColumnValue] = useState('');
@@ -530,6 +531,19 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
+  const handleExportCsv = async () => {
+    setShowSettingsDropdown(false);
+    setMobileMenuOpen(false);
+    try {
+      await api.exportBoardCsv(boardId);
+      setExportStatus('Export complete');
+      setTimeout(() => setExportStatus(null), 3000);
+    } catch (err: any) {
+      setExportStatus(err.message || 'Export failed');
+      setTimeout(() => setExportStatus(null), 5000);
+    }
+  };
+
   const handleDashboardFilterNavigate = (filters: { assignee?: string; label?: string; due?: string; column?: string }) => {
     setFilterText('');
     setFilterAssignee(filters.assignee || '');
@@ -626,6 +640,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
                 <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
                 <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
+                <div className="board-settings-divider" />
+                <button onClick={handleExportCsv}>Export CSV</button>
               </div>
             </div>
           )}
@@ -992,6 +1008,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           onClose={() => setShowFieldManager(false)}
           onFieldsChanged={() => { loadBoard(); setShowFieldManager(false); }}
         />
+      )}
+      {exportStatus && (
+        <div className="csv-toast">{exportStatus}</div>
       )}
     </div>
   );

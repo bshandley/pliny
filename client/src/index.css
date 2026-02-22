@@ -6622,3 +6622,18 @@ button:disabled {
 .password-toggle:hover {
   opacity: 1;
 }
+
+/* CSV toast */
+.csv-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem;
+  z-index: 1100;
+  animation: modalIn 0.25s var(--ease-spring);
+}

@@ -435,6 +435,26 @@ class ApiClient {
     this.setToken(data.token);
     return data.user;
   }
+  // CSV
+  async exportBoardCsv(boardId: string): Promise<void> {
+    const token = this.getToken();
+    const response = await fetch(`${API_URL}/boards/${boardId}/csv/export`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(error.error || 'Export failed');
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const api = new ApiClient();
