@@ -23,6 +23,7 @@ import analyticsRoutes from './routes/analytics';
 import templateRoutes from './routes/templates';
 import appSettingsRoutes from './routes/appSettings';
 import notificationPreferencesRoutes from './routes/notificationPreferences';
+import csvRoutes from './routes/csv';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
 import { seedBuiltinTemplates } from './templates/seed';
@@ -67,6 +68,7 @@ app.use('/api', customFieldRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
+app.use('/api', csvRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
