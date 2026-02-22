@@ -1,10 +1,25 @@
 import { Router } from 'express';
 import { stringify } from 'csv-stringify/sync';
+import { parse } from 'csv-parse/sync';
+import multer from 'multer';
+import crypto from 'crypto';
 import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Temporary storage for parsed CSV data, keyed by a random ID
+const pendingImports = new Map<string, { rows: Record<string, string>[]; headers: string[]; boardId: string; userId: string; expiresAt: number }>();
+
+// Clean up expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of pendingImports) {
+    if (value.expiresAt < now) pendingImports.delete(key);
+  }
+}, 5 * 60 * 1000);
 
 // GET /api/boards/:boardId/csv/export
 router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req: AuthRequest, res) => {
@@ -133,4 +148,106 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
   }
 });
 
+// POST /api/boards/:boardId/csv/import/preview
+router.post('/boards/:boardId/csv/import/preview', authenticate, requireAdmin, upload.single('file'), async (req: AuthRequest, res) => {
+  try {
+    const { boardId } = req.params;
+
+    // Verify board exists
+    const boardResult = await pool.query('SELECT id FROM boards WHERE id = $1', [boardId]);
+    if (boardResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const csvContent = req.file.buffer.toString('utf-8');
+    let records: Record<string, string>[];
+    try {
+      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+    } catch (parseErr: any) {
+      return res.status(400).json({ error: `Invalid CSV: ${parseErr.message}` });
+    }
+
+    if (records.length === 0) {
+      return res.status(400).json({ error: 'CSV file is empty (no data rows)' });
+    }
+
+    const headers = Object.keys(records[0]);
+
+    // Auto-map headers to Plank fields
+    const fieldAliases: Record<string, string[]> = {
+      title: ['title', 'name', 'card', 'card title', 'card name', 'task', 'task name'],
+      description: ['description', 'desc', 'details', 'body', 'notes'],
+      column: ['column', 'list', 'status', 'stage', 'column name'],
+      assignees: ['assignees', 'assignee', 'assigned', 'assigned to', 'owner', 'owners'],
+      labels: ['labels', 'label', 'tags', 'tag', 'category', 'categories'],
+      due_date: ['due date', 'due_date', 'duedate', 'deadline', 'due'],
+      start_date: ['start date', 'start_date', 'startdate', 'start'],
+      position: ['position', 'order', 'sort', 'index'],
+    };
+
+    // Fetch board custom fields for mapping
+    const customFieldsResult = await pool.query(
+      'SELECT id, name, field_type FROM board_custom_fields WHERE board_id = $1 ORDER BY position',
+      [boardId]
+    );
+
+    const suggestedMapping: Record<string, string> = {};
+    for (const header of headers) {
+      const lowerHeader = header.toLowerCase().trim();
+      let matched = false;
+
+      // Check built-in fields
+      for (const [field, aliases] of Object.entries(fieldAliases)) {
+        if (aliases.includes(lowerHeader)) {
+          suggestedMapping[header] = field;
+          matched = true;
+          break;
+        }
+      }
+
+      // Check custom fields
+      if (!matched) {
+        for (const cf of customFieldsResult.rows) {
+          if (cf.name.toLowerCase() === lowerHeader) {
+            suggestedMapping[header] = `custom:${cf.id}`;
+            matched = true;
+            break;
+          }
+        }
+      }
+
+      if (!matched) {
+        suggestedMapping[header] = 'skip';
+      }
+    }
+
+    // Store parsed data for the confirm step
+    const importId = crypto.randomUUID();
+    pendingImports.set(importId, {
+      rows: records,
+      headers,
+      boardId,
+      userId: req.user!.id,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minute expiry
+    });
+
+    res.json({
+      importId,
+      headers,
+      suggestedMapping,
+      sampleRows: records.slice(0, 5),
+      rowCount: records.length,
+      customFields: customFieldsResult.rows,
+    });
+  } catch (error) {
+    console.error('CSV import preview error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export { pendingImports };
 export default router;
