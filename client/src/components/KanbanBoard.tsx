@@ -15,6 +15,7 @@ import TableView from './TableView';
 import TimelineView from './TimelineView';
 import CustomFieldManager from './CustomFieldManager';
 import DashboardView from './DashboardView';
+import CSVImportModal from './CSVImportModal';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -47,6 +48,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [columnMenuId, setColumnMenuId] = useState<string | null>(null);
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const [renameColumnValue, setRenameColumnValue] = useState('');
@@ -642,6 +644,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
                 <div className="board-settings-divider" />
                 <button onClick={handleExportCsv}>Export CSV</button>
+                <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
               </div>
             </div>
           )}
@@ -1007,6 +1010,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           fields={board.custom_fields || []}
           onClose={() => setShowFieldManager(false)}
           onFieldsChanged={() => { loadBoard(); setShowFieldManager(false); }}
+        />
+      )}
+      {showCsvImport && (
+        <CSVImportModal
+          boardId={boardId}
+          onClose={() => setShowCsvImport(false)}
+          onImportComplete={() => loadBoard()}
         />
       )}
       {exportStatus && (
