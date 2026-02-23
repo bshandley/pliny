@@ -128,6 +128,19 @@ export interface Card {
   updated_at: string;
 }
 
+export interface Attachment {
+  id: string;
+  card_id: number;
+  filename: string;
+  original_name: string;
+  size: number;
+  mime_type: string;
+  storage_path: string;
+  uploader_id: number;
+  uploader_name: string;
+  created_at: string;
+}
+
 export interface SearchResult {
   type: 'card' | 'comment' | 'checklist_item';
   card_id: string;

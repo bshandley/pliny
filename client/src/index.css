@@ -7252,3 +7252,143 @@ button:disabled {
     max-width: 100%;
   }
 }
+
+/* ---- Attachments ---- */
+
+.attachments-section {
+  margin-top: 8px;
+}
+
+.attachment-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+  margin-bottom: 8px;
+}
+
+.attachment-dropzone:hover {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+}
+
+.attachment-dropzone.drag-over {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  border-style: solid;
+}
+
+.dropzone-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.dropzone-input {
+  display: none;
+}
+
+.attachment-progress {
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.attachment-progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+  transition: width 0.2s var(--ease);
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+}
+
+.attachment-thumb-link {
+  flex-shrink: 0;
+}
+
+.attachment-thumbnail {
+  width: 80px;
+  max-height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.attachment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attachment-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.attachment-filename {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-filename:hover {
+  text-decoration: underline;
+}
+
+.attachment-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.attachment-meta span:not(:last-child)::after {
+  content: '\00b7';
+  margin-left: 8px;
+}
+
+.attachment-delete {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.attachment-delete:hover {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
