@@ -10,6 +10,7 @@ import KanbanBoard from './components/KanbanBoard';
 import AdminPage from './components/AdminPage';
 import ProfileSettings from './components/ProfileSettings';
 import AppBar from './components/AppBar';
+import GlobalSearchModal from './components/GlobalSearchModal';
 
 type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
 
@@ -53,6 +54,7 @@ function App() {
   const [initialCardId, setInitialCardId] = useState<string | null>(null);
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [sso2faTicket, setSso2faTicket] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -256,6 +258,17 @@ function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleTheme = async (e?: React.MouseEvent) => {
     // Fallback for browsers without View Transitions API or reduced motion
     if (
@@ -423,6 +436,7 @@ function App() {
     theme,
     onToggleTheme: toggleTheme,
     onLogout: handleLogout,
+    onSearchOpen: () => setSearchOpen(true),
     onGoToProfile: handleGoToProfile,
   }), [user, notifications, unreadCount, theme]);
 
@@ -521,6 +535,11 @@ function App() {
           user={user}
         />
       )}
+      <GlobalSearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={handleNavigateToBoard}
+      />
     </AppBarContext.Provider>
   );
 }

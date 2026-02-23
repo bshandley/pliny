@@ -12,6 +12,7 @@ export interface AppBarContextType {
   theme: 'light' | 'dark';
   onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
+  onSearchOpen: () => void;
   onGoToProfile?: () => void;
 }
 
