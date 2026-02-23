@@ -73,6 +73,7 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLUListElement>(null);
+  const requestIdRef = useRef(0);
 
   // Reset state on open/close
   useEffect(() => {
@@ -89,7 +90,15 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
     }
   }, [isOpen]);
 
-  // Debounced search
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
+  // Debounced search with race condition protection
   const performSearch = useCallback(async (q: string) => {
     if (q.length < 2) {
       setResults([]);
@@ -97,14 +106,21 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
       return;
     }
     setLoading(true);
+    const currentId = ++requestIdRef.current;
     try {
       const response = await api.search(q);
-      setResults(response.results);
-      setSelectedIndex(0);
+      if (currentId === requestIdRef.current) {
+        setResults(response.results);
+        setSelectedIndex(0);
+      }
     } catch {
-      setResults([]);
+      if (currentId === requestIdRef.current) {
+        setResults([]);
+      }
     } finally {
-      setLoading(false);
+      if (currentId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -145,6 +161,10 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
   }, [query, onNavigate, onClose]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
@@ -180,7 +200,7 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
 
   return createPortal(
     <div className="search-modal-backdrop" onClick={onClose}>
-      <div className="search-modal" onClick={e => e.stopPropagation()} onKeyDown={handleKeyDown}>
+      <div className="search-modal" role="dialog" aria-modal="true" aria-label="Search" onClick={e => e.stopPropagation()} onKeyDown={handleKeyDown}>
         <div className="search-modal-header">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -189,6 +209,10 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
             ref={inputRef}
             className="search-modal-input"
             type="text"
+            role="combobox"
+            aria-expanded={results.length > 0}
+            aria-controls="search-results-list"
+            aria-activedescendant={results.length > 0 ? `search-result-${selectedIndex}` : undefined}
             placeholder="Search cards, comments, checklists..."
             value={query}
             onChange={e => setQuery(e.target.value)}
@@ -229,10 +253,13 @@ export default function GlobalSearchModal({ isOpen, onClose, onNavigate }: Globa
           )}
 
           {!loading && results.length > 0 && (
-            <ul className="search-modal-results" ref={resultsRef}>
+            <ul className="search-modal-results" id="search-results-list" role="listbox" ref={resultsRef}>
               {results.map((result, i) => (
                 <li
                   key={`${result.card_id}-${result.type}-${i}`}
+                  id={`search-result-${i}`}
+                  role="option"
+                  aria-selected={i === selectedIndex}
                   className={`search-result-item${i === selectedIndex ? ' selected' : ''}`}
                   onClick={() => handleSelect(result)}
                   onMouseEnter={() => setSelectedIndex(i)}
