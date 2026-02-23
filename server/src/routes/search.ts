@@ -11,8 +11,7 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
     const q = (req.query.q as string || '').trim();
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 50);
 
-    // Minimum 2 character query
-    if (q.length < 2) {
+    if (q.length < 2 || q.length > 200) {
       return res.json({ results: [], total: 0 });
     }
 
@@ -24,7 +23,7 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
       .filter(w => w.length > 2) // must have at least one real char before :*
       .join(' & ');
 
-    if (!tsQueryString) {
+    if (!tsQueryString || !/^[a-zA-Z0-9]+:\*( & [a-zA-Z0-9]+:\*)*$/.test(tsQueryString)) {
       return res.json({ results: [], total: 0 });
     }
 
@@ -68,10 +67,8 @@ router.get('/search', authenticate, async (req: AuthRequest, res: Response) => {
         INNER JOIN boards b ON col.board_id = b.id
         ${boardAccessJoin}
         WHERE c.archived = false
-          AND (
-            setweight(to_tsvector('english', c.title), 'A') ||
-            setweight(to_tsvector('english', COALESCE(c.description, '')), 'B')
-          ) @@ to_tsquery('english', ${tsParam})
+          AND to_tsvector('english', coalesce(c.title,'') || ' ' || coalesce(c.description,''))
+            @@ to_tsquery('english', ${tsParam})
 
         UNION ALL
 
