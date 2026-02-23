@@ -3,6 +3,7 @@ import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
+import { notifyCardMembers } from '../services/notificationHelper';
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { column_id, title, description, assignees, position, due_date } = req.body;
+    const { column_id, title, description, assignees, position, due_date, start_date } = req.body;
 
     if (title !== undefined && title.length > 255) {
       return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
@@ -88,6 +89,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     if (due_date !== undefined) {
       updates.push(`due_date = $${paramCount++}`);
       values.push(due_date || null); // Empty string or null clears the date
+    }
+    if (start_date !== undefined) {
+      updates.push(`start_date = $${paramCount++}`);
+      values.push(start_date || null);
     }
     if (req.body.archived !== undefined) {
       updates.push(`archived = $${paramCount++}`);
@@ -155,6 +160,17 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
         from_column: colMap[old.column_id] || old.column_id,
         to_column: colMap[column_id] || column_id
       });
+
+      // Check if moved to last (rightmost) column = "done"
+      const lastCol = await pool.query(
+        'SELECT id FROM columns WHERE board_id = (SELECT board_id FROM columns WHERE id = $1) ORDER BY position DESC LIMIT 1',
+        [column_id]
+      );
+      if (lastCol.rows.length > 0 && lastCol.rows[0].id === column_id) {
+        const io = req.app.get('io');
+        const userSockets: Map<string, string[]> = req.app.get('userSockets');
+        notifyCardMembers(id, 'card_completed', req.user!.id, req.user!.username, {}, io, userSockets);
+      }
     }
 
     if (title !== undefined && title !== old.title) {
@@ -163,6 +179,9 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 
     if (description !== undefined && (description || null) !== (old.description || null)) {
       logActivity(id, req.user!.id, 'description_changed');
+      const io = req.app.get('io');
+      const userSockets: Map<string, string[]> = req.app.get('userSockets');
+      notifyCardMembers(id, 'description_changed', req.user!.id, req.user!.username, {}, io, userSockets);
     }
 
     if (due_date !== undefined) {
@@ -170,6 +189,14 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       const newDue = due_date || null;
       if (oldDue !== newDue) {
         logActivity(id, req.user!.id, 'due_date_changed', { from: oldDue, to: newDue });
+      }
+    }
+
+    if (start_date !== undefined) {
+      const oldStart = old.start_date ? old.start_date.toISOString().split('T')[0] : null;
+      const newStart = start_date || null;
+      if (oldStart !== newStart) {
+        logActivity(id, req.user!.id, 'start_date_changed', { from: oldStart, to: newStart });
       }
     }
 

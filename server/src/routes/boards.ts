@@ -93,16 +93,43 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
-    // Fetch checklist counts for all cards
+    // Fetch checklist counts for all cards (including overdue count)
     const checklistResult = await pool.query(
       `SELECT ci.card_id,
               COUNT(*)::int as total,
-              COUNT(*) FILTER (WHERE ci.checked)::int as checked
+              COUNT(*) FILTER (WHERE ci.checked)::int as checked,
+              COUNT(*) FILTER (WHERE ci.due_date < CURRENT_DATE AND ci.checked = false)::int as overdue
        FROM card_checklist_items ci
        INNER JOIN cards c ON ci.card_id = c.id
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1
        GROUP BY ci.card_id`,
+      [id]
+    );
+
+    // Fetch checklist items with due dates (for calendar subtask chips)
+    const datedChecklistResult = await pool.query(
+      `SELECT ci.id, ci.card_id, ci.text, ci.checked, ci.due_date, ci.assignee_name, ci.priority
+       FROM card_checklist_items ci
+       INNER JOIN cards c ON ci.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1 AND ci.due_date IS NOT NULL
+       ORDER BY ci.due_date, ci.position`,
+      [id]
+    );
+
+    // Fetch custom field definitions for this board
+    const customFieldsResult = await pool.query(
+      'SELECT * FROM board_custom_fields WHERE board_id = $1 ORDER BY position',
+      [id]
+    );
+
+    // Fetch custom field values for all cards in this board
+    const customFieldValuesResult = await pool.query(
+      `SELECT v.card_id, v.field_id, v.value, f.name, f.field_type
+       FROM card_custom_field_values v
+       JOIN board_custom_fields f ON v.field_id = f.id
+       WHERE f.board_id = $1`,
       [id]
     );
 
@@ -145,9 +172,27 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     });
 
     // Group checklist counts by card_id
-    const checklistByCard: Record<string, { total: number; checked: number }> = {};
+    const checklistByCard: Record<string, { total: number; checked: number; overdue: number }> = {};
     checklistResult.rows.forEach(row => {
-      checklistByCard[row.card_id] = { total: row.total, checked: row.checked };
+      checklistByCard[row.card_id] = { total: row.total, checked: row.checked, overdue: row.overdue };
+    });
+
+    // Group dated checklist items by card_id
+    const datedChecklistByCard: Record<string, any[]> = {};
+    datedChecklistResult.rows.forEach((row: any) => {
+      if (!datedChecklistByCard[row.card_id]) datedChecklistByCard[row.card_id] = [];
+      datedChecklistByCard[row.card_id].push(row);
+    });
+
+    // Group custom field values by card_id
+    const customFieldValuesByCard: Record<string, Record<string, { value: string; field_type: string; name: string }>> = {};
+    customFieldValuesResult.rows.forEach((row: any) => {
+      if (!customFieldValuesByCard[row.card_id]) customFieldValuesByCard[row.card_id] = {};
+      customFieldValuesByCard[row.card_id][row.field_id] = {
+        value: row.value,
+        field_type: row.field_type,
+        name: row.name,
+      };
     });
 
     const board = boardResult.rows[0];
@@ -157,11 +202,14 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       assignees: assigneesByCard[card.id] || [],
       labels: labelsByCard[card.id] || [],
       checklist: checklistByCard[card.id] || null,
-      members: membersByCard[card.id] || []
+      members: membersByCard[card.id] || [],
+      custom_field_values: customFieldValuesByCard[card.id] || {},
+      dated_checklist_items: datedChecklistByCard[card.id] || [],
     }));
 
     res.json({
       ...board,
+      custom_fields: customFieldsResult.rows,
       columns: columns.map(col => ({
         ...col,
         cards: cards.filter(card => card.column_id === col.id)

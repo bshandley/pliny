@@ -31,6 +31,12 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       username: string;
       role: 'READ' | 'COLLABORATOR' | 'ADMIN';
     };
+
+    // Reject 2FA tickets used as session tokens
+    if ((decoded as any).purpose) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {
@@ -47,4 +53,12 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
 
 export const generateToken = (user: { id: string; username: string; role: 'READ' | 'COLLABORATOR' | 'ADMIN' }) => {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+};
+
+export const signTicket = (payload: object, expiresIn: jwt.SignOptions['expiresIn'] = '5m') => {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+};
+
+export const verifyTicket = (ticket: string): any => {
+  return jwt.verify(ticket, JWT_SECRET);
 };

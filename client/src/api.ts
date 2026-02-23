@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate } from './types';
 
 const API_URL = '/api';
 
@@ -46,13 +46,16 @@ class ApiClient {
   }
 
   // Auth
-  async login(username: string, password: string) {
+  async login(username: string, password: string): Promise<any> {
     const data = await this.fetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
+    if (data.requires_2fa) {
+      return { requires_2fa: true, ticket: data.ticket };
+    }
     this.setToken(data.token);
-    return data.user;
+    return { user: data.user };
   }
 
   async me(): Promise<User> {
@@ -251,6 +254,36 @@ class ApiClient {
   async deleteChecklistItem(id: string): Promise<void> {
     return this.fetch(`/checklist/${id}`, { method: 'DELETE' });
   }
+  // Custom Fields
+  async getCustomFields(boardId: string): Promise<CustomField[]> {
+    return this.fetch(`/boards/${boardId}/custom-fields`);
+  }
+
+  async createCustomField(boardId: string, data: { name: string; field_type: string; options?: string[]; show_on_card?: boolean }): Promise<CustomField> {
+    return this.fetch(`/boards/${boardId}/custom-fields`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCustomField(fieldId: string, data: Partial<{ name: string; options: string[]; position: number; show_on_card: boolean }>): Promise<CustomField> {
+    return this.fetch(`/custom-fields/${fieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCustomField(fieldId: string): Promise<void> {
+    return this.fetch(`/custom-fields/${fieldId}`, { method: 'DELETE' });
+  }
+
+  async setCardCustomFields(cardId: string, values: Record<string, string | null>): Promise<void> {
+    return this.fetch(`/cards/${cardId}/custom-fields`, {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    });
+  }
+
   // Card Members
   async getCardMembers(cardId: string): Promise<CardMember[]> {
     return this.fetch(`/cards/${cardId}/members`);
@@ -261,6 +294,11 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify({ members: memberIds }),
     });
+  }
+
+  // Analytics
+  async getBoardAnalytics(boardId: string, days: number = 30): Promise<any> {
+    return this.fetch(`/boards/${boardId}/analytics?days=${days}`);
   }
 
   // Activity
@@ -279,6 +317,143 @@ class ApiClient {
 
   async markAllNotificationsRead(): Promise<void> {
     return this.fetch('/notifications/read-all', { method: 'PUT' });
+  }
+
+  // SSO
+  async getOidcPublicConfig(): Promise<{ enabled: boolean; button_label: string }> {
+    const response = await fetch('/api/auth/oidc/config');
+    return response.json();
+  }
+
+  // SSO Admin Settings
+  async getOidcSettings() {
+    return this.fetch('/settings/oidc');
+  }
+
+  async updateOidcSettings(settings: {
+    enabled?: boolean;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    button_label?: string;
+    claim_email?: string;
+    claim_name?: string;
+    claim_avatar?: string;
+    callback_base_url?: string;
+  }) {
+    return this.fetch('/settings/oidc', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Templates
+  async getTemplates(): Promise<BoardTemplate[]> {
+    return this.fetch('/templates');
+  }
+
+  async createTemplateFromBoard(boardId: string, name: string, description?: string): Promise<BoardTemplate> {
+    return this.fetch('/templates', {
+      method: 'POST',
+      body: JSON.stringify({ board_id: boardId, name, description }),
+    });
+  }
+
+  async useTemplate(templateId: string, name: string, description?: string): Promise<Board> {
+    return this.fetch(`/templates/${templateId}/use`, {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
+  async deleteTemplate(templateId: string): Promise<void> {
+    return this.fetch(`/templates/${templateId}`, { method: 'DELETE' });
+  }
+
+  // App Settings
+  async getAppSettings(): Promise<Record<string, any>> {
+    return this.fetch('/app-settings');
+  }
+
+  async updateAppSetting(key: string, value: any): Promise<void> {
+    return this.fetch(`/app-settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    });
+  }
+
+  async testSmtp(to: string): Promise<{ message: string }> {
+    return this.fetch('/app-settings/smtp-test', {
+      method: 'POST',
+      body: JSON.stringify({ to }),
+    });
+  }
+
+  async getNotificationPreferences(): Promise<Record<string, boolean>> {
+    return this.fetch('/notifications/preferences');
+  }
+
+  async updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>> {
+    return this.fetch('/notifications/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(prefs),
+    });
+  }
+
+  async getSmtpStatus(): Promise<{ configured: boolean }> {
+    return this.fetch('/app-settings/smtp-status');
+  }
+
+  // TOTP 2FA
+  async getTotpStatus(): Promise<{ enabled: boolean }> {
+    return this.fetch('/settings/totp/status');
+  }
+
+  async setupTotp(): Promise<{ qr_code: string; secret: string; backup_codes: string[] }> {
+    return this.fetch('/settings/totp/setup', { method: 'POST' });
+  }
+
+  async enableTotp(code: string): Promise<{ message: string }> {
+    return this.fetch('/settings/totp/enable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disableTotp(password: string): Promise<{ message: string }> {
+    return this.fetch('/settings/totp', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  async verify2fa(ticket: string, code: string) {
+    const data = await this.fetch('/auth/verify-2fa', {
+      method: 'POST',
+      body: JSON.stringify({ ticket, code }),
+    });
+    this.setToken(data.token);
+    return data.user;
+  }
+  // CSV
+  async exportBoardCsv(boardId: string): Promise<void> {
+    const token = this.getToken();
+    const response = await fetch(`${API_URL}/boards/${boardId}/csv/export`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(error.error || 'Export failed');
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 

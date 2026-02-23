@@ -3,6 +3,7 @@ import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
+import { createNotification } from '../services/notificationHelper';
 
 const router = Router();
 
@@ -69,35 +70,30 @@ router.put('/cards/:cardId/members', authenticate, requireAdmin, async (req: Aut
     }
 
     // Create notifications for added members
-    const io = req.app.get('io');
-    const userSockets: Map<string, string[]> = req.app.get('userSockets');
-    if (added.length > 0 && io && userSockets) {
-      // Get card info for notification detail
+    if (added.length > 0) {
+      const io = req.app.get('io');
+      const userSockets: Map<string, string[]> = req.app.get('userSockets');
       const cardInfo = await pool.query(
-        `SELECT c.title, col.board_id FROM cards c
-         JOIN columns col ON c.column_id = col.id
+        `SELECT c.title, col.board_id, b.name as board_name
+         FROM cards c JOIN columns col ON c.column_id = col.id
+         JOIN boards b ON col.board_id = b.id
          WHERE c.id = $1`,
         [cardId]
       );
       if (cardInfo.rows.length > 0) {
-        const { title, board_id } = cardInfo.rows[0];
+        const { title, board_id, board_name } = cardInfo.rows[0];
         for (const userId of added) {
-          if (userId === req.user!.id) continue; // don't notify yourself
-          const notif = await pool.query(
-            `INSERT INTO notifications (user_id, type, card_id, board_id, actor_id, detail)
-             VALUES ($1, 'mention_card', $2, $3, $4, $5) RETURNING *`,
-            [userId, cardId, board_id, req.user!.id, JSON.stringify({ card_title: title })]
-          );
-          // Emit via socket
-          const sockets = userSockets.get(userId);
-          if (sockets) {
-            for (const sid of sockets) {
-              io.to(sid).emit('notification:new', {
-                ...notif.rows[0],
-                actor_username: req.user!.username
-              });
-            }
-          }
+          await createNotification({
+            userId,
+            type: 'assigned_card',
+            cardId,
+            boardId: board_id,
+            actorId: req.user!.id,
+            actorUsername: req.user!.username,
+            detail: { card_title: title, board_name },
+            io,
+            userSockets,
+          });
         }
       }
     }

@@ -1,29 +1,54 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
-import { useIsMobile } from '../hooks/useIsMobile';
+import AppBar from './AppBar';
 
 interface UserManagementProps {
-  onBack: () => void;
-  onLogout: () => void;
   currentUser: User;
+  subRoute: string | null;
+  onNavigate: (sub: string | null) => void;
 }
 
-export default function UserManagement({ onBack, onLogout, currentUser }: UserManagementProps) {
+export default function UserManagement({ currentUser, subRoute, onNavigate }: UserManagementProps) {
   const confirm = useConfirm();
-  const isMobile = useIsMobile();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({ username: '', password: '', role: 'READ' as 'READ' | 'COLLABORATOR' | 'ADMIN' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const editingUser = subRoute && subRoute !== 'new'
+    ? users.find(u => u.username.toLowerCase() === subRoute.toLowerCase()) ?? null
+    : null;
 
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    if (subRoute === 'new') {
+      setFormData({ username: '', password: '', role: 'READ' });
+      setError('');
+    } else if (editingUser) {
+      setFormData({ username: editingUser.username, password: '', role: editingUser.role });
+      setError('');
+    }
+  }, [subRoute, editingUser?.id]);
+
+  // Close kebab on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [openMenuId]);
 
   const loadUsers = async () => {
     try {
@@ -41,9 +66,8 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
     setError('');
     try {
       await api.register(formData.username, formData.password, formData.role);
-      setShowCreateModal(false);
-      setFormData({ username: '', password: '', role: 'READ' });
-      loadUsers();
+      await loadUsers();
+      onNavigate(null);
     } catch (err: any) {
       setError(err.message || 'Failed to create user');
     }
@@ -53,28 +77,20 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
     e.preventDefault();
     if (!editingUser) return;
     setError('');
-
     try {
       const updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' } = {};
-      if (formData.username && formData.username !== editingUser.username) {
-        updates.username = formData.username;
-      }
-      if (formData.password) {
-        updates.password = formData.password;
-      }
-      if (formData.role !== editingUser.role) {
-        updates.role = formData.role;
-      }
+      if (formData.username && formData.username !== editingUser.username) updates.username = formData.username;
+      if (formData.password) updates.password = formData.password;
+      if (formData.role !== editingUser.role) updates.role = formData.role;
 
       if (Object.keys(updates).length === 0) {
-        setEditingUser(null);
+        onNavigate(null);
         return;
       }
 
       await api.updateUser(editingUser.id, updates);
-      setEditingUser(null);
-      setFormData({ username: '', password: '', role: 'READ' });
-      loadUsers();
+      await loadUsers();
+      onNavigate(null);
     } catch (err: any) {
       setError(err.message || 'Failed to update user');
     }
@@ -91,134 +107,109 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
     }
   };
 
-  const openEditModal = (user: User) => {
-    setEditingUser(user);
-    setFormData({ username: user.username, password: '', role: user.role });
-    setError('');
-  };
-
-  const openCreateModal = () => {
-    setShowCreateModal(true);
-    setFormData({ username: '', password: '', role: 'READ' });
-    setError('');
-  };
-
   if (loading) {
     return <div className="loading"><div className="spinner"></div></div>;
   }
 
   // Shared form fields for create/edit
-  const renderFormFields = (mode: 'create' | 'edit') => (
-    <>
-      <div className="form-group">
-        <label htmlFor={`${mode}-username`}>Username</label>
-        <input
-          type="text"
-          id={`${mode}-username`}
-          value={formData.username}
-          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          required
-          autoFocus={!isMobile}
-          maxLength={255}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${mode}-password`}>
-          {mode === 'edit' ? 'New Password (leave blank to keep current)' : 'Password'}
-        </label>
-        <input
-          type="password"
-          id={`${mode}-password`}
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          required={mode === 'create'}
-          autoComplete="new-password"
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${mode}-role`}>Role</label>
-        <select
-          id={`${mode}-role`}
-          value={formData.role}
-          onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
-          disabled={mode === 'edit' && editingUser?.id === currentUser.id}
-        >
-          <option value="READ">READ - View only</option>
-          <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
-          <option value="ADMIN">ADMIN - Full access</option>
-        </select>
-        {mode === 'edit' && editingUser?.id === currentUser.id && (
-          <small className="form-hint">Cannot change your own role</small>
-        )}
-      </div>
-      {error && <div className="error">{error}</div>}
-    </>
-  );
-
-  // Mobile: fullscreen form overlay
-  const renderMobileForm = (mode: 'create' | 'edit') => {
-    const title = mode === 'create' ? 'New User' : `Edit ${editingUser?.username}`;
-    const onClose = () => mode === 'create' ? setShowCreateModal(false) : setEditingUser(null);
-    const onSubmit = mode === 'create' ? handleCreate : handleUpdate;
-    const submitLabel = mode === 'create' ? 'Create' : 'Save';
-
-    return createPortal(
-      <div className="user-form-fullscreen">
-        <div className="user-form-header">
-          <button onClick={onClose} className="btn-icon" aria-label="Back">←</button>
-          <h2>{title}</h2>
-          <button type="submit" form={`${mode}-user-form`} className="btn-primary btn-sm">{submitLabel}</button>
+  const renderFormFields = (mode: 'create' | 'edit') => {
+    return (
+      <>
+        <div className="form-group">
+          <label htmlFor={`${mode}-username`}>Username</label>
+          <input
+            type="text"
+            id={`${mode}-username`}
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            required
+            maxLength={255}
+          />
         </div>
-        <div className="user-form-body">
-          <form id={`${mode}-user-form`} onSubmit={onSubmit}>
-            {renderFormFields(mode)}
-          </form>
+        <div className="form-group">
+          <label htmlFor={`${mode}-password`}>
+            {mode === 'edit' ? 'New Password (leave blank to keep current)' : 'Password'}
+          </label>
+          <div className="password-input-wrapper">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id={`${mode}-password`}
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              required={mode === 'create'}
+              autoComplete="new-password"
+            />
+            <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} tabIndex={-1} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+              {showPassword ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              )}
+            </button>
+          </div>
         </div>
-      </div>,
-      document.body
+        <div className="form-group">
+          <label htmlFor={`${mode}-role`}>Role</label>
+          <select
+            id={`${mode}-role`}
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
+            disabled={mode === 'edit' && editingUser?.id === currentUser.id}
+          >
+            <option value="READ">READ - View only</option>
+            <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
+            <option value="ADMIN">ADMIN - Full access</option>
+          </select>
+          {mode === 'edit' && editingUser?.id === currentUser.id && (
+            <small className="form-hint">Cannot change your own role</small>
+          )}
+        </div>
+        {error && <div className="error">{error}</div>}
+      </>
     );
   };
 
-  // Desktop: centered modal
-  const renderDesktopModal = (mode: 'create' | 'edit') => {
-    const title = mode === 'create' ? 'Create New User' : 'Edit User';
-    const onClose = () => mode === 'create' ? setShowCreateModal(false) : setEditingUser(null);
-    const onSubmit = mode === 'create' ? handleCreate : handleUpdate;
-    const submitLabel = mode === 'create' ? 'Create' : 'Save Changes';
+  const renderFormPage = () => {
+    const isCreate = subRoute === 'new';
+    const title = isCreate ? 'New User' : `Edit ${editingUser?.username}`;
+    const onSubmit = isCreate ? handleCreate : handleUpdate;
+    const submitLabel = isCreate ? 'Create' : 'Save';
+
+    if (!isCreate && !editingUser) {
+      // Don't redirect until users have loaded — editingUser may be null
+      // simply because loadUsers() hasn't completed yet
+      if (!loading && users.length > 0) {
+        onNavigate(null);
+      }
+      return loading
+        ? <div className="loading"><div className="spinner"></div></div>
+        : null;
+    }
 
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <h2>{title}</h2>
-          <form onSubmit={onSubmit}>
-            {renderFormFields(mode)}
-            <div className="modal-actions">
-              <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-              <button type="submit" className="btn-primary">{submitLabel}</button>
-            </div>
+      <div className="user-management-panel">
+        <AppBar title={title} onBack={() => onNavigate(null)}>
+          <button type="submit" form="user-form" className="btn-primary btn-sm">{submitLabel}</button>
+        </AppBar>
+        <div className="user-form-page">
+          <form id="user-form" onSubmit={onSubmit}>
+            {renderFormFields(isCreate ? 'create' : 'edit')}
           </form>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="board-list-container">
-      <header className="board-list-header">
-        <div className="header-left">
-          <button onClick={onBack} className="btn-icon">←</button>
-          <h1>User Management</h1>
-        </div>
-        <div className="header-actions">
-          <button onClick={openCreateModal} className="btn-primary">
-            + New User
-          </button>
-          <button onClick={onLogout} className="btn-secondary hide-mobile">
-            Logout
-          </button>
-        </div>
-      </header>
+  if (subRoute) {
+    return renderFormPage();
+  }
 
+  return (
+    <div className="user-management-panel">
+      <div className="panel-header">
+        <h2>Members</h2>
+        <button onClick={() => onNavigate('new')} className="btn-primary btn-sm">+ New User</button>
+      </div>
       <div className="users-table-container">
         <table className="users-table">
           <thead>
@@ -226,33 +217,43 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
               <th>Username</th>
               <th>Role</th>
               <th>Created</th>
-              <th>Actions</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
-              <tr key={user.id}>
+              <tr
+                key={user.id}
+                className="user-row-clickable"
+                onClick={() => onNavigate(user.username)}
+              >
                 <td className="user-name-cell">{user.username}</td>
                 <td className="user-role-cell">
                   <span className={`role-badge role-${user.role.toLowerCase()}`}>
                     {user.role}
                   </span>
                 </td>
-                <td className="user-created-cell">{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
+                <td className="user-created-cell">
+                  {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                </td>
                 <td className="actions-cell">
-                  <button
-                    onClick={() => openEditModal(user)}
-                    className="btn-sm btn-secondary"
-                  >
-                    Edit
-                  </button>
                   {user.id !== currentUser.id && (
-                    <button
-                      onClick={() => handleDelete(user)}
-                      className="btn-sm btn-danger"
-                    >
-                      Delete
-                    </button>
+                    <div className="user-kebab" ref={openMenuId === user.id ? menuRef : undefined}>
+                      <button
+                        className="btn-kebab"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === user.id ? null : user.id); }}
+                        title="User actions"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                        </svg>
+                      </button>
+                      {openMenuId === user.id && (
+                        <div className="kebab-dropdown">
+                          <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(user); }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
@@ -260,9 +261,6 @@ export default function UserManagement({ onBack, onLogout, currentUser }: UserMa
           </tbody>
         </table>
       </div>
-
-      {showCreateModal && (isMobile ? renderMobileForm('create') : renderDesktopModal('create'))}
-      {editingUser && (isMobile ? renderMobileForm('edit') : renderDesktopModal('edit'))}
     </div>
   );
 }

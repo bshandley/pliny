@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board, Card, Label, BoardMember } from '../types';
@@ -9,16 +9,25 @@ import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
-import PlankLogo from './PlankLogo';
+import AppBar from './AppBar';
+import CalendarView from './CalendarView';
+import TableView from './TableView';
+import TimelineView from './TimelineView';
+import CustomFieldManager from './CustomFieldManager';
+import DashboardView from './DashboardView';
+import CSVImportModal from './CSVImportModal';
 
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
-  onLogout: () => void;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  viewMode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard';
+  onViewChange: (mode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard') => void;
+  initialCardId?: string | null;
+  onCardOpened?: () => void;
 }
 
-export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onViewChange, initialCardId, onCardOpened }: KanbanBoardProps) {
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -32,28 +41,37 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const [showMembers, setShowMembers] = useState(false);
   const [showAssignees, setShowAssignees] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [showFieldManager, setShowFieldManager] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [columnMenuId, setColumnMenuId] = useState<string | null>(null);
   const [renamingColumnId, setRenamingColumnId] = useState<string | null>(null);
   const [renameColumnValue, setRenameColumnValue] = useState('');
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [unscheduledOrder, setUnscheduledOrder] = useState<string[] | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
+  const newCardFormRef = useRef<HTMLFormElement>(null);
 
   // Filters
   const [filterText, setFilterText] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
   const [filterLabel, setFilterLabel] = useState('');
   const [filterDue, setFilterDue] = useState('');
+  const [filterColumn, setFilterColumn] = useState('');
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
   const isAdmin = userRole === 'ADMIN';
-  const hasFilters = filterText || filterAssignee || filterLabel || filterDue;
+  const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
+  const hasFilters = filterText || filterAssignee || filterLabel || filterDue || filterColumn || hasCustomFieldFilters;
 
   // On mobile, push a history entry when a card is opened so the browser
   // back button/gesture closes the card instead of leaving the board.
@@ -71,6 +89,12 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       return () => window.removeEventListener('popstate', handlePopState);
     }
   }, [isMobile, editingCardId]);
+
+  // Clear any open card when the view changes (e.g. browser back from board → calendar
+  // after opening a card via handleOpenInBoard — prevents stale overlay, issue #8).
+  useEffect(() => {
+    setEditingCardId(null);
+  }, [viewMode]);
 
   const closeCard = () => {
     if (isMobile && cardHistoryPushed.current) {
@@ -95,6 +119,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       loadAssignees();
       loadLabels();
       loadBoardMembers();
+      setRefreshKey(k => k + 1);
     });
     setSocket(newSocket);
     return () => {
@@ -102,6 +127,14 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
       newSocket.disconnect();
     };
   }, [boardId]);
+
+  // Open a specific card when navigated from notification
+  useEffect(() => {
+    if (initialCardId && board) {
+      setEditingCardId(initialCardId);
+      onCardOpened?.();
+    }
+  }, [initialCardId, board]);
 
   // Close column kebab menu on outside click
   useEffect(() => {
@@ -126,6 +159,20 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [labelDropdownOpen]);
+
+  // Close add card form on outside click
+  useEffect(() => {
+    if (!showNewCard) return;
+    const handleClick = (e: MouseEvent) => {
+      if (newCardFormRef.current && !newCardFormRef.current.contains(e.target as Node)) {
+        setShowNewCard(null);
+        setNewCardTitle('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showNewCard]);
+
 
   const loadBoard = async () => {
     try {
@@ -175,8 +222,11 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
   const filterCard = (card: Card): boolean => {
     if (!showArchived && card.archived) return false;
     if (showArchived && !card.archived) return false;
+    if (filterColumn && card.column_id !== filterColumn) return false;
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
-    if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
+    if (filterAssignee === '__unassigned__') {
+      if (card.assignees && card.assignees.length > 0) return false;
+    } else if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
     if (filterLabel && (!card.labels || !card.labels.some(l => l.id === filterLabel))) return false;
     if (filterDue === 'overdue') {
       if (!card.due_date) return false;
@@ -194,6 +244,21 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     if (filterDue === 'none') {
       if (card.due_date) return false;
     }
+    if (filterDue === 'overdue-subtasks') {
+      if (!card.checklist?.overdue || card.checklist.overdue === 0) return false;
+    }
+    // Custom field filters
+    for (const [fieldId, filterValue] of Object.entries(customFieldFilters)) {
+      if (!filterValue) continue;
+      const cardValue = card.custom_field_values?.[fieldId]?.value;
+      const field = board?.custom_fields?.find(f => f.id === fieldId);
+      if (!field) continue;
+      if (field.field_type === 'text') {
+        if (!cardValue || !cardValue.toLowerCase().includes(filterValue.toLowerCase())) return false;
+      } else {
+        if (!cardValue || cardValue !== filterValue) return false;
+      }
+    }
     return true;
   };
 
@@ -202,6 +267,49 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     const { destination, source, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    if (type === 'CALENDAR') {
+      const cardId = result.draggableId;
+      const destId = destination.droppableId;
+
+      // Reordering within the unscheduled sidebar — local-only, no API call
+      if (source.droppableId === 'unscheduled' && destId === 'unscheduled') {
+        const unscheduledCards: string[] = [];
+        board.columns?.forEach(col => {
+          col.cards?.filter(c => !c.due_date && !c.archived).forEach(card => {
+            unscheduledCards.push(card.id);
+          });
+        });
+        // Apply existing custom order if any
+        const ordered = unscheduledOrder
+          ? [...unscheduledCards].sort((a, b) => {
+              const ai = unscheduledOrder.indexOf(a);
+              const bi = unscheduledOrder.indexOf(b);
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            })
+          : unscheduledCards;
+        const [moved] = ordered.splice(source.index, 1);
+        ordered.splice(destination.index, 0, moved);
+        setUnscheduledOrder(ordered);
+        return;
+      }
+
+      let newDueDate: string | null = null;
+      if (destId.startsWith('calendar-')) {
+        newDueDate = destId.replace('calendar-', '');
+      }
+      // destId === 'unscheduled' means clearing the date (newDueDate stays null)
+
+      try {
+        await api.updateCard(cardId, { due_date: newDueDate });
+        socket?.emit('board-updated', boardId);
+        await loadBoard();
+      } catch (error) {
+        console.error('Failed to update card date:', error);
+        loadBoard();
+      }
+      return;
+    }
 
     if (type === 'COLUMN') {
       const newColumns = Array.from(board.columns || []);
@@ -377,6 +485,40 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleCalendarCardClick = (card: Card, _columnName: string, _event: React.MouseEvent) => {
+    if (isMobile) return;
+    handleOpenInBoard(card.id);
+  };
+
+  const handleOpenInBoard = (cardId: string) => {
+    // Switch to board view then open the card. The viewMode useEffect above clears
+    // editingCardId on any view change, so browser-back won't leave a stale overlay (#8).
+    onViewChange('board');
+    setTimeout(() => setEditingCardId(cardId), 100);
+  };
+
+  const handleCalendarChangeDate = async (cardId: string, date: string) => {
+    try {
+      await api.updateCard(cardId, { due_date: date } as any);
+      socket?.emit('board-updated', boardId);
+      await loadBoard();
+    } catch (error) {
+      console.error('Failed to update card date:', error);
+      loadBoard();
+    }
+  };
+
+  const handleCalendarRemoveDate = async (cardId: string) => {
+    try {
+      await api.updateCard(cardId, { due_date: null } as any);
+      socket?.emit('board-updated', boardId);
+      await loadBoard();
+    } catch (error) {
+      console.error('Failed to remove card date:', error);
+      loadBoard();
+    }
+  };
+
   const handleMoveToColumn = async (cardId: string, columnId: string) => {
     try {
       const targetColumn = board?.columns?.find(c => c.id === columnId);
@@ -391,65 +533,131 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
     }
   };
 
+  const handleExportCsv = async () => {
+    setShowSettingsDropdown(false);
+    setMobileMenuOpen(false);
+    try {
+      await api.exportBoardCsv(boardId);
+      setExportStatus('Export complete');
+      setTimeout(() => setExportStatus(null), 3000);
+    } catch (err: any) {
+      setExportStatus(err.message || 'Export failed');
+      setTimeout(() => setExportStatus(null), 5000);
+    }
+  };
+
+  const handleDashboardFilterNavigate = (filters: { assignee?: string; label?: string; due?: string; column?: string }) => {
+    setFilterText('');
+    setFilterAssignee(filters.assignee || '');
+    setFilterLabel(filters.label || '');
+    setFilterDue(filters.due || '');
+    setFilterColumn(filters.column || '');
+    setCustomFieldFilters({});
+    onViewChange('board');
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!board) return <div>Board not found</div>;
 
   return (
     <div className="kanban-container">
-      <header className="kanban-header">
-        <div className="header-left">
-          <button onClick={onBack} className="btn-icon">←</button>
-          <PlankLogo size={24} />
-          <h1>{board.name}</h1>
+      <AppBar title={board.name} onBack={onBack}>
+        <div className="view-toggle">
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'board' ? ' active' : ''}`}
+            onClick={() => onViewChange('board')}
+            title="Board view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="12" rx="1"/>
+            </svg>
+          </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'calendar' ? ' active' : ''}`}
+            onClick={() => onViewChange('calendar')}
+            title="Calendar view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+          </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'table' ? ' active' : ''}`}
+            onClick={() => onViewChange('table')}
+            title="Table view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+            </svg>
+          </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'timeline' ? ' active' : ''}`}
+            onClick={() => onViewChange('timeline')}
+            title="Timeline view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h16M4 12h10M4 18h14"/>
+            </svg>
+          </button>
+          <button
+            className={`btn-icon view-toggle-btn${viewMode === 'dashboard' ? ' active' : ''}`}
+            onClick={() => onViewChange('dashboard')}
+            title="Dashboard"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+          </button>
         </div>
-        <div className="header-actions">
-          <button
-            onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
-            title="Filters"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
-          </button>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`btn-icon mobile-only${mobileMenuOpen ? ' mobile-active' : ''}`}
-            title="Menu"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-          </button>
-          <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
-            {isAdmin && (
-              <div className="board-settings">
-                <button
-                  onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                  className="board-settings-trigger btn-secondary btn-sm"
-                >
-                  Board ▾
-                </button>
-                <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
-                  <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
-                  <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
-                    {showArchived ? 'Show Active' : 'Archived'}
-                  </button>
-                  <div className="board-settings-divider" />
-                  <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
-                  <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
-                  <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
-                </div>
-              </div>
-            )}
-            {!isAdmin && (
+        <button
+          onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
+          title="Filters"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
+        </button>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className={`btn-icon mobile-only${mobileMenuOpen ? ' mobile-active' : ''}`}
+          title="Menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
+        <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
+          {isAdmin && (
+            <div className="board-settings">
               <button
-                onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
-                className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                className="board-settings-trigger btn-secondary btn-sm"
               >
-                {showArchived ? 'Show Active' : 'Archived'}
+                Board ▾
               </button>
-            )}
-            <button onClick={() => { onLogout(); setMobileMenuOpen(false); }} className="btn-secondary btn-sm">Logout</button>
-          </div>
+              <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
+                <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
+                <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
+                  {showArchived ? 'Show Active' : 'Archived'}
+                </button>
+                <div className="board-settings-divider" />
+                <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
+                <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
+                <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
+                <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
+                <div className="board-settings-divider" />
+                <button onClick={handleExportCsv}>Export CSV</button>
+                <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
+              </div>
+            </div>
+          )}
+          {!isAdmin && (
+            <button
+              onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
+              className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+            >
+              {showArchived ? 'Show Active' : 'Archived'}
+            </button>
+          )}
         </div>
-      </header>
+      </AppBar>
 
       {/* Mobile menu backdrop */}
       {mobileMenuOpen && <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)} />}
@@ -466,6 +674,7 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
         />
         <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="filter-select">
           <option value="">All assignees</option>
+          <option value="__unassigned__">Unassigned</option>
           {assignees.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
         </select>
         {boardLabels.length > 0 && (
@@ -510,145 +719,263 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           <option value="overdue">Overdue</option>
           <option value="soon">Due soon</option>
           <option value="none">No date</option>
+          <option value="overdue-subtasks">Overdue subtasks</option>
         </select>
+        {board?.columns && board.columns.length > 0 && (
+          <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)} className="filter-select">
+            <option value="">All lists</option>
+            {board.columns.map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+          </select>
+        )}
+        {board?.custom_fields?.map(field => {
+          if (field.field_type === 'dropdown') {
+            return (
+              <select
+                key={field.id}
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                className="filter-select"
+              >
+                <option value="">All {field.name}</option>
+                {field.options?.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            );
+          }
+          if (field.field_type === 'checkbox') {
+            return (
+              <select
+                key={field.id}
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                className="filter-select"
+              >
+                <option value="">{field.name}</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            );
+          }
+          if (field.field_type === 'text') {
+            return (
+              <input
+                key={field.id}
+                type="text"
+                value={customFieldFilters[field.id] || ''}
+                onChange={(e) => setCustomFieldFilters(prev => ({ ...prev, [field.id]: e.target.value }))}
+                placeholder={field.name}
+                className="filter-input filter-input-sm"
+              />
+            );
+          }
+          return null;
+        })}
         {hasFilters && (
-          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); }} className="btn-secondary btn-sm">
+          <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); setFilterColumn(''); setCustomFieldFilters({}); }} className="btn-secondary btn-sm">
             Clear
           </button>
         )}
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
-          {(provided) => (
-            <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
-              {board.columns?.map((column, index) => {
-                const visibleCards = column.cards?.filter(filterCard) || [];
-                return (
-                  <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
-                    {(provided) => (
-                      <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
-                        <div className="column-header" {...provided.dragHandleProps}>
-                          {renamingColumnId === column.id ? (
-                            <input
-                              className="column-rename-input"
-                              value={renameColumnValue}
-                              onChange={(e) => setRenameColumnValue(e.target.value)}
-                              onBlur={() => handleRenameColumn(column.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRenameColumn(column.id);
-                                if (e.key === 'Escape') { setRenamingColumnId(null); setRenameColumnValue(''); }
-                              }}
-                              autoFocus
-                              onClick={(e) => e.stopPropagation()}
-                              maxLength={255}
-                            />
-                          ) : (
-                            <h3>{column.name}</h3>
-                          )}
-                          <div className="column-header-actions">
-                            <span className="card-count">{visibleCards.length}</span>
-                            {isAdmin && (
-                              <div className="column-kebab" ref={columnMenuId === column.id ? columnMenuRef : undefined}>
-                                <button
-                                  className="btn-icon btn-column-kebab"
-                                  onClick={(e) => { e.stopPropagation(); setColumnMenuId(columnMenuId === column.id ? null : column.id); }}
-                                  title="Column actions"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                                </button>
-                                {columnMenuId === column.id && (
-                                  <div className="kebab-dropdown column-kebab-dropdown">
-                                    <button onClick={(e) => {
-                                      e.stopPropagation();
-                                      setColumnMenuId(null);
-                                      setRenameColumnValue(column.name);
-                                      setRenamingColumnId(column.id);
-                                    }}>Rename</button>
-                                    <div className="kebab-divider" />
-                                    <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}>Delete</button>
-                                  </div>
-                                )}
-                              </div>
+        {viewMode === 'calendar' ? (
+          <div className="calendar-layout">
+            <CalendarView
+              board={board}
+              onCardClick={handleCalendarCardClick}
+              filterCard={filterCard}
+              isAdmin={isAdmin}
+              isMobile={isMobile}
+              onOpenInBoard={handleOpenInBoard}
+              onChangeDate={handleCalendarChangeDate}
+              onRemoveDate={handleCalendarRemoveDate}
+            />
+          </div>
+        ) : viewMode === 'table' ? (
+          <TableView
+            board={board}
+            filterCard={filterCard}
+            isAdmin={isAdmin}
+            onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
+            onCardClick={(cardId) => handleOpenInBoard(cardId)}
+            boardMembers={boardMembers}
+            assignees={assignees}
+          />
+        ) : viewMode === 'timeline' ? (
+          <TimelineView
+            board={board}
+            filterCard={filterCard}
+            isAdmin={isAdmin}
+            isMobile={isMobile}
+            onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
+            onCardClick={(cardId) => { handleOpenInBoard(cardId); }}
+          />
+        ) : viewMode === 'dashboard' ? (
+          <DashboardView
+            boardId={boardId}
+            refreshKey={refreshKey}
+            onFilterNavigate={handleDashboardFilterNavigate}
+          />
+        ) : (
+          <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
+            {(provided) => (
+              <div className="columns-container" {...provided.droppableProps} ref={provided.innerRef}>
+                {board.columns?.filter(col => !filterColumn || col.id === filterColumn).map((column, index) => {
+                  const visibleCards = column.cards?.filter(filterCard) || [];
+                  return (
+                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin || isMobile}>
+                      {(provided) => (
+                        <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
+                          <div className="column-header" {...(!isMobile ? provided.dragHandleProps : {})}>
+                            {renamingColumnId === column.id ? (
+                              <input
+                                className="column-rename-input"
+                                value={renameColumnValue}
+                                onChange={(e) => setRenameColumnValue(e.target.value)}
+                                onBlur={() => handleRenameColumn(column.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameColumn(column.id);
+                                  if (e.key === 'Escape') { setRenamingColumnId(null); setRenameColumnValue(''); }
+                                }}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                maxLength={255}
+                              />
+                            ) : (
+                              <h3>{column.name}</h3>
                             )}
-                          </div>
-                        </div>
-
-                        <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin || showArchived}>
-                          {(provided) => (
-                            <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
-                              {visibleCards.map((card, cardIndex) => (
-                                <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
-                                  {(provided) => (
-                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                      {showArchived ? (
-                                        <div className="kanban-card archived">
-                                          <div className="card-header">
-                                            <h4>{card.title}</h4>
-                                          </div>
-                                          {isAdmin && (
-                                            <div className="archive-actions">
-                                              <button onClick={() => handleRestoreCard(card.id)} className="btn-primary btn-sm">Restore</button>
-                                              <button onClick={() => handleDeleteCard(card.id)} className="btn-danger btn-sm">Delete</button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <KanbanCard
-                                          card={card}
-                                          userRole={userRole}
-                                          isEditing={editingCardId === card.id}
-                                          onEditStart={() => setEditingCardId(card.id)}
-                                          onEditEnd={closeCard}
-                                          onDelete={() => handleDeleteCard(card.id)}
-                                          onArchive={() => handleArchiveCard(card.id)}
-                                          onUpdate={(updates) => handleUpdateCard(card.id, updates)}
-                                          assignees={assignees}
-                                          boardLabels={boardLabels}
-                                          boardId={boardId}
-                                          onAddAssignee={handleAddAssignee}
-                                          isMobile={isMobile}
-                                          columns={board?.columns}
-                                          onMoveToColumn={handleMoveToColumn}
-                                          boardMembers={boardMembers}
-                                        />
-                                      )}
+                            <div className="column-header-actions">
+                              <span className="card-count">{visibleCards.length}</span>
+                              {isAdmin && (
+                                <div className="column-kebab" ref={columnMenuId === column.id ? columnMenuRef : undefined}>
+                                  <button
+                                    className="btn-icon btn-column-kebab"
+                                    onClick={(e) => { e.stopPropagation(); setColumnMenuId(columnMenuId === column.id ? null : column.id); }}
+                                    title="Column actions"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                  </button>
+                                  {columnMenuId === column.id && (
+                                    <div className="kebab-dropdown column-kebab-dropdown">
+                                      <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        setColumnMenuId(null);
+                                        setRenameColumnValue(column.name);
+                                        setRenamingColumnId(column.id);
+                                      }}>Rename</button>
+                                      <div className="kebab-divider" />
+                                      <button className="kebab-danger" onClick={(e) => { e.stopPropagation(); handleDeleteColumn(column.id, column.name); }}>Delete</button>
                                     </div>
                                   )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </Droppable>
+                          </div>
 
-                        {isAdmin && !showArchived && (
-                          showNewCard === column.id ? (
-                            <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form">
-                              <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
-                              <div className="form-actions">
-                                <button type="submit" className="btn-primary btn-sm">Add</button>
-                                <button type="button" onClick={() => { setShowNewCard(null); setNewCardTitle(''); }} className="btn-secondary btn-sm">Cancel</button>
+                          <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin || showArchived}>
+                            {(provided) => (
+                              <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
+                                {visibleCards.map((card, cardIndex) => (
+                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
+                                    {(provided) => (
+                                      <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                        {showArchived ? (
+                                          <div className="kanban-card archived">
+                                            <div className="card-header">
+                                              <h4>{card.title}</h4>
+                                            </div>
+                                            {isAdmin && (
+                                              <div className="archive-actions">
+                                                <button onClick={() => handleRestoreCard(card.id)} className="btn-primary btn-sm">Restore</button>
+                                                <button onClick={() => handleDeleteCard(card.id)} className="btn-danger btn-sm">Delete</button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <KanbanCard
+                                            card={card}
+                                            userRole={userRole}
+                                            isEditing={editingCardId === card.id}
+                                            onEditStart={() => setEditingCardId(card.id)}
+                                            onEditEnd={closeCard}
+                                            onDelete={() => handleDeleteCard(card.id)}
+                                            onArchive={() => handleArchiveCard(card.id)}
+                                            onUpdate={(updates) => handleUpdateCard(card.id, updates)}
+                                            assignees={assignees}
+                                            boardLabels={boardLabels}
+                                            boardId={boardId}
+                                            onAddAssignee={handleAddAssignee}
+                                            isMobile={isMobile}
+                                            columns={board?.columns}
+                                            onMoveToColumn={handleMoveToColumn}
+                                            boardMembers={boardMembers}
+                                            customFields={board?.custom_fields}
+                                          />
+                                        )}
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {provided.placeholder}
                               </div>
-                            </form>
-                          ) : (
-                            <button onClick={() => setShowNewCard(column.id)} className="btn-add-card">+ Add card</button>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </Draggable>
-                );
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+                            )}
+                          </Droppable>
+
+                          {isAdmin && !showArchived && (
+                            showNewCard === column.id ? (
+                              <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form" ref={newCardFormRef}>
+                                <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
+                                <div className="form-actions">
+                                  <button type="submit" className="btn-primary btn-sm">Add</button>
+                                  <button type="button" onClick={() => { setShowNewCard(null); setNewCardTitle(''); }} className="btn-secondary btn-sm">Cancel</button>
+                                </div>
+                              </form>
+                            ) : (
+                              <button onClick={() => setShowNewCard(column.id)} className="btn-add-card">+ Add card</button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        )}
       </DragDropContext>
 
+      {editingCardId && viewMode !== 'board' && (() => {
+        const editCard = board.columns?.flatMap(c => c.cards || []).find(c => c.id === editingCardId);
+        if (!editCard) return null;
+        return (
+          <KanbanCard
+            card={editCard}
+            userRole={userRole}
+            isEditing={true}
+            onEditStart={() => {}}
+            onEditEnd={closeCard}
+            onDelete={() => handleDeleteCard(editCard.id)}
+            onArchive={() => handleArchiveCard(editCard.id)}
+            onUpdate={(updates) => handleUpdateCard(editCard.id, updates)}
+            assignees={assignees}
+            boardLabels={boardLabels}
+            boardId={boardId}
+            onAddAssignee={handleAddAssignee}
+            isMobile={true}
+            columns={board?.columns}
+            onMoveToColumn={handleMoveToColumn}
+            boardMembers={boardMembers}
+            customFields={board?.custom_fields}
+          />
+        );
+      })()}
+
       {showNewColumn && (
-        <div className="modal-overlay" onClick={() => setShowNewColumn(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay modal-overlay-centered" onClick={() => setShowNewColumn(false)}>
+          <div className="modal modal-centered" onClick={(e) => e.stopPropagation()}>
             <h2>New Column</h2>
             <form onSubmit={handleCreateColumn}>
               <div className="form-group">
@@ -676,6 +1003,24 @@ export default function KanbanBoard({ boardId, onBack, onLogout, userRole }: Kan
           boardId={boardId}
           onClose={() => { setShowLabels(false); loadLabels(); loadBoard(); }}
         />
+      )}
+      {showFieldManager && board && (
+        <CustomFieldManager
+          boardId={board.id}
+          fields={board.custom_fields || []}
+          onClose={() => setShowFieldManager(false)}
+          onFieldsChanged={() => { loadBoard(); setShowFieldManager(false); }}
+        />
+      )}
+      {showCsvImport && (
+        <CSVImportModal
+          boardId={boardId}
+          onClose={() => setShowCsvImport(false)}
+          onImportComplete={() => loadBoard()}
+        />
+      )}
+      {exportStatus && (
+        <div className="csv-toast">{exportStatus}</div>
       )}
     </div>
   );

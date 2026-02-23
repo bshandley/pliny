@@ -5,6 +5,9 @@ export interface User {
   username: string;
   password_hash: string;
   role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  email?: string;
+  display_name?: string;
+  avatar_url?: string;
   created_at: Date;
 }
 

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Socket } from 'socket.io-client';
-import { api } from '../api';
 import { Notification } from '../types';
 
 interface NotificationBellProps {
-  socket: Socket | null;
-  onNavigateToBoard: (boardId: string) => void;
+  notifications: Notification[];
+  onMarkRead: (id: string) => Promise<void>;
+  onMarkAllRead: () => Promise<void>;
+  onNavigateToBoard: (boardId: string, cardId?: string) => void;
 }
 
 function timeAgo(dateStr: string): string {
@@ -21,23 +21,9 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function NotificationBell({ socket, onNavigateToBoard }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export default function NotificationBell({ notifications, onMarkRead, onMarkAllRead, onNavigateToBoard }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handler = (notif: Notification) => {
-      setNotifications(prev => [notif, ...prev].slice(0, 50));
-    };
-    socket.on('notification:new', handler);
-    return () => { socket.off('notification:new', handler); };
-  }, [socket]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,39 +36,37 @@ export default function NotificationBell({ socket, onNavigateToBoard }: Notifica
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  const loadNotifications = async () => {
-    try {
-      const data = await api.getNotifications();
-      setNotifications(data);
-    } catch (err) {
-      console.error('Failed to load notifications:', err);
-    }
-  };
-
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleClick = async (notif: Notification) => {
     if (!notif.read) {
-      await api.markNotificationRead(notif.id);
-      setNotifications(prev =>
-        prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
-      );
+      await onMarkRead(notif.id);
     }
     setOpen(false);
-    onNavigateToBoard(notif.board_id);
-  };
-
-  const handleMarkAllRead = async () => {
-    await api.markAllNotificationsRead();
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    onNavigateToBoard(notif.board_id, notif.card_id);
   };
 
   const getNotificationText = (notif: Notification) => {
     const cardTitle = notif.detail?.card_title || 'a card';
-    if (notif.type === 'mention_card') {
-      return { action: 'added you to', target: cardTitle };
+    switch (notif.type) {
+      case 'assigned_card':
+      case 'mention_card':
+        return { action: 'added you to', target: cardTitle };
+      case 'mention_comment':
+        return { action: 'mentioned you on', target: cardTitle };
+      case 'due_date_reminder':
+        return { action: 'reminder:', target: `${cardTitle} is due soon` };
+      case 'card_completed':
+        return { action: 'completed', target: cardTitle };
+      case 'comment_added':
+        return { action: 'commented on', target: cardTitle };
+      case 'checklist_assigned':
+        return { action: 'assigned you a subtask on', target: cardTitle };
+      case 'description_changed':
+        return { action: 'updated description of', target: cardTitle };
+      default:
+        return { action: 'updated', target: cardTitle };
     }
-    return { action: 'mentioned you on', target: cardTitle };
   };
 
   return (
@@ -106,7 +90,7 @@ export default function NotificationBell({ socket, onNavigateToBoard }: Notifica
           <div className="notification-header">
             <strong>Notifications</strong>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAllRead} className="notification-mark-all">
+              <button onClick={onMarkAllRead} className="notification-mark-all">
                 Mark all read
               </button>
             )}

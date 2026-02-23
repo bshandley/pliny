@@ -2,63 +2,33 @@ import fs from 'fs';
 import path from 'path';
 import pool from '../db';
 
-async function runMigrations() {
-  try {
-    // Run base schema
-    const schema = fs.readFileSync(
-      path.join(__dirname, 'schema.sql'),
-      'utf-8'
-    );
+export async function runMigrations() {
+  // Run base schema first
+  const schemaPath = path.join(__dirname, 'schema.sql');
+  if (fs.existsSync(schemaPath)) {
+    const schema = fs.readFileSync(schemaPath, 'utf-8');
     await pool.query(schema);
-
-    // Run upgrade migration (idempotent)
-    const upgrade = fs.readFileSync(
-      path.join(__dirname, '002-user-management.sql'),
-      'utf-8'
-    );
-    await pool.query(upgrade);
-
-    // Add due dates to cards
-    const dueDates = fs.readFileSync(
-      path.join(__dirname, '003-due-dates.sql'),
-      'utf-8'
-    );
-    await pool.query(dueDates);
-
-    // Add labels, comments, checklists, archive
-    const features = fs.readFileSync(
-      path.join(__dirname, '004-labels-comments-checklists-archive.sql'),
-      'utf-8'
-    );
-    await pool.query(features);
-
-    // Add board archiving
-    const boardArchive = fs.readFileSync(
-      path.join(__dirname, '005-board-archive.sql'),
-      'utf-8'
-    );
-    await pool.query(boardArchive);
-
-    // Add activity, card members, notifications
-    const activityMembersNotifications = fs.readFileSync(
-      path.join(__dirname, '006-activity-members-notifications.sql'),
-      'utf-8'
-    );
-    await pool.query(activityMembersNotifications);
-
-    // Add collaborator role
-    const collaboratorRole = fs.readFileSync(
-      path.join(__dirname, '007-collaborator-role.sql'),
-      'utf-8'
-    );
-    await pool.query(collaboratorRole);
-
-    console.log('Migrations completed successfully');
-    process.exit(0);
-  } catch (error) {
-    console.error('Migration failed:', error);
-    process.exit(1);
   }
+
+  // Auto-discover numbered migration files (NNN-*.sql) and run in order
+  const files = fs.readdirSync(__dirname)
+    .filter(f => /^\d{3}-.*\.sql$/.test(f))
+    .sort();
+
+  for (const file of files) {
+    const sql = fs.readFileSync(path.join(__dirname, file), 'utf-8');
+    await pool.query(sql);
+  }
+
+  console.log(`Migrations completed (${files.length} files)`);
 }
 
-runMigrations();
+// Allow running as standalone script
+if (require.main === module) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error('Migration failed:', err);
+      process.exit(1);
+    });
+}

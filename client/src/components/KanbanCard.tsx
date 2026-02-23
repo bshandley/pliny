@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember } from '../types';
+import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
+import CustomFieldEditor from './CustomFieldEditor';
 
 interface KanbanCardProps {
   card: Card;
@@ -22,6 +23,7 @@ interface KanbanCardProps {
   columns?: Column[];
   onMoveToColumn?: (cardId: string, columnId: string) => void;
   boardMembers?: BoardMember[];
+  customFields?: CustomField[];
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
@@ -83,17 +85,37 @@ function formatActivity(action: string, detail: Record<string, any> | null): str
       if (detail?.from && !detail?.to) return 'removed the due date';
       return `changed due date from ${detail?.from} to ${detail?.to}`;
     }
+    case 'start_date_changed': {
+      if (!detail?.from && detail?.to) return `set start date to ${detail.to}`;
+      if (detail?.from && !detail?.to) return 'removed the start date';
+      return `changed start date from ${detail?.from} to ${detail?.to}`;
+    }
     default: return action.replace(/_/g, ' ');
   }
 }
 
-export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [] }: KanbanCardProps) {
+function formatFieldBadge(field: CustomField, value: string): string {
+  switch (field.field_type) {
+    case 'text': return value.length > 20 ? value.slice(0, 20) + '...' : value;
+    case 'number': return value;
+    case 'date': {
+      const d = new Date(value + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    case 'dropdown': return value;
+    case 'checkbox': return value === 'true' ? '\u2713' : '\u2717';
+    default: return value;
+  }
+}
+
+export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
   const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
+  const [editStartDate, setEditStartDate] = useState(card.start_date ? card.start_date.split(' ')[0].split('T')[0] : '');
   const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
   const [editLabels, setEditLabels] = useState<string[]>(card.labels?.map(l => l.id) || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -113,6 +135,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [loadingChecklist, setLoadingChecklist] = useState(false);
   const [showChecklist, setShowChecklist] = useState(!!(card.checklist && card.checklist.total > 0));
   const [showComments, setShowComments] = useState(false);
+  const [assigneeDropdownItemId, setAssigneeDropdownItemId] = useState<string | null>(null);
 
   // Comment @mention state
   const [commentMentionActive, setCommentMentionActive] = useState(false);
@@ -191,41 +214,45 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     }
   };
 
-  const removeMember = (id: string) => {
-    setEditMembers(editMembers.filter(m => m !== id));
+  const removeMember = async (id: string) => {
+    const newMembers = editMembers.filter(m => m !== id);
+    setEditMembers(newMembers);
+    try {
+      await api.setCardMembers(card.id, newMembers);
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to save members:', err);
+    }
   };
 
-  const selectMember = (id: string) => {
-    if (!editMembers.includes(id)) setEditMembers([...editMembers, id]);
+  const selectMember = async (id: string) => {
+    const newMembers = editMembers.includes(id) ? editMembers : [...editMembers, id];
+    setEditMembers(newMembers);
+    try {
+      await api.setCardMembers(card.id, newMembers);
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to save members:', err);
+    }
     setShowAutocomplete(false);
     setAutocompleteFilter('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const handleSave = async () => {
-    if (!editTitle.trim()) return;
-    onUpdate({
-      title: editTitle,
-      description: editDescription,
-      assignees: editAssignees,
-      labels: editLabels as any,
-      due_date: editDueDate || null
-    });
-    // Save members separately
-    const originalMemberIds = card.members?.map(m => m.id) || [];
-    if (JSON.stringify([...editMembers].sort()) !== JSON.stringify([...originalMemberIds].sort())) {
-      try {
-        await api.setCardMembers(card.id, editMembers);
-      } catch (err) {
-        console.error('Failed to save members:', err);
-      }
+  const handleSaveDescription = () => {
+    onUpdate({ description: editDescription });
+  };
+
+  const handleClose = () => {
+    if (editDescription !== (card.description || '')) {
+      if (!window.confirm('You have unsaved description changes. Discard?')) return;
+      setEditDescription(card.description || '');
     }
     onEditEnd();
   };
 
-  // Keep a ref to the latest handleSave so the click-outside effect always calls current state
-  const handleSaveRef = useRef(handleSave);
-  useEffect(() => { handleSaveRef.current = handleSave; });
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => { handleCloseRef.current = handleClose; });
 
   // Close edit/detail panel when clicking outside the card
   useEffect(() => {
@@ -233,7 +260,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     const handleClickOutside = (e: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
         if (canWrite) {
-          handleSaveRef.current();
+          handleCloseRef.current();
         } else {
           onEditEnd();
         }
@@ -261,16 +288,14 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     };
   }, [showCardMenu]);
 
-  const handleCancel = () => {
-    setEditTitle(card.title);
-    setEditDescription(card.description || '');
-    setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
-    setEditAssignees(card.assignees || []);
-    setEditLabels(card.labels?.map(l => l.id) || []);
-    setEditMembers(card.members?.map(m => m.id) || []);
-    onEditEnd();
-    setShowAutocomplete(false);
-    setAutocompleteFilter('');
+
+  const handleCustomFieldChange = async (fieldId: string, value: string | null) => {
+    try {
+      await api.setCardCustomFields(card.id, { [fieldId]: value });
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to update custom field:', err);
+    }
   };
 
   const handleAssigneeInputChange = (value: string) => {
@@ -290,20 +315,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   );
 
   const selectAssignee = (name: string) => {
-    if (!editAssignees.includes(name)) setEditAssignees([...editAssignees, name]);
+    const newAssignees = editAssignees.includes(name) ? editAssignees : [...editAssignees, name];
+    setEditAssignees(newAssignees);
+    onUpdate({ assignees: newAssignees });
     setShowAutocomplete(false);
     setAutocompleteFilter('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
   const removeAssignee = (name: string) => {
-    setEditAssignees(editAssignees.filter(a => a !== name));
+    const newAssignees = editAssignees.filter(a => a !== name);
+    setEditAssignees(newAssignees);
+    onUpdate({ assignees: newAssignees });
   };
 
   const toggleLabel = (labelId: string) => {
-    setEditLabels(prev =>
-      prev.includes(labelId) ? prev.filter(id => id !== labelId) : [...prev, labelId]
-    );
+    const newLabels = editLabels.includes(labelId) ? editLabels.filter(id => id !== labelId) : [...editLabels, labelId];
+    setEditLabels(newLabels);
+    onUpdate({ labels: newLabels as any });
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
@@ -387,6 +416,42 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     } catch (err) {
       console.error('Failed to delete checklist item:', err);
     }
+  };
+
+  const handleChecklistItemUpdate = async (itemId: string, updates: Partial<ChecklistItem>) => {
+    try {
+      const updated = await api.updateChecklistItem(itemId, updates);
+      setChecklistItems(checklistItems.map(i => i.id === itemId ? updated : i));
+    } catch (err) {
+      console.error('Failed to update checklist item:', err);
+    }
+  };
+
+  const cyclePriority = (item: ChecklistItem) => {
+    const cycle: (string | null)[] = [null, 'low', 'medium', 'high'];
+    const currentIdx = cycle.indexOf(item.priority || null);
+    const next = cycle[(currentIdx + 1) % cycle.length];
+    handleChecklistItemUpdate(item.id, { priority: next } as any);
+  };
+
+  const openChecklistDatePicker = (itemId: string, currentDate?: string | null) => {
+    const input = document.createElement('input');
+    input.type = 'date';
+    if (currentDate) input.value = currentDate;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', () => {
+      handleChecklistItemUpdate(itemId, { due_date: input.value || null } as any);
+      if (document.body.contains(input)) document.body.removeChild(input);
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.body.contains(input)) document.body.removeChild(input);
+      }, 200);
+    });
+    input.showPicker();
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -479,9 +544,14 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         className="card-edit-title"
         placeholder="Card title"
         autoFocus={!isMobile}
+        onBlur={() => {
+          if (editTitle.trim() && editTitle !== card.title) {
+            onUpdate({ title: editTitle });
+          }
+        }}
         onKeyDown={(e) => {
-          if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); handleSave(); }
-          else if (!isMobile && e.key === 'Escape') handleCancel();
+          if (!isMobile && e.key === 'Enter' && !e.shiftKey && !showAutocomplete) { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+          else if (!isMobile && e.key === 'Escape') handleClose();
         }}
         maxLength={255}
       />
@@ -595,17 +665,53 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000} />
+      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000}
+        onKeyDown={(e) => {
+          if (!isMobile && e.key === 'Escape') { e.preventDefault(); handleClose(); }
+        }}
+      />
+      {editDescription !== (card.description || '') && (
+        <button type="button" onClick={handleSaveDescription} className="btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 0, marginBottom: '0.5rem' }}>Save description</button>
+      )}
 
-      <div className="due-date-picker">
-        <label htmlFor={`due-date-${card.id}`}>Due date</label>
-        <div className="due-date-input-row">
-          <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="due-date-input" />
-          {editDueDate && (
-            <button type="button" onClick={() => setEditDueDate('')} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
-          )}
+      <div className="date-range-picker">
+        <div className="due-date-picker">
+          <label htmlFor={`start-date-${card.id}`}>Start date</label>
+          <div className="due-date-input-row">
+            <input type="date" id={`start-date-${card.id}`} value={editStartDate} onChange={(e) => { setEditStartDate(e.target.value); onUpdate({ start_date: e.target.value || null }); }} className="due-date-input" />
+            {editStartDate && (
+              <button type="button" onClick={() => { setEditStartDate(''); onUpdate({ start_date: null }); }} className="btn-icon btn-sm due-date-clear" aria-label="Clear start date">×</button>
+            )}
+          </div>
+        </div>
+        <div className="due-date-picker">
+          <label htmlFor={`due-date-${card.id}`}>Due date</label>
+          <div className="due-date-input-row">
+            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => { setEditDueDate(e.target.value); onUpdate({ due_date: e.target.value || null }); }} className="due-date-input" />
+            {editDueDate && (
+              <button type="button" onClick={() => { setEditDueDate(''); onUpdate({ due_date: null }); }} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Custom Fields */}
+      {customFields.length > 0 && (
+        <div className="custom-fields-section">
+          <span className="section-label">Custom Fields</span>
+          {customFields.map(field => (
+            <div key={field.id} className="custom-field-row">
+              <label className="custom-field-label">{field.name}</label>
+              <CustomFieldEditor
+                field={field}
+                value={card.custom_field_values?.[field.id]?.value || null}
+                onChange={(val) => handleCustomFieldChange(field.id, val)}
+                readOnly={!canWrite}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="checklist-section">
@@ -624,10 +730,51 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           ) : (
             <>
               {checklistItems.map(item => (
-                <div key={item.id} className="checklist-item">
-                  <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
-                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
-                  <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                <div key={item.id} className="checklist-item-group">
+                  <div className="checklist-item">
+                    <input type="checkbox" checked={item.checked} onChange={() => handleToggleChecklistItem(item)} />
+                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                    <button type="button" onClick={() => handleDeleteChecklistItem(item.id)} className="checklist-delete" aria-label="Delete item">×</button>
+                  </div>
+                  <div className="checklist-meta-row">
+                    <div className="checklist-meta-assignee-wrapper">
+                      <button
+                        type="button"
+                        className={`checklist-meta-chip${item.assignee_name ? '' : ' placeholder'}`}
+                        onClick={() => setAssigneeDropdownItemId(assigneeDropdownItemId === item.id ? null : item.id)}
+                      >
+                        {item.assignee_name || 'Assign'}
+                      </button>
+                      {assigneeDropdownItemId === item.id && (
+                        <div className="checklist-assignee-dropdown">
+                          <button type="button" className="checklist-assignee-option" onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: null } as any); setAssigneeDropdownItemId(null); }}>
+                            Unassign
+                          </button>
+                          {(assignees || []).map(a => (
+                            <button type="button" key={a.id} className={`checklist-assignee-option${item.assignee_name === a.name ? ' selected' : ''}`} onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: a.name } as any); setAssigneeDropdownItemId(null); }}>
+                              {a.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={`checklist-meta-chip${item.due_date && new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}${!item.due_date ? ' placeholder' : ''}`}
+                      onClick={() => openChecklistDatePicker(item.id, item.due_date)}
+                    >
+                      {item.due_date
+                        ? new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : 'Date'}
+                    </button>
+                    <button
+                      type="button"
+                      className={`checklist-meta-chip priority-${item.priority || 'none'}`}
+                      onClick={() => cyclePriority(item)}
+                    >
+                      {item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : 'Priority'}
+                    </button>
+                  </div>
                 </div>
               ))}
               <div className="checklist-add">
@@ -797,7 +944,13 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         <p className="card-detail-description">{card.description}</p>
       )}
 
-      {/* Due date */}
+      {/* Dates */}
+      {card.start_date && (
+        <div className="card-detail-field">
+          <span className="card-detail-field-label">Start date</span>
+          <span>{new Date(card.start_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        </div>
+      )}
       {card.due_date && (() => {
         const badge = getDueBadge(card.due_date);
         return badge ? (
@@ -807,6 +960,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           </div>
         ) : null;
       })()}
+
+      {/* Custom Fields */}
+      {customFields.length > 0 && (
+        <div className="custom-fields-section">
+          <span className="section-label">Custom Fields</span>
+          {customFields.map(field => (
+            <div key={field.id} className="custom-field-row">
+              <label className="custom-field-label">{field.name}</label>
+              <CustomFieldEditor
+                field={field}
+                value={card.custom_field_values?.[field.id]?.value || null}
+                onChange={(val) => handleCustomFieldChange(field.id, val)}
+                readOnly={true}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="checklist-section">
@@ -826,9 +997,22 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
             <>
               {checklistItems.length === 0 && <p className="empty-comments">No checklist items.</p>}
               {checklistItems.map(item => (
-                <div key={item.id} className="checklist-item">
-                  <input type="checkbox" checked={item.checked} disabled />
-                  <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                <div key={item.id} className="checklist-item-group">
+                  <div className="checklist-item">
+                    <input type="checkbox" checked={item.checked} disabled />
+                    <span className={item.checked ? 'checked-text' : ''}>{item.text}</span>
+                  </div>
+                  {(item.assignee_name || item.due_date || item.priority) && (
+                    <div className="checklist-meta-row read-only">
+                      {item.assignee_name && <span className="checklist-meta-chip">{item.assignee_name}</span>}
+                      {item.due_date && (
+                        <span className={`checklist-meta-chip${new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}`}>
+                          {new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                      {item.priority && <span className={`checklist-meta-chip priority-${item.priority}`}>{item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}</span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -988,7 +1172,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       return createPortal(
         <div className="card-fullscreen-overlay">
           <div className="card-fullscreen-header">
-            <button onClick={handleCancel} className="btn-icon" aria-label="Back">←</button>
+            <button onClick={handleClose} className="btn-icon" aria-label="Back">←</button>
             <h2>{card.title}</h2>
             <div className="card-edit-actions-menu" ref={showCardMenu ? cardMenuRef : undefined}>
               <button
@@ -1006,7 +1190,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 </div>
               )}
             </div>
-            <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
+            <button onClick={handleClose} className="btn-primary btn-sm">Done</button>
           </div>
           <div className="card-fullscreen-body">
             {renderEditFields()}
@@ -1021,8 +1205,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       <div ref={cardRef} className="kanban-card editing" onClick={(e) => e.stopPropagation()}>
         {renderEditFields()}
         <div className="card-edit-actions">
-          <button onClick={handleSave} className="btn-primary btn-sm">Save</button>
-          <button onClick={handleCancel} className="btn-secondary btn-sm">Cancel</button>
+          <button onClick={handleClose} className="btn-primary btn-sm">Done</button>
           <div className="card-edit-actions-menu">
             <button
               ref={cardMenuBtnRef}
@@ -1109,29 +1292,47 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       {card.description && (
         <p className="card-description">{card.description}</p>
       )}
-      {(card.assignees?.length || card.members?.length || card.due_date || card.checklist) && (
-        <div className="card-footer">
-          <div className="card-footer-left">
-            {card.members?.map((member, index) => (
-              <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
-            ))}
-            {card.assignees?.map((name, index) => (
-              <span key={`a-${index}`} className="assignee-badge">{name}</span>
-            ))}
+      {(() => {
+        const showOnCardFields = customFields.filter(f => f.show_on_card && card.custom_field_values?.[f.id]?.value);
+        const hasFooter = card.assignees?.length || card.members?.length || card.due_date || card.checklist || showOnCardFields.length > 0;
+        if (!hasFooter) return null;
+        return (
+          <div className="card-footer">
+            <div className="card-footer-left">
+              {card.members?.map((member, index) => (
+                <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
+              ))}
+              {card.assignees?.map((name, index) => (
+                <span key={`a-${index}`} className="assignee-badge">{name}</span>
+              ))}
+              {showOnCardFields.slice(0, 3).map(field => (
+                <span key={field.id} className={`custom-field-badge field-type-${field.field_type}`}>
+                  {formatFieldBadge(field, card.custom_field_values![field.id].value)}
+                </span>
+              ))}
+              {showOnCardFields.length > 3 && (
+                <span className="custom-field-badge">+{showOnCardFields.length - 3}</span>
+              )}
+            </div>
+            <div className="card-footer-right">
+              {card.due_date && (() => {
+                const badge = getDueBadge(card.due_date);
+                return badge ? <span className={badge.className}>{badge.label}</span> : null;
+              })()}
+              {card.checklist && card.checklist.total > 0 && (
+                <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
+                  {card.checklist.checked}/{card.checklist.total}
+                </span>
+              )}
+              {(card.checklist?.overdue ?? 0) > 0 && (
+                <span className="checklist-overdue-badge">
+                  {card.checklist!.overdue} overdue
+                </span>
+              )}
+            </div>
           </div>
-          <div className="card-footer-right">
-            {card.due_date && (() => {
-              const badge = getDueBadge(card.due_date);
-              return badge ? <span className={badge.className}>{badge.label}</span> : null;
-            })()}
-            {card.checklist && card.checklist.total > 0 && (
-              <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
-                {card.checklist.checked}/{card.checklist.total}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
