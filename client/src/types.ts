@@ -128,6 +128,22 @@ export interface Card {
   updated_at: string;
 }
 
+export interface SearchResult {
+  type: 'card' | 'comment' | 'checklist_item';
+  card_id: string;
+  card_title: string;
+  board_id: string;
+  board_name: string;
+  column_name: string;
+  match_text: string;
+  rank: number;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  total: number;
+}
+
 export interface OidcPublicConfig {
   enabled: boolean;
   button_label: string;

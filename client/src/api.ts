@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse } from './types';
 
 const API_URL = '/api';
 
@@ -435,6 +435,11 @@ class ApiClient {
     this.setToken(data.token);
     return data.user;
   }
+  // Search
+  async search(q: string, limit: number = 20): Promise<SearchResponse> {
+    return this.fetch(`/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+  }
+
   // CSV
   async exportBoardCsv(boardId: string): Promise<void> {
     const token = this.getToken();
