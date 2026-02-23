@@ -5,6 +5,7 @@ import { api } from '../api';
 interface TimelineBarProps {
   card: Card;
   columnName: string;
+  barColor: string;
   dateToPx: (date: Date) => number;
   pxToDate: (px: number) => Date;
   zoom: 'day' | 'week' | 'month';
@@ -30,7 +31,7 @@ function formatDateISO(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export default function TimelineBar({ card, columnName, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick }: TimelineBarProps) {
+export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick }: TimelineBarProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const [resizeOffset, setResizeOffset] = useState<{ edge: 'left' | 'right'; dx: number } | null>(null);
 
@@ -171,7 +172,8 @@ export default function TimelineBar({ card, columnName, dateToPx, pxToDate, zoom
         left: displayLeft,
         width: isMarker ? 12 : displayWidth,
         top: rowIndex * 32 + 4,
-      }}
+        '--bar-color': barColor,
+      } as React.CSSProperties}
       onMouseDown={isMarker ? undefined : handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={`${card.title}\n${columnName}\n${card.start_date || '?'} – ${card.due_date || '?'}`}
