@@ -24,6 +24,7 @@ import templateRoutes from './routes/templates';
 import appSettingsRoutes from './routes/appSettings';
 import notificationPreferencesRoutes from './routes/notificationPreferences';
 import csvRoutes from './routes/csv';
+import searchRoutes from './routes/search';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
 import { seedBuiltinTemplates } from './templates/seed';
@@ -69,6 +70,7 @@ app.use('/api', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
 app.use('/api', csvRoutes);
+app.use('/api', searchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
