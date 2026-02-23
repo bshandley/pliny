@@ -58,7 +58,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   const regex = new RegExp(`(${escaped})`, 'gi');
   const parts = text.split(regex);
   return parts.map((part, i) =>
-    regex.test(part)
+    part.toLowerCase() === query.toLowerCase()
       ? <strong key={i} className="search-highlight">{part}</strong>
       : part
   );
