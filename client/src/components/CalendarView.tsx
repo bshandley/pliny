@@ -148,7 +148,7 @@ function CalendarCardChip({ card, columnName, onClick, isMobile, isAdmin, onOpen
 
   return (
     <div className="calendar-card-chip" onClick={handleChipClick} ref={isMobile ? menuRef : undefined}>
-      <span className="chip-column-dot" style={{ background: 'var(--primary)' }} />
+      <span className="chip-column-dot" style={{ background: card.labels?.[0]?.color || 'var(--primary)' }} />
       <span className="chip-title">{card.title}</span>
       {isMobile && (
         <>
@@ -229,9 +229,11 @@ function CalendarSpanStrip({ card, spanPosition, onClick }: {
 }) {
   const showTitle = spanPosition === 'start' || spanPosition === 'row-start';
   const posClass = `span-${spanPosition}`;
+  const labelColor = card.labels?.[0]?.color;
+  const style = labelColor ? { '--bar-color': labelColor } as React.CSSProperties : undefined;
 
   return (
-    <div className={`calendar-span-strip ${posClass}`} onClick={onClick}>
+    <div className={`calendar-span-strip ${posClass}`} style={style} onClick={onClick}>
       {showTitle && <span className="span-title">{card.title}</span>}
     </div>
   );

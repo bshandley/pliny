@@ -6295,7 +6295,7 @@ button:disabled {
   display: flex;
   align-items: center;
   height: 22px;
-  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  background: color-mix(in srgb, var(--bar-color, var(--primary)) 15%, transparent);
   cursor: pointer;
   font-size: 0.7rem;
   line-height: 1.2;
@@ -6306,7 +6306,7 @@ button:disabled {
 }
 
 .calendar-span-strip:hover {
-  background: color-mix(in srgb, var(--primary) 25%, transparent);
+  background: color-mix(in srgb, var(--bar-color, var(--primary)) 25%, transparent);
 }
 
 .calendar-span-strip .span-title {
