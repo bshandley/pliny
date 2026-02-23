@@ -36,6 +36,18 @@ function formatShortDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Color palette for status-based bar coloring (matches Atelier warm aesthetic)
+const BAR_COLORS = [
+  '#5746af', // primary purple
+  '#2f855a', // sage green
+  '#c05621', // terracotta
+  '#2b6cb0', // steel blue
+  '#b7791f', // golden brown
+  '#805ad5', // violet
+  '#319795', // teal
+  '#c53030', // muted red
+];
+
 export default function TimelineView({ board, filterCard, isAdmin, isMobile, onCardUpdate, onCardClick }: TimelineViewProps) {
   const [zoom, setZoom] = useState<ZoomLevel>('week');
   const [groupBy, setGroupBy] = useState<GroupBy>('column');
@@ -105,6 +117,20 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
     return allCards.filter(({ card }) => card.start_date || card.due_date);
   }, [allCards]);
 
+  // Cards without any dates (unscheduled)
+  const unscheduledCards = useMemo(() => {
+    return allCards.filter(({ card }) => !card.start_date && !card.due_date);
+  }, [allCards]);
+
+  // Column index map for color coding
+  const columnColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    board.columns?.forEach((col, i) => {
+      map.set(col.name, BAR_COLORS[i % BAR_COLORS.length]);
+    });
+    return map;
+  }, [board.columns]);
+
   // Grouping
   const groups: GroupData[] = useMemo(() => {
     if (groupBy === 'none') return [{ label: 'All cards', cards: scheduledCards }];
@@ -148,14 +174,17 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
 
   // Axis column headers
   const axisColumns = useMemo(() => {
-    const cols: { label: string; subLabel?: string; date: Date; width: number; isToday: boolean }[] = [];
+    const cols: { label: string; subLabel?: string; date: Date; width: number; isToday: boolean; isWeekend: boolean; index: number }[] = [];
     const d = new Date(dateRange.start);
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
+    let idx = 0;
 
     while (d <= dateRange.end) {
       const dStr = d.toISOString().split('T')[0];
       const isToday = dStr === todayStr;
+      const dayOfWeek = d.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       let label: string;
       let subLabel: string | undefined;
@@ -170,7 +199,7 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
         label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       }
 
-      cols.push({ label, subLabel, date: new Date(d), width: ZOOM_CONFIG[zoom].columnWidth, isToday });
+      cols.push({ label, subLabel, date: new Date(d), width: ZOOM_CONFIG[zoom].columnWidth, isToday, isWeekend, index: idx++ });
 
       if (zoom === 'day') d.setDate(d.getDate() + 1);
       else if (zoom === 'week') d.setDate(d.getDate() + 7);
@@ -287,6 +316,30 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
         </div>
       </div>
 
+      {/* Unscheduled tasks section */}
+      {unscheduledCards.length > 0 && (
+        <div className="timeline-unscheduled">
+          <div className="timeline-unscheduled-header">
+            <span className="timeline-unscheduled-label">Unscheduled</span>
+            <span className="swimlane-count">{unscheduledCards.length}</span>
+          </div>
+          <div className="timeline-unscheduled-cards">
+            {unscheduledCards.map(({ card, column }) => (
+              <button
+                key={card.id}
+                className="timeline-unscheduled-chip"
+                onClick={() => onCardClick(card.id)}
+                style={{ '--chip-color': columnColorMap.get(column.name) || BAR_COLORS[0] } as React.CSSProperties}
+              >
+                <span className="timeline-unscheduled-dot" />
+                <span className="timeline-unscheduled-chip-title">{card.title}</span>
+                <span className="timeline-unscheduled-chip-status">{column.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="timeline-body" ref={scrollRef}>
         <div className="timeline-swimlane-labels">
           <div className="swimlane-label swimlane-axis-spacer" />
@@ -307,18 +360,25 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
           {/* Axis header */}
           <div className="timeline-axis">
             {axisColumns.map((col, i) => (
-              <div key={i} className={`timeline-axis-cell${col.isToday ? ' timeline-axis-today' : ''}`} style={{ width: col.width }}>
+              <div key={i} className={`timeline-axis-cell${col.isToday ? ' timeline-axis-today' : ''}${col.isWeekend && zoom === 'day' ? ' timeline-axis-weekend' : ''}${col.index % 2 === 0 ? ' timeline-axis-even' : ''}`} style={{ width: col.width }}>
                 {col.subLabel && <div className="timeline-axis-sub">{col.subLabel}</div>}
                 {col.label}
               </div>
             ))}
           </div>
 
-          {/* Grid lines and today line */}
+          {/* Grid columns (alternating backgrounds + weekend shading) */}
           <div className="timeline-grid" style={{ width: totalWidth }}>
-            {axisColumns.map((col, i) => (
-              <div key={i} className="timeline-grid-line" style={{ left: axisColumns.slice(0, i).reduce((s, c) => s + c.width, 0), height: '100%' }} />
-            ))}
+            {axisColumns.map((col, i) => {
+              const left = axisColumns.slice(0, i).reduce((s, c) => s + c.width, 0);
+              return (
+                <div
+                  key={i}
+                  className={`timeline-grid-col${col.isWeekend && zoom === 'day' ? ' timeline-grid-weekend' : ''}${col.index % 2 === 0 ? ' timeline-grid-even' : ''}`}
+                  style={{ left, width: col.width, height: '100%' }}
+                />
+              );
+            })}
             <div className="timeline-today-line" style={{ left: dateToPx(new Date()) }} />
           </div>
 
@@ -333,6 +393,7 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
                       key={card.id}
                       card={card}
                       columnName={column.name}
+                      barColor={columnColorMap.get(column.name) || BAR_COLORS[0]}
                       dateToPx={dateToPx}
                       pxToDate={pxToDate}
                       zoom={zoom}
