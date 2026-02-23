@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment } from './types';
 
 const API_URL = '/api';
 
@@ -438,6 +438,49 @@ class ApiClient {
   // Search
   async search(q: string, limit: number = 20): Promise<SearchResponse> {
     return this.fetch(`/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+  }
+
+  // Attachments
+  async getAttachments(cardId: string): Promise<Attachment[]> {
+    return this.fetch(`/cards/${cardId}/attachments`);
+  }
+
+  async uploadAttachment(cardId: string, file: File, onProgress?: (pct: number) => void): Promise<Attachment> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      if (onProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+        });
+      }
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(new Error(err.error || 'Upload failed'));
+          } catch {
+            reject(new Error('Upload failed'));
+          }
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+
+      const token = this.getToken();
+      xhr.open('POST', `${API_URL}/cards/${cardId}/attachments`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
+  async deleteAttachment(id: string): Promise<void> {
+    return this.fetch(`/attachments/${id}`, { method: 'DELETE' });
   }
 
   // CSV

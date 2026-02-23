@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue } from '../types';
+import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
@@ -108,6 +108,22 @@ function formatFieldBadge(field: CustomField, value: string): string {
   }
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getFileIcon(mimeType: string): string {
+  if (mimeType.startsWith('image/')) return '\uD83D\uDDBC\uFE0F';
+  if (mimeType.startsWith('video/')) return '\uD83C\uDFA5';
+  if (mimeType.startsWith('audio/')) return '\uD83C\uDFB5';
+  if (mimeType.includes('pdf')) return '\uD83D\uDCC4';
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return '\uD83D\uDCCA';
+  if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) return '\uD83D\uDCC3';
+  return '\uD83D\uDCCE';
+}
+
 export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
@@ -151,6 +167,15 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
 
+  // Attachments state
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const userId = api.getToken() ? JSON.parse(atob(api.getToken()!.split('.')[1])).id : null;
+
   // Card overflow menu state
   const [showCardMenu, setShowCardMenu] = useState(false);
   const [cardMenuPos, setCardMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -171,6 +196,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       loadComments();
       loadChecklist();
       loadActivity();
+      loadAttachments();
     } else {
       setShowCardMenu(false);
     }
@@ -211,6 +237,62 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       console.error('Failed to load activity:', err);
     } finally {
       setLoadingActivity(false);
+    }
+  };
+
+  const loadAttachments = async () => {
+    setLoadingAttachments(true);
+    try {
+      const data = await api.getAttachments(card.id);
+      setAttachments(data);
+      if (data.length > 0) setShowAttachments(true);
+    } catch (err) {
+      console.error('Failed to load attachments:', err);
+    } finally {
+      setLoadingAttachments(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setUploadProgress(0);
+    try {
+      const attachment = await api.uploadAttachment(card.id, file, setUploadProgress);
+      setAttachments(prev => [attachment, ...prev]);
+      setShowAttachments(true);
+    } catch (err: any) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploadProgress(null);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach(f => handleFileUpload(f));
+  };
+
+  const handleDeleteAttachment = async (id: string) => {
+    try {
+      await api.deleteAttachment(id);
+      setAttachments(prev => prev.filter(a => a.id !== id));
+    } catch (err) {
+      console.error('Failed to delete attachment:', err);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items);
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          handleFileUpload(file);
+          break;
+        }
+      }
     }
   };
 
@@ -794,6 +876,71 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         )}
       </div>
 
+      {/* Attachments */}
+      <div className="attachments-section" onPaste={handlePaste}>
+        <button type="button" className="section-toggle" onClick={() => setShowAttachments(!showAttachments)}>
+          <span className="section-toggle-icon">{showAttachments ? '▾' : '▸'}</span>
+          <strong>Attachments</strong>
+          {attachments.length > 0 && (
+            <span className="section-toggle-count">{attachments.length}</span>
+          )}
+        </button>
+        {showAttachments && (
+          loadingAttachments ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              <div
+                className={`attachment-dropzone${dragOver ? ' drag-over' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleFileDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <span className="dropzone-text">{dragOver ? 'Drop files here' : 'Drop files or click to upload'}</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="dropzone-input"
+                  onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); e.target.value = ''; }}
+                />
+              </div>
+              {uploadProgress !== null && (
+                <div className="attachment-progress">
+                  <div className="attachment-progress-bar" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+              {attachments.length === 0 && <p className="empty-comments">No attachments yet. You can also paste images.</p>}
+              <div className="attachment-list">
+                {attachments.map(att => (
+                  <div key={att.id} className="attachment-item">
+                    {att.mime_type.startsWith('image/') && (
+                      <a href={`/api/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="attachment-thumb-link">
+                        <img src={`/api/attachments/${att.id}`} alt={att.original_name} className="attachment-thumbnail" />
+                      </a>
+                    )}
+                    <div className="attachment-info">
+                      <div className="attachment-name-row">
+                        <span className="attachment-icon">{getFileIcon(att.mime_type)}</span>
+                        <a href={`/api/attachments/${att.id}`} download={att.original_name} className="attachment-filename">{att.original_name}</a>
+                      </div>
+                      <div className="attachment-meta">
+                        <span>{formatFileSize(att.size)}</span>
+                        {att.uploader_name && <span>{att.uploader_name}</span>}
+                        <span>{timeAgo(att.created_at)}</span>
+                      </div>
+                    </div>
+                    {(String(att.uploader_id) === String(userId) || userRole === 'ADMIN') && (
+                      <button type="button" className="attachment-delete" onClick={() => handleDeleteAttachment(att.id)} aria-label="Delete attachment">&times;</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )
+        )}
+      </div>
+
       {/* Comments */}
       <div className="comments-section">
         <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
@@ -1015,6 +1162,48 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                   )}
                 </div>
               ))}
+            </>
+          )
+        )}
+      </div>
+
+      {/* Attachments (read-only) */}
+      <div className="attachments-section">
+        <button type="button" className="section-toggle" onClick={() => setShowAttachments(!showAttachments)}>
+          <span className="section-toggle-icon">{showAttachments ? '▾' : '▸'}</span>
+          <strong>Attachments</strong>
+          {attachments.length > 0 && (
+            <span className="section-toggle-count">{attachments.length}</span>
+          )}
+        </button>
+        {showAttachments && (
+          loadingAttachments ? (
+            <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+          ) : (
+            <>
+              {attachments.length === 0 && <p className="empty-comments">No attachments.</p>}
+              <div className="attachment-list">
+                {attachments.map(att => (
+                  <div key={att.id} className="attachment-item">
+                    {att.mime_type.startsWith('image/') && (
+                      <a href={`/api/attachments/${att.id}`} target="_blank" rel="noopener noreferrer" className="attachment-thumb-link">
+                        <img src={`/api/attachments/${att.id}`} alt={att.original_name} className="attachment-thumbnail" />
+                      </a>
+                    )}
+                    <div className="attachment-info">
+                      <div className="attachment-name-row">
+                        <span className="attachment-icon">{getFileIcon(att.mime_type)}</span>
+                        <a href={`/api/attachments/${att.id}`} download={att.original_name} className="attachment-filename">{att.original_name}</a>
+                      </div>
+                      <div className="attachment-meta">
+                        <span>{formatFileSize(att.size)}</span>
+                        {att.uploader_name && <span>{att.uploader_name}</span>}
+                        <span>{timeAgo(att.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </>
           )
         )}
