@@ -977,24 +977,60 @@ button:disabled {
   align-items: baseline;
   gap: 0.375rem;
   padding: 0.375rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
 }
 
 .calendar-week-day-name {
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
+/* Week view: alternating column tints */
+.week-grid .calendar-week-day:nth-child(even) {
+  background: color-mix(in srgb, var(--bg) 30%, var(--card-bg));
+}
+
+/* Week view: today column gets a stronger tint */
+.week-grid .calendar-today {
+  background: color-mix(in srgb, var(--primary) 6%, var(--card-bg));
+}
+
+.week-grid .calendar-today .calendar-week-day-name,
+.week-grid .calendar-today .calendar-day-number {
+  color: var(--primary);
+}
+
+/* Week view: column separators */
+.week-grid .calendar-week-day:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+/* Week view: larger date number in header */
+.calendar-week-day-header .calendar-day-number {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
 .calendar-week-day .calendar-day-cards {
-  padding: 0.25rem;
+  padding: 0.25rem 0;
   overflow: visible;
 }
 
 .week-grid .calendar-card-chip {
   white-space: normal;
   padding: 0.25rem 0.375rem;
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+.week-grid .calendar-subtask-chip {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
 }
 
 .calendar-drag-over {
