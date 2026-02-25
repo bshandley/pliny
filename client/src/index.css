@@ -13,7 +13,6 @@
 /* ---- Theme Variables ---- */
 
 :root {
-  color-scheme: light;
   --primary: #5746af;
   --primary-hover: #463896;
   --primary-subtle: rgba(87, 70, 175, 0.08);
@@ -46,7 +45,6 @@
 }
 
 [data-theme="dark"] {
-  color-scheme: dark;
   --primary: #8b7cf7;
   --primary-hover: #a094f9;
   --primary-subtle: rgba(139, 124, 247, 0.1);
@@ -1757,6 +1755,7 @@ button:disabled {
 
 .date-range-picker .due-date-picker {
   flex: 1;
+  min-width: 0;
 }
 
 .due-date-picker {
@@ -1776,9 +1775,12 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .due-date-input {
+  width: 100%;
+  min-width: 0;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
