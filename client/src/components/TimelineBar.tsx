@@ -13,6 +13,8 @@ interface TimelineBarProps {
   isAdmin: boolean;
   onUpdate: () => void;
   onClick: () => void;
+  onBarDragStart?: () => void;
+  onBarDragEnd?: (clientX: number, clientY: number) => void;
 }
 
 const ZOOM_PX_PER_DAY = {
@@ -31,7 +33,7 @@ function formatDateISO(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick }: TimelineBarProps) {
+export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick, onBarDragStart, onBarDragEnd }: TimelineBarProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const [resizeOffset, setResizeOffset] = useState<{ edge: 'left' | 'right'; dx: number } | null>(null);
 
@@ -63,11 +65,15 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!isAdmin || !card.start_date || !card.due_date) return;
+    // Allow drag if admin and at least one date exists
+    if (!isAdmin || (!card.start_date && !card.due_date)) return;
     e.preventDefault();
     const startX = e.clientX;
-    const origStart = new Date(card.start_date);
-    const origEnd = new Date(card.due_date);
+    const origStart = card.start_date ? new Date(card.start_date) : null;
+    const origEnd = card.due_date ? new Date(card.due_date) : null;
+    const isMarkerDrag = !card.start_date && card.due_date;
+
+    onBarDragStart?.();
 
     const handleMove = (moveEvent: MouseEvent) => {
       setDragOffset(moveEvent.clientX - startX);
@@ -76,19 +82,34 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
     const handleUp = async (upEvent: MouseEvent) => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
+
+      onBarDragEnd?.(upEvent.clientX, upEvent.clientY);
+
       const dx = upEvent.clientX - startX;
       const daysDelta = pxToDays(dx);
       if (daysDelta === 0) { setDragOffset(0); return; }
-      const newStart = addDays(origStart, daysDelta);
-      const newEnd = addDays(origEnd, daysDelta);
-      try {
-        await api.updateCard(card.id, {
-          start_date: formatDateISO(newStart),
-          due_date: formatDateISO(newEnd),
-        } as any);
-        onUpdate();
-      } catch {
-        // revert handled by board reload
+
+      const updates: Record<string, string> = {};
+
+      if (isMarkerDrag && origEnd) {
+        // Due-only card: shift only due_date
+        updates.due_date = formatDateISO(addDays(origEnd, daysDelta));
+      } else if (origStart && origEnd) {
+        // Range card: shift both dates together
+        updates.start_date = formatDateISO(addDays(origStart, daysDelta));
+        updates.due_date = formatDateISO(addDays(origEnd, daysDelta));
+      } else if (origStart) {
+        // Start-only card: shift start_date
+        updates.start_date = formatDateISO(addDays(origStart, daysDelta));
+      }
+
+      if (Object.keys(updates).length > 0) {
+        try {
+          await api.updateCard(card.id, updates as any);
+          onUpdate();
+        } catch {
+          // revert handled by board reload
+        }
       }
       setDragOffset(0);
     };
@@ -166,7 +187,7 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
 
   return (
     <div
-      className={`timeline-bar${isMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}`}
+      className={`timeline-bar${isMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${dragOffset !== 0 ? ' timeline-bar--dragging' : ''}`}
       style={{
         position: 'absolute',
         left: displayLeft,
@@ -174,7 +195,7 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
         top: rowIndex * 32 + 4,
         '--bar-color': barColor,
       } as React.CSSProperties}
-      onMouseDown={isMarker ? undefined : handleMouseDown}
+      onMouseDown={handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={`${card.title}\n${columnName}\n${card.start_date || '?'} – ${card.due_date || '?'}`}
     >

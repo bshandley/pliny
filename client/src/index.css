@@ -3891,6 +3891,32 @@ button:disabled {
   transform: scale(0.96);
 }
 
+/* Drop target state when dragging a scheduled bar onto unscheduled zone */
+.timeline-unscheduled--drop-target {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--bg));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: all 0.15s var(--ease);
+  min-height: 56px;
+}
+
+.timeline-unscheduled--drop-target .timeline-unscheduled-label {
+  color: var(--primary);
+}
+
+.timeline-unscheduled-drop-hint {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: 0.03em;
+  animation: timeline-drop-hint-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes timeline-drop-hint-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
 .timeline-unscheduled-dot {
   width: 6px;
   height: 6px;
@@ -4139,6 +4165,13 @@ button:disabled {
   z-index: 2;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
+}
+
+.timeline-bar--dragging {
+  opacity: 0.75;
+  z-index: 3;
+  cursor: grabbing;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 .bar-title {

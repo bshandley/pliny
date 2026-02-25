@@ -55,9 +55,12 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [scrollOffset, setScrollOffset] = useState(0);
   const [draggingUnscheduled, setDraggingUnscheduled] = useState<{ card: Card; column: Column } | null>(null);
+  const [draggingScheduledCard, setDraggingScheduledCard] = useState<Card | null>(null);
+  const draggingScheduledCardRef = useRef<Card | null>(null);
   const [dropIndicatorPx, setDropIndicatorPx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const unscheduledRef = useRef<HTMLDivElement>(null);
 
   // Compute date range from all card dates
   const dateRange = useMemo(() => {
@@ -122,6 +125,40 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
   const handleChipDragEnd = () => {
     setDraggingUnscheduled(null);
     setDropIndicatorPx(null);
+  };
+
+  // Callbacks for scheduled bar drags (mouse-based, not HTML5 drag API)
+  // Use a ref alongside state so handleBarDragEnd always sees the current card
+  // even when captured in a stale closure inside TimelineBar's mouseup handler.
+  const handleBarDragStart = (card: Card) => {
+    draggingScheduledCardRef.current = card;
+    setDraggingScheduledCard(card);
+  };
+
+  const handleBarDragEnd = async (clientX: number, clientY: number) => {
+    // Read from ref — safe against stale closure
+    const card = draggingScheduledCardRef.current;
+    draggingScheduledCardRef.current = null;
+    setDraggingScheduledCard(null);
+
+    if (!card || !unscheduledRef.current) return;
+
+    // Check if the drop landed over the unscheduled zone
+    const rect = unscheduledRef.current.getBoundingClientRect();
+    const isOverUnscheduled =
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom;
+
+    if (isOverUnscheduled) {
+      try {
+        await api.updateCard(card.id, { start_date: null, due_date: null } as any);
+        onCardUpdate();
+      } catch {
+        // revert handled by board reload
+      }
+    }
   };
 
   const handleChartDragOver = (e: React.DragEvent) => {
@@ -380,12 +417,18 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
         </div>
       </div>
 
-      {/* Unscheduled tasks section */}
-      {unscheduledCards.length > 0 && (
-        <div className="timeline-unscheduled">
+      {/* Unscheduled tasks section — also a drop target for scheduled bars */}
+      {(unscheduledCards.length > 0 || draggingScheduledCard) && (
+        <div
+          className={`timeline-unscheduled${draggingScheduledCard ? ' timeline-unscheduled--drop-target' : ''}`}
+          ref={unscheduledRef}
+        >
           <div className="timeline-unscheduled-header">
             <span className="timeline-unscheduled-label">Unscheduled</span>
-            <span className="swimlane-count">{unscheduledCards.length}</span>
+            {unscheduledCards.length > 0 && <span className="swimlane-count">{unscheduledCards.length}</span>}
+            {draggingScheduledCard && (
+              <span className="timeline-unscheduled-drop-hint">Drop here to unschedule</span>
+            )}
           </div>
           <div className="timeline-unscheduled-cards">
             {unscheduledCards.map(({ card, column }) => (
@@ -483,6 +526,8 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
                       isAdmin={isAdmin}
                       onUpdate={onCardUpdate}
                       onClick={() => onCardClick(card.id)}
+                      onBarDragStart={() => handleBarDragStart(card)}
+                      onBarDragEnd={handleBarDragEnd}
                     />
                   ))}
                 </div>
