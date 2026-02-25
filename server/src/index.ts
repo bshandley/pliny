@@ -28,6 +28,7 @@ import searchRoutes from './routes/search';
 import attachmentRoutes from './routes/attachments';
 import apiTokenRoutes from './routes/apiTokens';
 import devConsoleRoutes, { setupDevConsoleWebSocket } from './routes/devConsole';
+import v1Routes from './routes/v1';
 import { apiLoggerMiddleware } from './middleware/apiLogger';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
@@ -79,6 +80,9 @@ app.use('/api', searchRoutes);
 app.use('/api', attachmentRoutes);
 app.use('/api/tokens', apiTokenRoutes);
 app.use('/api/dev', devConsoleRoutes);
+
+// Public API v1 (for external access via personal access tokens)
+app.use('/api/v1', v1Routes);
 
 // Health check
 app.get('/api/health', (req, res) => {
