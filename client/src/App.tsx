@@ -9,10 +9,11 @@ import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
 import AdminPage from './components/AdminPage';
 import ProfileSettings from './components/ProfileSettings';
+import DevConsole from './components/DevConsole';
 import AppBar from './components/AppBar';
 import GlobalSearchModal from './components/GlobalSearchModal';
 
-type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
+type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile' | 'developer';
 
 function slugify(name: string): string {
   return name
@@ -97,6 +98,13 @@ function App() {
 
     if (slug === 'profile') {
       setPage('profile');
+      return;
+    }
+
+    if (slug === 'developer') {
+      if (authenticatedUser.role === 'ADMIN') {
+        setPage('developer');
+      }
       return;
     }
 
@@ -219,6 +227,10 @@ function App() {
           setCurrentBoardId(null);
           const sub = slug === 'admin' ? null : slug.substring('admin/'.length);
           setAdminSubRoute(sub || null);
+        } else if (slug === 'developer') {
+          setPage('developer');
+          setCurrentBoardId(null);
+          setAdminSubRoute(null);
         }
       }
     };
@@ -528,6 +540,8 @@ function App() {
           user={user!}
           onBack={handleBackFromNotifications}
         />
+      ) : page === 'developer' && user?.role === 'ADMIN' ? (
+        <DevConsole onBack={handleBackToBoards} />
       ) : (
         <BoardList
           onSelectBoard={handleSelectBoard}

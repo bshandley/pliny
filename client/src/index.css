@@ -7521,3 +7521,322 @@ button:disabled {
   color: var(--danger);
   background: var(--danger-subtle);
 }
+
+/* ---- Developer Console ---- */
+.dev-console {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.dev-console-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.dev-console-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.dev-console-filters select,
+.dev-console-filters input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.dev-console-filters input {
+  flex: 1;
+  max-width: 200px;
+}
+
+.dev-console-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.btn-icon:hover {
+  background: var(--bg-raised);
+}
+
+.btn-icon.active {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-toggle {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.btn-toggle.active {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.dev-console-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+.dev-console-events {
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.dev-console-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.dev-event {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.dev-event:hover {
+  background: var(--bg);
+}
+
+.dev-event.selected {
+  background: var(--primary-subtle);
+}
+
+.dev-event-method {
+  font-weight: 600;
+  width: 50px;
+  flex-shrink: 0;
+}
+
+.dev-event-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.dev-event-status {
+  font-weight: 600;
+  width: 32px;
+  text-align: center;
+}
+
+.dev-event-duration {
+  color: var(--text-secondary);
+  width: 50px;
+  text-align: right;
+}
+
+.dev-event-age {
+  color: var(--text-tertiary);
+  width: 60px;
+  text-align: right;
+  font-size: 0.75rem;
+}
+
+.dev-event-fn {
+  background: var(--primary-subtle);
+  color: var(--primary);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-console-detail {
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--bg);
+}
+
+.dev-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dev-detail-header h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dev-detail-status {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.dev-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.dev-detail-section {
+  margin-bottom: 1rem;
+}
+
+.dev-detail-section h4 {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.dev-detail-fn {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.dev-fn-signature {
+  padding: 0.75rem 1rem;
+  background: var(--primary-subtle);
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.dev-fn-line {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.dev-fn-source {
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+}
+
+.dev-detail-json,
+.dev-detail-code {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dev-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dev-copy-group {
+  display: flex;
+  gap: 0;
+}
+
+.dev-copy-group select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius) 0 0 var(--radius);
+  background: var(--card-bg);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.dev-copy-group button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--bg);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.dev-copy-group button:hover {
+  background: var(--bg-raised);
+}
+
+@media (max-width: 768px) {
+  .dev-console-content {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-console-events {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 40vh;
+  }
+
+  .dev-console-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dev-event-age,
+  .dev-event-fn {
+    display: none;
+  }
+}
