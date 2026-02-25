@@ -165,7 +165,7 @@ export async function createNotification(params: NotificationParams): Promise<vo
  * Notify all members of a card about an event.
  *
  * 1. Queries card info (title, board_id, board_name) via JOIN through columns to boards
- * 2. Queries card_members for the card
+ * 2. Queries linked card_assignees for the card
  * 3. Calls createNotification for each member (excluding actor and excludeUserIds)
  *
  * Never throws — logs errors and returns silently.
