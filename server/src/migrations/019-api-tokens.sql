@@ -1,7 +1,7 @@
 -- Personal Access Tokens for API authentication
 CREATE TABLE IF NOT EXISTS api_tokens (
   id TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   token_hash TEXT NOT NULL UNIQUE,
   last_used_at TIMESTAMP,

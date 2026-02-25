@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS card_attachments (
   size INTEGER NOT NULL,
   mime_type TEXT NOT NULL,
   storage_path TEXT NOT NULL,
-  uploader_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  uploader_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_card_attachments_card_id ON card_attachments(card_id);

@@ -142,7 +142,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -220,7 +220,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -271,7 +271,7 @@ router.post('/deliveries/:id/redeliver', authenticate, async (req: AuthRequest, 
     }
 
     const delivery = check.rows[0];
-    if (delivery.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+    if (delivery.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -298,7 +298,7 @@ router.post('/:id/regenerate-secret', authenticate, async (req: AuthRequest, res
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 

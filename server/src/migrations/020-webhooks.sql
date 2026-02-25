@@ -1,13 +1,13 @@
 -- Webhooks for event notifications
 CREATE TABLE IF NOT EXISTS webhooks (
   id TEXT PRIMARY KEY,
-  board_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,
+  board_id UUID REFERENCES boards(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   secret TEXT NOT NULL,
   events TEXT[] NOT NULL DEFAULT '{}',
   enabled BOOLEAN DEFAULT TRUE,
   description TEXT,
-  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
