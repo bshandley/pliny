@@ -1128,6 +1128,11 @@ button:disabled {
   transition: all 0.2s var(--ease);
   position: relative;
   overflow: visible;
+  z-index: 0;
+}
+
+.board-card:has(.kebab-dropdown) {
+  z-index: 20;
 }
 
 .board-card::before {
