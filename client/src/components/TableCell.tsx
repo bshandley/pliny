@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, Column, Label, BoardMember } from '../types';
+import { Card, Column, Label, BoardMember, CardAssignee } from '../types';
 import { api } from '../api';
 
 interface TableCellProps {
@@ -12,17 +12,16 @@ interface TableCellProps {
   onUpdate: () => void;
   onCardClick: (cardId: string) => void;
   boardMembers: BoardMember[];
-  assignees: { id: string; name: string }[];
 }
 
-export default function TableCell({ card, column, field, isAdmin, boardColumns, boardLabels, onUpdate, onCardClick, boardMembers, assignees }: TableCellProps) {
+export default function TableCell({ card, column, field, isAdmin, boardColumns, boardLabels, onUpdate, onCardClick, boardMembers }: TableCellProps) {
   switch (field) {
     case 'title':
       return <TitleCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} onCardClick={onCardClick} />;
     case 'status':
       return <StatusCell card={card} column={column} isAdmin={isAdmin} boardColumns={boardColumns} onUpdate={onUpdate} />;
     case 'assignees':
-      return <AssigneesCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} boardMembers={boardMembers} assignees={assignees} />;
+      return <AssigneesCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} boardMembers={boardMembers} />;
     case 'due_date':
       return <DueDateCell card={card} isAdmin={isAdmin} onUpdate={onUpdate} />;
     case 'labels':
@@ -134,9 +133,9 @@ function StatusCell({ card, column, isAdmin, boardColumns, onUpdate }: {
   );
 }
 
-function AssigneesCell({ card, isAdmin, onUpdate, boardMembers, assignees }: {
+function AssigneesCell({ card, isAdmin, onUpdate, boardMembers }: {
   card: Card; isAdmin: boolean; onUpdate: () => void;
-  boardMembers: BoardMember[]; assignees: { id: string; name: string }[];
+  boardMembers: BoardMember[];
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filter, setFilter] = useState('');
@@ -159,25 +158,14 @@ function AssigneesCell({ card, isAdmin, onUpdate, boardMembers, assignees }: {
     if (showDropdown) filterRef.current?.focus();
   }, [showDropdown]);
 
-  const currentMemberIds = new Set(card.members?.map(m => m.id) || []);
-  const currentAssigneeNames = new Set(card.assignees || []);
+  const currentAssignees = card.assignees || [];
+  const assignedUserIds = new Set(currentAssignees.filter(a => a.user_id).map(a => a.user_id));
 
-  const toggleMember = async (memberId: string) => {
-    const memberIds = card.members?.map(m => m.id) || [];
-    const newMemberIds = currentMemberIds.has(memberId)
-      ? memberIds.filter(id => id !== memberId)
-      : [...memberIds, memberId];
-    try {
-      await api.setCardMembers(card.id, newMemberIds);
-      onUpdate();
-    } catch { /* revert handled by board reload */ }
-  };
-
-  const toggleAssignee = async (name: string) => {
-    const current = card.assignees || [];
-    const newAssignees = currentAssigneeNames.has(name)
-      ? current.filter(a => a !== name)
-      : [...current, name];
+  const toggleAssignee = async (member: BoardMember) => {
+    const isAssigned = assignedUserIds.has(member.id);
+    const newAssignees: CardAssignee[] = isAssigned
+      ? currentAssignees.filter(a => a.user_id !== member.id)
+      : [...currentAssignees, { id: '', user_id: member.id, username: member.username }];
     try {
       await api.updateCard(card.id, { assignees: newAssignees } as any);
       onUpdate();
@@ -185,18 +173,13 @@ function AssigneesCell({ card, isAdmin, onUpdate, boardMembers, assignees }: {
   };
 
   const lowerFilter = filter.toLowerCase();
-  const memberUsernames = new Set(boardMembers.map(m => m.username));
   const filteredMembers = boardMembers.filter(m =>
     m.username.toLowerCase().includes(lowerFilter)
   );
-  const filteredAssignees = assignees.filter(a =>
-    a.name.toLowerCase().includes(lowerFilter) && !memberUsernames.has(a.name)
-  );
 
-  const displayNames = [
-    ...(card.members?.map(m => m.username) || []),
-    ...(card.assignees || [])
-  ].filter((v, i, a) => a.indexOf(v) === i);
+  const displayNames = currentAssignees
+    .map(a => a.username || a.display_name)
+    .filter(Boolean);
 
   return (
     <td className={`table-cell${isAdmin ? ' editable' : ''}`}>
@@ -212,29 +195,13 @@ function AssigneesCell({ card, isAdmin, onUpdate, boardMembers, assignees }: {
               placeholder="Filter members..."
               onKeyDown={e => { if (e.key === 'Escape') { setShowDropdown(false); setFilter(''); } }}
             />
-            {filteredMembers.length > 0 && (
-              <>
-                <div className="table-assignee-group-header">Members</div>
-                {filteredMembers.map(member => (
-                  <button key={member.id} className="table-assignee-option" onClick={() => toggleMember(member.id)}>
-                    {member.username}
-                    {currentMemberIds.has(member.id) && <span className="table-assignee-check">✓</span>}
-                  </button>
-                ))}
-              </>
-            )}
-            {filteredAssignees.length > 0 && (
-              <>
-                <div className="table-assignee-group-header">Assignees</div>
-                {filteredAssignees.map(assignee => (
-                  <button key={assignee.id} className="table-assignee-option" onClick={() => toggleAssignee(assignee.name)}>
-                    {assignee.name}
-                    {currentAssigneeNames.has(assignee.name) && <span className="table-assignee-check">✓</span>}
-                  </button>
-                ))}
-              </>
-            )}
-            {filteredMembers.length === 0 && filteredAssignees.length === 0 && (
+            {filteredMembers.map(member => (
+              <button key={member.id} className="table-assignee-option" onClick={() => toggleAssignee(member)}>
+                {member.username}
+                {assignedUserIds.has(member.id) && <span className="table-assignee-check">✓</span>}
+              </button>
+            ))}
+            {filteredMembers.length === 0 && (
               <div className="table-assignee-empty">No matches</div>
             )}
           </div>

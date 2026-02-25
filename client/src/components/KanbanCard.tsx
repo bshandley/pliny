@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment } from '../types';
+import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
@@ -15,10 +15,8 @@ interface KanbanCardProps {
   onDelete: () => void;
   onArchive: () => void;
   onUpdate: (updates: Partial<Card>) => void;
-  assignees?: { id: string; name: string }[];
   boardLabels?: Label[];
   boardId: string;
-  onAddAssignee: (name: string) => Promise<boolean>;
   isMobile?: boolean;
   columns?: Column[];
   onMoveToColumn?: (cardId: string, columnId: string) => void;
@@ -124,7 +122,7 @@ function getFileIcon(mimeType: string): string {
   return '\uD83D\uDCCE';
 }
 
-export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, assignees = [], boardLabels = [], boardId, onAddAssignee, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
@@ -132,7 +130,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [editDescription, setEditDescription] = useState(card.description || '');
   const [editDueDate, setEditDueDate] = useState(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
   const [editStartDate, setEditStartDate] = useState(card.start_date ? card.start_date.split(' ')[0].split('T')[0] : '');
-  const [editAssignees, setEditAssignees] = useState<string[]>(card.assignees || []);
+  const [editAssignees, setEditAssignees] = useState<CardAssignee[]>(card.assignees || []);
   const [editLabels, setEditLabels] = useState<string[]>(card.labels?.map(l => l.id) || []);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteFilter, setAutocompleteFilter] = useState('');
@@ -158,9 +156,6 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [commentMentionFilter, setCommentMentionFilter] = useState('');
   const [commentMentionIndex, setCommentMentionIndex] = useState(0);
   const commentInputRef = useRef<HTMLInputElement>(null);
-
-  // Members state
-  const [editMembers, setEditMembers] = useState<string[]>(card.members?.map(m => m.id) || []);
 
   // Activity state
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -188,8 +183,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     setEditDueDate(card.due_date ? card.due_date.split(' ')[0].split('T')[0] : '');
     setEditAssignees(card.assignees || []);
     setEditLabels(card.labels?.map(l => l.id) || []);
-    setEditMembers(card.members?.map(m => m.id) || []);
-  }, [card.title, card.description, card.due_date, card.assignees, card.labels, card.members]);
+  }, [card.title, card.description, card.due_date, card.assignees, card.labels]);
 
   useEffect(() => {
     if (isEditing) {
@@ -296,30 +290,6 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     }
   };
 
-  const removeMember = async (id: string) => {
-    const newMembers = editMembers.filter(m => m !== id);
-    setEditMembers(newMembers);
-    try {
-      await api.setCardMembers(card.id, newMembers);
-      onUpdate({});
-    } catch (err) {
-      console.error('Failed to save members:', err);
-    }
-  };
-
-  const selectMember = async (id: string) => {
-    const newMembers = editMembers.includes(id) ? editMembers : [...editMembers, id];
-    setEditMembers(newMembers);
-    try {
-      await api.setCardMembers(card.id, newMembers);
-      onUpdate({});
-    } catch (err) {
-      console.error('Failed to save members:', err);
-    }
-    setShowAutocomplete(false);
-    setAutocompleteFilter('');
-    if (inputRef.current) inputRef.current.value = '';
-  };
 
   const handleSaveDescription = () => {
     onUpdate({ description: editDescription });
@@ -391,24 +361,26 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     }
   };
 
-  const filteredAssignees = assignees.filter(a =>
-    a.name.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
-    !editAssignees.includes(a.name)
-  );
-
-  const selectAssignee = (name: string) => {
-    const newAssignees = editAssignees.includes(name) ? editAssignees : [...editAssignees, name];
-    setEditAssignees(newAssignees);
-    onUpdate({ assignees: newAssignees });
+  const addAssignee = (assignee: CardAssignee) => {
+    const isDup = editAssignees.some(a =>
+      (assignee.user_id && a.user_id === assignee.user_id) ||
+      (!assignee.user_id && a.display_name === assignee.display_name)
+    );
+    if (isDup) return;
+    const updated = [...editAssignees, assignee];
+    setEditAssignees(updated);
+    onUpdate({ assignees: updated } as any);
     setShowAutocomplete(false);
     setAutocompleteFilter('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const removeAssignee = (name: string) => {
-    const newAssignees = editAssignees.filter(a => a !== name);
-    setEditAssignees(newAssignees);
-    onUpdate({ assignees: newAssignees });
+  const removeAssignee = (assignee: CardAssignee) => {
+    const updated = editAssignees.filter(a =>
+      assignee.user_id ? a.user_id !== assignee.user_id : a.display_name !== assignee.display_name
+    );
+    setEditAssignees(updated);
+    onUpdate({ assignees: updated } as any);
   };
 
   const toggleLabel = (labelId: string) => {
@@ -417,22 +389,34 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     onUpdate({ labels: newLabels as any });
   };
 
-  const handleKeyDown = async (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (showAutocomplete) {
+      const filterLower = autocompleteFilter.toLowerCase();
+      const assignedUserIds = new Set(editAssignees.filter(a => a.user_id).map(a => a.user_id));
+      const assignedNames = new Set(editAssignees.filter(a => !a.user_id).map(a => a.display_name?.toLowerCase()));
+
       const filteredMembersList = boardMembers.filter(m =>
-        m.username.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
-        !editMembers.includes(m.id)
+        m.username.toLowerCase().includes(filterLower) &&
+        !assignedUserIds.has(m.id)
       );
-      const totalItems = filteredMembersList.length + filteredAssignees.length;
+
+      const exactMemberMatch = boardMembers.some(m => m.username.toLowerCase() === filterLower);
+      const alreadyAssignedAsName = assignedNames.has(filterLower);
+      const alreadyAssignedAsMember = assignedUserIds.has(
+        boardMembers.find(m => m.username.toLowerCase() === filterLower)?.id || ''
+      );
+      const showFreeText = autocompleteFilter.trim() && !exactMemberMatch && !alreadyAssignedAsName && !alreadyAssignedAsMember;
+
+      const totalItems = filteredMembersList.length + (showFreeText ? 1 : 0);
       if (totalItems > 0) {
         if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, totalItems - 1)); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
         else if (e.key === 'Enter' || e.key === 'Tab') {
           e.preventDefault();
           if (selectedIndex < filteredMembersList.length) {
-            selectMember(filteredMembersList[selectedIndex].id);
-          } else {
-            selectAssignee(filteredAssignees[selectedIndex - filteredMembersList.length].name);
+            addAssignee({ id: '', user_id: filteredMembersList[selectedIndex].id, username: filteredMembersList[selectedIndex].username, display_name: null });
+          } else if (showFreeText) {
+            addAssignee({ id: '', user_id: null, username: null, display_name: autocompleteFilter.trim() });
           }
         }
         else if (e.key === 'Escape') { setShowAutocomplete(false); setAutocompleteFilter(''); }
@@ -444,9 +428,12 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       if (input && input !== '') {
         e.preventDefault();
         const name = input.startsWith('@') ? input.substring(1) : input;
-        const existing = assignees.find(a => a.name.toLowerCase() === name.toLowerCase());
-        if (existing) { selectAssignee(existing.name); }
-        else { const success = await onAddAssignee(name); if (success) selectAssignee(name); }
+        const existingMember = boardMembers.find(m => m.username.toLowerCase() === name.toLowerCase());
+        if (existingMember) {
+          addAssignee({ id: '', user_id: existingMember.id, username: existingMember.username, display_name: null });
+        } else {
+          addAssignee({ id: '', user_id: null, username: null, display_name: name });
+        }
       }
     }
   };
@@ -580,16 +567,13 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     const members = boardMembers.filter(m =>
       m.username.toLowerCase().includes(filter)
     );
-    const assigneeItems = assignees.filter(a =>
-      a.name.toLowerCase().includes(filter)
-    );
-    return { members, assignees: assigneeItems };
+    return { members };
   };
 
   const handleCommentKeyDown = (e: React.KeyboardEvent) => {
     if (commentMentionActive) {
-      const { members, assignees: assigneeItems } = getCommentMentionItems();
-      const totalItems = members.length + assigneeItems.length;
+      const { members } = getCommentMentionItems();
+      const totalItems = members.length;
       if (totalItems > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -605,8 +589,6 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           e.preventDefault();
           if (commentMentionIndex < members.length) {
             handleCommentMentionSelect(members[commentMentionIndex].username);
-          } else {
-            handleCommentMentionSelect(assigneeItems[commentMentionIndex - members.length].name);
           }
           return;
         }
@@ -661,24 +643,14 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      {/* Members & Assignees */}
+      {/* Assignees */}
       <div className="assignee-picker">
-        {(editMembers.length > 0 || editAssignees.length > 0) && (
+        {editAssignees.length > 0 && (
           <div className="assignee-chips">
-            {editMembers.map(id => {
-              const member = boardMembers?.find(m => m.id === id);
-              if (!member) return null;
-              return (
-                <div key={id} className="assignee-chip member-chip">
-                  <span className="chip-name">{member.username}</span>
-                  <button type="button" onClick={() => removeMember(id)} className="chip-remove" aria-label="Remove member">×</button>
-                </div>
-              );
-            })}
-            {editAssignees.map((name, index) => (
-              <div key={index} className="assignee-chip">
-                <span className="chip-name">{name}</span>
-                <button type="button" onClick={() => removeAssignee(name)} className="chip-remove" aria-label="Remove assignee">×</button>
+            {editAssignees.map((assignee, index) => (
+              <div key={assignee.user_id || assignee.display_name || index} className={`assignee-chip${assignee.user_id ? ' member-chip' : ''}`}>
+                <span className="chip-name">{assignee.username || assignee.display_name}</span>
+                <button type="button" onClick={() => removeAssignee(assignee)} className="chip-remove" aria-label="Remove">×</button>
               </div>
             ))}
           </div>
@@ -686,45 +658,42 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         <div className="assignee-input-wrapper">
           <input ref={inputRef} type="text" onChange={(e) => handleAssigneeInputChange(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type @ to assign..." className="assignee-input" maxLength={100} />
           {(() => {
-            const filteredMembersList = boardMembers.filter(m =>
-              m.username.toLowerCase().includes(autocompleteFilter.toLowerCase()) &&
-              !editMembers.includes(m.id)
+            const filterLower = autocompleteFilter.toLowerCase();
+            const assignedUserIds = new Set(editAssignees.filter(a => a.user_id).map(a => a.user_id));
+            const assignedNames = new Set(editAssignees.filter(a => !a.user_id).map(a => a.display_name?.toLowerCase()));
+
+            const filteredMembers = boardMembers.filter(m =>
+              m.username.toLowerCase().includes(filterLower) &&
+              !assignedUserIds.has(m.id)
             );
-            const filteredAssigneesList = filteredAssignees;
-            if (!showAutocomplete || (filteredMembersList.length === 0 && filteredAssigneesList.length === 0)) return null;
+
+            const exactMemberMatch = boardMembers.some(m => m.username.toLowerCase() === filterLower);
+            const alreadyAssignedAsName = assignedNames.has(filterLower);
+            const alreadyAssignedAsMember = assignedUserIds.has(
+              boardMembers.find(m => m.username.toLowerCase() === filterLower)?.id || ''
+            );
+            const showFreeText = autocompleteFilter.trim() && !exactMemberMatch && !alreadyAssignedAsName && !alreadyAssignedAsMember;
+
+            if (!showAutocomplete || (filteredMembers.length === 0 && !showFreeText)) return null;
+
             return (
               <div className="mention-autocomplete">
-                {filteredMembersList.length > 0 && (
-                  <>
-                    <div className="mention-group-header">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                      Members
-                    </div>
-                    {filteredMembersList.map((member, index) => (
-                      <div key={member.id}
-                        className={`mention-item mention-item-member ${index === selectedIndex ? 'selected' : ''}`}
-                        onClick={() => selectMember(member.id)}
-                        onMouseEnter={() => setSelectedIndex(index)}>
-                        {member.username}
-                      </div>
-                    ))}
-                  </>
-                )}
-                {filteredAssigneesList.length > 0 && (
-                  <>
-                    <div className="mention-group-header">Assignees</div>
-                    {filteredAssigneesList.map((assignee, index) => {
-                      const adjustedIndex = filteredMembersList.length + index;
-                      return (
-                        <div key={assignee.id}
-                          className={`mention-item mention-item-assignee ${adjustedIndex === selectedIndex ? 'selected' : ''}`}
-                          onClick={() => selectAssignee(assignee.name)}
-                          onMouseEnter={() => setSelectedIndex(adjustedIndex)}>
-                          {assignee.name}
-                        </div>
-                      );
-                    })}
-                  </>
+                {filteredMembers.map((member, index) => (
+                  <div key={member.id}
+                    className={`mention-item${index === selectedIndex ? ' selected' : ''}`}
+                    onClick={() => addAssignee({ id: '', user_id: member.id, username: member.username, display_name: null })}
+                    onMouseEnter={() => setSelectedIndex(index)}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    {member.username}
+                  </div>
+                ))}
+                {showFreeText && (
+                  <div
+                    className={`mention-item mention-item-freetext${filteredMembers.length === selectedIndex ? ' selected' : ''}`}
+                    onClick={() => addAssignee({ id: '', user_id: null, username: null, display_name: autocompleteFilter.trim() })}
+                    onMouseEnter={() => setSelectedIndex(filteredMembers.length)}>
+                    Add "{autocompleteFilter.trim()}"
+                  </div>
                 )}
               </div>
             );
@@ -835,12 +804,15 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       </button>
                       {assigneeDropdownItemId === item.id && (
                         <div className="checklist-assignee-dropdown">
-                          <button type="button" className="checklist-assignee-option" onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: null } as any); setAssigneeDropdownItemId(null); }}>
+                          <button type="button" className="checklist-assignee-option"
+                            onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: null, assignee_user_id: null } as any); setAssigneeDropdownItemId(null); }}>
                             Unassign
                           </button>
-                          {(assignees || []).map(a => (
-                            <button type="button" key={a.id} className={`checklist-assignee-option${item.assignee_name === a.name ? ' selected' : ''}`} onClick={() => { handleChecklistItemUpdate(item.id, { assignee_name: a.name } as any); setAssigneeDropdownItemId(null); }}>
-                              {a.name}
+                          {boardMembers.map(m => (
+                            <button type="button" key={m.id}
+                              className={`checklist-assignee-option${item.assignee_user_id === m.id ? ' selected' : ''}`}
+                              onClick={() => { handleChecklistItemUpdate(item.id, { assignee_user_id: m.id, assignee_name: m.username } as any); setAssigneeDropdownItemId(null); }}>
+                              {m.username}
                             </button>
                           ))}
                         </div>
@@ -969,7 +941,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     <span className="comment-time">{timeAgo(comment.created_at)}</span>
                     <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                   </div>
-                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} assignees={assignees} /></p>
+                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} /></p>
                 </div>
               ))}
               <div className="comment-add">
@@ -986,42 +958,18 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                   />
                   {(() => {
                     if (!commentMentionActive) return null;
-                    const { members, assignees: assigneeItems } = getCommentMentionItems();
-                    if (members.length === 0 && assigneeItems.length === 0) return null;
+                    const { members } = getCommentMentionItems();
+                    if (members.length === 0) return null;
                     return (
                       <div className="mention-autocomplete">
-                        {members.length > 0 && (
-                          <>
-                            <div className="mention-group-header">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                              Members
-                            </div>
-                            {members.map((member, index) => (
-                              <div key={member.id}
-                                className={`mention-item mention-item-member ${index === commentMentionIndex ? 'selected' : ''}`}
-                                onClick={() => handleCommentMentionSelect(member.username)}
-                                onMouseEnter={() => setCommentMentionIndex(index)}>
-                                {member.username}
-                              </div>
-                            ))}
-                          </>
-                        )}
-                        {assigneeItems.length > 0 && (
-                          <>
-                            <div className="mention-group-header">Assignees</div>
-                            {assigneeItems.map((assignee, index) => {
-                              const adjustedIndex = members.length + index;
-                              return (
-                                <div key={assignee.id}
-                                  className={`mention-item mention-item-assignee ${adjustedIndex === commentMentionIndex ? 'selected' : ''}`}
-                                  onClick={() => handleCommentMentionSelect(assignee.name)}
-                                  onMouseEnter={() => setCommentMentionIndex(adjustedIndex)}>
-                                  {assignee.name}
-                                </div>
-                              );
-                            })}
-                          </>
-                        )}
+                        {members.map((member, index) => (
+                          <div key={member.id}
+                            className={`mention-item${index === commentMentionIndex ? ' selected' : ''}`}
+                            onClick={() => handleCommentMentionSelect(member.username)}
+                            onMouseEnter={() => setCommentMentionIndex(index)}>
+                            {member.username}
+                          </div>
+                        ))}
                       </div>
                     );
                   })()}
@@ -1080,14 +1028,13 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      {/* Members & Assignees */}
-      {(card.members?.length || card.assignees?.length) ? (
+      {/* Assignees */}
+      {card.assignees?.length ? (
         <div className="card-detail-chips">
-          {card.members?.map(member => (
-            <span key={member.id} className="assignee-chip member-chip"><span className="chip-name">{member.username}</span></span>
-          ))}
-          {card.assignees?.map((name, index) => (
-            <span key={index} className="assignee-chip"><span className="chip-name">{name}</span></span>
+          {card.assignees.map((a, i) => (
+            <span key={a.id || i} className={`assignee-chip${a.user_id ? ' member-chip' : ''}`}>
+              <span className="chip-name">{a.username || a.display_name}</span>
+            </span>
           ))}
         </div>
       ) : null}
@@ -1239,7 +1186,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                     )}
                   </div>
-                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} assignees={assignees} /></p>
+                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} /></p>
                 </div>
               ))}
               {canComment && (
@@ -1257,42 +1204,18 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     />
                     {(() => {
                       if (!commentMentionActive) return null;
-                      const { members, assignees: assigneeItems } = getCommentMentionItems();
-                      if (members.length === 0 && assigneeItems.length === 0) return null;
+                      const { members } = getCommentMentionItems();
+                      if (members.length === 0) return null;
                       return (
                         <div className="mention-autocomplete">
-                          {members.length > 0 && (
-                            <>
-                              <div className="mention-group-header">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                                Members
-                              </div>
-                              {members.map((member, index) => (
-                                <div key={member.id}
-                                  className={`mention-item mention-item-member ${index === commentMentionIndex ? 'selected' : ''}`}
-                                  onClick={() => handleCommentMentionSelect(member.username)}
-                                  onMouseEnter={() => setCommentMentionIndex(index)}>
-                                  {member.username}
-                                </div>
-                              ))}
-                            </>
-                          )}
-                          {assigneeItems.length > 0 && (
-                            <>
-                              <div className="mention-group-header">Assignees</div>
-                              {assigneeItems.map((assignee, index) => {
-                                const adjustedIndex = members.length + index;
-                                return (
-                                  <div key={assignee.id}
-                                    className={`mention-item mention-item-assignee ${adjustedIndex === commentMentionIndex ? 'selected' : ''}`}
-                                    onClick={() => handleCommentMentionSelect(assignee.name)}
-                                    onMouseEnter={() => setCommentMentionIndex(adjustedIndex)}>
-                                    {assignee.name}
-                                  </div>
-                                );
-                              })}
-                            </>
-                          )}
+                          {members.map((member, index) => (
+                            <div key={member.id}
+                              className={`mention-item${index === commentMentionIndex ? ' selected' : ''}`}
+                              onClick={() => handleCommentMentionSelect(member.username)}
+                              onMouseEnter={() => setCommentMentionIndex(index)}>
+                              {member.username}
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
@@ -1489,16 +1412,15 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       )}
       {(() => {
         const showOnCardFields = customFields.filter(f => f.show_on_card && card.custom_field_values?.[f.id]?.value);
-        const hasFooter = card.assignees?.length || card.members?.length || card.due_date || card.checklist || showOnCardFields.length > 0;
+        const hasFooter = card.assignees?.length || card.due_date || card.checklist || showOnCardFields.length > 0;
         if (!hasFooter) return null;
         return (
           <div className="card-footer">
             <div className="card-footer-left">
-              {card.members?.map((member, index) => (
-                <span key={`m-${index}`} className="assignee-badge member-badge">{member.username}</span>
-              ))}
-              {card.assignees?.map((name, index) => (
-                <span key={`a-${index}`} className="assignee-badge">{name}</span>
+              {card.assignees?.map((a, i) => (
+                <span key={a.id || i} className={`assignee-badge${a.user_id ? ' member-badge' : ''}`}>
+                  {a.username || a.display_name}
+                </span>
               ))}
               {showOnCardFields.slice(0, 3).map(field => (
                 <span key={field.id} className={`custom-field-badge field-type-${field.field_type}`}>

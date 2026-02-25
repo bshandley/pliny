@@ -149,7 +149,7 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
       let keys: string[];
       switch (groupBy) {
         case 'column': keys = [item.column.name]; break;
-        case 'assignee': keys = item.card.assignees?.length ? item.card.assignees : ['Unassigned']; break;
+        case 'assignee': keys = item.card.assignees?.length ? item.card.assignees.map(a => a.username || a.display_name || 'Unassigned') : ['Unassigned']; break;
         case 'label': keys = item.card.labels?.length ? item.card.labels.map(l => l.name) : ['No label']; break;
         default: keys = ['Other'];
       }

@@ -3,10 +3,9 @@ import { BoardMember } from '../types';
 interface MentionTextProps {
   text: string;
   boardMembers: BoardMember[];
-  assignees: { id: string; name: string }[];
 }
 
-export default function MentionText({ text, boardMembers, assignees }: MentionTextProps) {
+export default function MentionText({ text, boardMembers }: MentionTextProps) {
   const parts = text.split(/(@\w+)/g);
 
   return (
@@ -17,20 +16,10 @@ export default function MentionText({ text, boardMembers, assignees }: MentionTe
           const isMember = boardMembers.some(
             m => m.username.toLowerCase() === name.toLowerCase()
           );
-          const isAssignee = assignees.some(
-            a => a.name.toLowerCase() === name.toLowerCase()
-          );
 
           if (isMember) {
             return (
               <span key={i} className="mention-chip mention-member">
-                {name}
-              </span>
-            );
-          }
-          if (isAssignee) {
-            return (
-              <span key={i} className="mention-chip mention-assignee">
                 {name}
               </span>
             );

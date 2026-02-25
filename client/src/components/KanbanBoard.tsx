@@ -212,7 +212,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
     if (filterAssignee === '__unassigned__') {
       if (card.assignees && card.assignees.length > 0) return false;
-    } else if (filterAssignee && (!card.assignees || !card.assignees.some(a => a.display_name === filterAssignee))) return false;
+    } else if (filterAssignee && (!card.assignees || !card.assignees.some(a => (a.username || a.display_name) === filterAssignee))) return false;
     if (filterLabel && (!card.labels || !card.labels.some(l => l.id === filterLabel))) return false;
     if (filterDue === 'overdue') {
       if (!card.due_date) return false;
@@ -651,7 +651,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           {(() => {
             const names = new Set<string>();
             board?.columns?.forEach(col => col.cards?.forEach(card => card.assignees?.forEach(a => {
-              if (a.display_name) names.add(a.display_name);
+              const name = a.username || a.display_name;
+              if (name) names.add(name);
             })));
             return Array.from(names).sort().map(name => <option key={name} value={name}>{name}</option>);
           })()}

@@ -9,7 +9,6 @@ interface TableViewProps {
   onCardUpdate: () => void;
   onCardClick: (cardId: string) => void;
   boardMembers: BoardMember[];
-  assignees: { id: string; name: string }[];
 }
 
 type SortDir = 'asc' | 'desc';
@@ -36,7 +35,7 @@ interface GroupData {
   cards: { card: Card; column: Column }[];
 }
 
-export default function TableView({ board, filterCard, isAdmin, onCardUpdate, onCardClick, boardMembers, assignees }: TableViewProps) {
+export default function TableView({ board, filterCard, isAdmin, onCardUpdate, onCardClick, boardMembers }: TableViewProps) {
   const storageKey = `table-columns-${board.id}`;
   const [columns, setColumns] = useState<ColumnDef[]>(() => {
     const saved = localStorage.getItem(storageKey);
@@ -117,8 +116,8 @@ export default function TableView({ board, filterCard, isAdmin, onCardUpdate, on
           bVal = b.column.position;
           break;
         case 'assignees':
-          aVal = (a.card.assignees || []).join(',').toLowerCase();
-          bVal = (b.card.assignees || []).join(',').toLowerCase();
+          aVal = (a.card.assignees || []).map(a => a.username || a.display_name || '').join(',').toLowerCase();
+          bVal = (b.card.assignees || []).map(a => a.username || a.display_name || '').join(',').toLowerCase();
           break;
         case 'due_date':
           aVal = a.card.due_date || '';
@@ -158,7 +157,9 @@ export default function TableView({ board, filterCard, isAdmin, onCardUpdate, on
           keys = [item.column.name];
           break;
         case 'assignee':
-          keys = item.card.assignees?.length ? item.card.assignees : ['Unassigned'];
+          keys = item.card.assignees?.length
+            ? item.card.assignees.map(a => a.username || a.display_name || 'Unassigned')
+            : ['Unassigned'];
           break;
         case 'label':
           keys = item.card.labels?.length ? item.card.labels.map(l => l.name) : ['No label'];
@@ -261,7 +262,6 @@ export default function TableView({ board, filterCard, isAdmin, onCardUpdate, on
                 onCardClick={onCardClick}
                 showGroupHeader={groupBy !== 'none'}
                 boardMembers={boardMembers}
-                assignees={assignees}
               />
             ))}
           </tbody>
@@ -283,7 +283,6 @@ function GroupRows({
   onCardClick,
   showGroupHeader,
   boardMembers,
-  assignees,
 }: {
   group: GroupData;
   visibleColumns: ColumnDef[];
@@ -296,7 +295,6 @@ function GroupRows({
   onCardClick: (cardId: string) => void;
   showGroupHeader: boolean;
   boardMembers: BoardMember[];
-  assignees: { id: string; name: string }[];
 }) {
   return (
     <>
@@ -323,7 +321,6 @@ function GroupRows({
               onUpdate={onCardUpdate}
               onCardClick={onCardClick}
               boardMembers={boardMembers}
-              assignees={assignees}
             />
           ))}
         </tr>
