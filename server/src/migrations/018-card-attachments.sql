@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS card_attachments (
   id TEXT PRIMARY KEY,
-  card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   original_name TEXT NOT NULL,
   size INTEGER NOT NULL,
