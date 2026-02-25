@@ -122,6 +122,16 @@ function getFileIcon(mimeType: string): string {
   return '\uD83D\uDCCE';
 }
 
+const AVATAR_COLORS = ['#5746af','#2f855a','#c53030','#d69e2e','#3182ce','#805ad5','#d53f8c','#319795','#dd6b20','#667eea'];
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function avatarInitial(name: string): string {
+  return (name || '?').charAt(0).toUpperCase();
+}
+
 export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
@@ -155,7 +165,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [commentMentionActive, setCommentMentionActive] = useState(false);
   const [commentMentionFilter, setCommentMentionFilter] = useState('');
   const [commentMentionIndex, setCommentMentionIndex] = useState(0);
-  const commentInputRef = useRef<HTMLInputElement>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Activity state
   const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
@@ -169,7 +179,9 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const userId = api.getToken() ? JSON.parse(atob(api.getToken()!.split('.')[1])).id : null;
+  const _tokenPayload = api.getToken() ? JSON.parse(atob(api.getToken()!.split('.')[1])) : null;
+  const userId = _tokenPayload?.id ?? null;
+  const currentUsername: string = _tokenPayload?.username ?? '?';
 
   // Card overflow menu state
   const [showCardMenu, setShowCardMenu] = useState(false);
@@ -529,7 +541,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     input.showPicker();
   };
 
-  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setNewComment(value);
 
@@ -598,7 +610,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         }
       }
     }
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleAddComment();
     }
@@ -773,8 +785,9 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       {/* Checklist */}
       <div className="checklist-section">
         <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
-          <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
-          <strong>Checklist</strong>
+          <svg className={`section-chevron${showChecklist ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span className="section-toggle-label">Checklist</span>
           {checklistItems.length > 0 && (
             <span className="checklist-progress-text">
               {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
@@ -782,7 +795,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           )}
         </button>
         {showChecklist && (
-          loadingChecklist ? (
+          <div className="section-content">
+          {loadingChecklist ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
@@ -850,21 +864,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <button type="button" onClick={handleAddChecklistItem} className="btn-primary btn-sm" disabled={!newChecklistItem.trim()}>+</button>
               </div>
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Attachments */}
       <div className="attachments-section" onPaste={handlePaste}>
         <button type="button" className="section-toggle" onClick={() => setShowAttachments(!showAttachments)}>
-          <span className="section-toggle-icon">{showAttachments ? '▾' : '▸'}</span>
-          <strong>Attachments</strong>
+          <svg className={`section-chevron${showAttachments ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <span className="section-toggle-label">Attachments</span>
           {attachments.length > 0 && (
             <span className="section-toggle-count">{attachments.length}</span>
           )}
         </button>
         {showAttachments && (
-          loadingAttachments ? (
+          <div className="section-content">
+          {loadingAttachments ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
@@ -915,47 +932,57 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 ))}
               </div>
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Comments */}
       <div className="comments-section">
         <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
-          <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
-          <strong>Comments</strong>
+          <svg className={`section-chevron${showComments ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span className="section-toggle-label">Comments</span>
           {comments.length > 0 && (
             <span className="section-toggle-count">{comments.length}</span>
           )}
         </button>
         {showComments && (
-          loadingComments ? (
+          <div className="section-content">
+          {loadingComments ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
               {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
               {comments.map(comment => (
                 <div key={comment.id} className="comment-item">
-                  <div className="comment-header">
-                    <strong>{comment.username}</strong>
-                    <span className="comment-time">{timeAgo(comment.created_at)}</span>
-                    <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+                  <div className="comment-avatar" style={{ background: avatarColor(comment.username) }}>{avatarInitial(comment.username)}</div>
+                  <div className="comment-body">
+                    <div className="comment-header">
+                      <strong>{comment.username}</strong>
+                      <span className="comment-time">{timeAgo(comment.created_at)}</span>
+                      <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+                    </div>
+                    <div className="comment-bubble"><MentionText text={comment.text} boardMembers={boardMembers} /></div>
                   </div>
-                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} /></p>
                 </div>
               ))}
-              <div className="comment-add">
-                <div className="assignee-input-wrapper">
-                  <input
+              <div className="comment-compose">
+                <div className="comment-avatar comment-avatar-sm" style={{ background: avatarColor(currentUsername) }}>{avatarInitial(currentUsername)}</div>
+                <div className="comment-compose-input-wrapper assignee-input-wrapper">
+                  <textarea
                     ref={commentInputRef}
-                    type="text"
                     value={newComment}
                     onChange={handleCommentChange}
                     placeholder="Write a comment... (@ to mention)"
                     className="comment-input"
                     onKeyDown={handleCommentKeyDown}
                     maxLength={5000}
+                    rows={1}
                   />
+                  <button type="button" onClick={handleAddComment} className="comment-send-btn" disabled={!newComment.trim()} aria-label="Post comment">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
                   {(() => {
                     if (!commentMentionActive) return null;
                     const { members } = getCommentMentionItems();
@@ -974,24 +1001,26 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     );
                   })()}
                 </div>
-                <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
               </div>
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Activity */}
       <div className="activity-section">
         <button type="button" className="section-toggle" onClick={() => setShowActivity(!showActivity)}>
-          <span className="section-toggle-icon">{showActivity ? '▾' : '▸'}</span>
-          <strong>Activity</strong>
+          <svg className={`section-chevron${showActivity ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span className="section-toggle-label">Activity</span>
           {activityEntries.length > 0 && (
             <span className="section-toggle-count">{activityEntries.length}</span>
           )}
         </button>
         {showActivity && (
-          loadingActivity ? (
+          <div className="section-content">
+          {loadingActivity ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <div className="activity-list">
@@ -1006,7 +1035,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 </div>
               ))}
             </div>
-          )
+          )}
+          </div>
         )}
       </div>
     </>
@@ -1082,8 +1112,9 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       {/* Checklist */}
       <div className="checklist-section">
         <button type="button" className="section-toggle" onClick={() => setShowChecklist(!showChecklist)}>
-          <span className="section-toggle-icon">{showChecklist ? '▾' : '▸'}</span>
-          <strong>Checklist</strong>
+          <svg className={`section-chevron${showChecklist ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span className="section-toggle-label">Checklist</span>
           {checklistItems.length > 0 && (
             <span className="checklist-progress-text">
               {checklistItems.filter(i => i.checked).length}/{checklistItems.length}
@@ -1091,7 +1122,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
           )}
         </button>
         {showChecklist && (
-          loadingChecklist ? (
+          <div className="section-content">
+          {loadingChecklist ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
@@ -1116,21 +1148,24 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 </div>
               ))}
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Attachments (read-only) */}
       <div className="attachments-section">
         <button type="button" className="section-toggle" onClick={() => setShowAttachments(!showAttachments)}>
-          <span className="section-toggle-icon">{showAttachments ? '▾' : '▸'}</span>
-          <strong>Attachments</strong>
+          <svg className={`section-chevron${showAttachments ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <span className="section-toggle-label">Attachments</span>
           {attachments.length > 0 && (
             <span className="section-toggle-count">{attachments.length}</span>
           )}
         </button>
         {showAttachments && (
-          loadingAttachments ? (
+          <div className="section-content">
+          {loadingAttachments ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
@@ -1158,50 +1193,60 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 ))}
               </div>
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Comments */}
       <div className="comments-section">
         <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
-          <span className="section-toggle-icon">{showComments ? '▾' : '▸'}</span>
-          <strong>Comments</strong>
+          <svg className={`section-chevron${showComments ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span className="section-toggle-label">Comments</span>
           {comments.length > 0 && (
             <span className="section-toggle-count">{comments.length}</span>
           )}
         </button>
         {showComments && (
-          loadingComments ? (
+          <div className="section-content">
+          {loadingComments ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <>
               {comments.length === 0 && <p className="empty-comments">No comments yet.</p>}
               {comments.map(comment => (
                 <div key={comment.id} className="comment-item">
-                  <div className="comment-header">
-                    <strong>{comment.username}</strong>
-                    <span className="comment-time">{timeAgo(comment.created_at)}</span>
-                    {canComment && (
-                      <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
-                    )}
+                  <div className="comment-avatar" style={{ background: avatarColor(comment.username) }}>{avatarInitial(comment.username)}</div>
+                  <div className="comment-body">
+                    <div className="comment-header">
+                      <strong>{comment.username}</strong>
+                      <span className="comment-time">{timeAgo(comment.created_at)}</span>
+                      {canComment && (
+                        <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
+                      )}
+                    </div>
+                    <div className="comment-bubble"><MentionText text={comment.text} boardMembers={boardMembers} /></div>
                   </div>
-                  <p className="comment-text"><MentionText text={comment.text} boardMembers={boardMembers} /></p>
                 </div>
               ))}
               {canComment && (
-                <div className="comment-add">
-                  <div className="assignee-input-wrapper">
-                    <input
+                <div className="comment-compose">
+                  <div className="comment-avatar comment-avatar-sm" style={{ background: avatarColor(currentUsername) }}>{avatarInitial(currentUsername)}</div>
+                  <div className="comment-compose-input-wrapper assignee-input-wrapper">
+                    <textarea
                       ref={commentInputRef}
-                      type="text"
                       value={newComment}
                       onChange={handleCommentChange}
                       placeholder="Write a comment... (@ to mention)"
                       className="comment-input"
                       onKeyDown={handleCommentKeyDown}
                       maxLength={5000}
+                      rows={1}
                     />
+                    <button type="button" onClick={handleAddComment} className="comment-send-btn" disabled={!newComment.trim()} aria-label="Post comment">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
                     {(() => {
                       if (!commentMentionActive) return null;
                       const { members } = getCommentMentionItems();
@@ -1220,25 +1265,27 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       );
                     })()}
                   </div>
-                  <button type="button" onClick={handleAddComment} className="btn-primary btn-sm" disabled={!newComment.trim()}>Post</button>
                 </div>
               )}
             </>
-          )
+          )}
+          </div>
         )}
       </div>
 
       {/* Activity */}
       <div className="activity-section">
         <button type="button" className="section-toggle" onClick={() => setShowActivity(!showActivity)}>
-          <span className="section-toggle-icon">{showActivity ? '▾' : '▸'}</span>
-          <strong>Activity</strong>
+          <svg className={`section-chevron${showActivity ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span className="section-toggle-label">Activity</span>
           {activityEntries.length > 0 && (
             <span className="section-toggle-count">{activityEntries.length}</span>
           )}
         </button>
         {showActivity && (
-          loadingActivity ? (
+          <div className="section-content">
+          {loadingActivity ? (
             <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
           ) : (
             <div className="activity-list">
@@ -1253,7 +1300,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 </div>
               ))}
             </div>
-          )
+          )}
+          </div>
         )}
       </div>
     </>
