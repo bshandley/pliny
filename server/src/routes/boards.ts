@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { triggerWebhook } from '../services/webhookService';
 
 const router = Router();
 
@@ -238,6 +239,12 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
       [name, description, req.user!.id]
     );
 
+    // Trigger webhook for board.created
+    triggerWebhook('board.created', {
+      board: result.rows[0],
+      user: { id: req.user!.id, username: req.user!.username },
+    });
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Create board error:', error);
@@ -281,6 +288,13 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Board not found' });
     }
+
+    // Trigger webhook for board.updated
+    triggerWebhook('board.updated', {
+      board: result.rows[0],
+      changes: { name: name !== undefined, description: description !== undefined, archived: archived !== undefined },
+      user: { id: req.user!.id, username: req.user!.username },
+    }, parseInt(id));
 
     res.json(result.rows[0]);
   } catch (error) {

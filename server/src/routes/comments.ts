@@ -3,6 +3,7 @@ import pool from '../db';
 import { authenticate } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { createNotification, notifyCardMembers } from '../services/notificationHelper';
+import { triggerWebhook } from '../services/webhookService';
 
 const router = Router();
 
@@ -108,6 +109,14 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
         userSockets,
         [...mentionedUserIds]
       );
+
+      // Trigger webhook for comment.created
+      triggerWebhook('comment.created', {
+        comment: comment.rows[0],
+        card_id: cardId,
+        board_id: board_id,
+        user: { id: req.user!.id, username: req.user!.username },
+      }, board_id);
     }
 
     res.status(201).json(comment.rows[0]);

@@ -431,9 +431,57 @@
     "signature": "async revokeAllApiTokens(): Promise<void>",
     "source": "  async revokeAllApiTokens(): Promise<void> {\n    return this.fetch('/tokens', { method: 'DELETE' }, 'revokeAllApiTokens');\n  }"
   },
+  "getWebhooks": {
+    "name": "getWebhooks",
+    "line": 512,
+    "signature": "async getWebhooks(): Promise<Webhook[]>",
+    "source": "  async getWebhooks(): Promise<Webhook[]> {\n    return this.fetch('/webhooks', {}, 'getWebhooks');\n  }"
+  },
+  "getBoardWebhooks": {
+    "name": "getBoardWebhooks",
+    "line": 516,
+    "signature": "async getBoardWebhooks(boardId: string): Promise<Webhook[]>",
+    "source": "  async getBoardWebhooks(boardId: string): Promise<Webhook[]> {\n    return this.fetch(`/webhooks/board/${boardId}`, {}, 'getBoardWebhooks');\n  }"
+  },
+  "createWebhook": {
+    "name": "createWebhook",
+    "line": 520,
+    "signature": "async createWebhook(data: { url: string; events: string[]; description?: string; board_id?: string }): Promise<Webhook>",
+    "source": "  async createWebhook(data: { url: string; events: string[]; description?: string; board_id?: string }): Promise<Webhook> {\n    return this.fetch('/webhooks', {\n      method: 'POST',\n      body: JSON.stringify(data),\n    }, 'createWebhook');\n  }"
+  },
+  "updateWebhook": {
+    "name": "updateWebhook",
+    "line": 527,
+    "signature": "async updateWebhook(id: string, updates: { url?: string; events?: string[]; description?: string; enabled?: boolean }): Promise<Webhook>",
+    "source": "  async updateWebhook(id: string, updates: { url?: string; events?: string[]; description?: string; enabled?: boolean }): Promise<Webhook> {\n    return this.fetch(`/webhooks/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateWebhook');\n  }"
+  },
+  "deleteWebhook": {
+    "name": "deleteWebhook",
+    "line": 534,
+    "signature": "async deleteWebhook(id: string): Promise<void>",
+    "source": "  async deleteWebhook(id: string): Promise<void> {\n    return this.fetch(`/webhooks/${id}`, { method: 'DELETE' }, 'deleteWebhook');\n  }"
+  },
+  "getWebhookDeliveries": {
+    "name": "getWebhookDeliveries",
+    "line": 538,
+    "signature": "async getWebhookDeliveries(webhookId: string, limit?: number): Promise<WebhookDelivery[]>",
+    "source": "  async getWebhookDeliveries(webhookId: string, limit?: number): Promise<WebhookDelivery[]> {\n    const params = limit ? `?limit=${limit}` : '';\n    return this.fetch(`/webhooks/${webhookId}/deliveries${params}`, {}, 'getWebhookDeliveries');\n  }"
+  },
+  "redeliverWebhook": {
+    "name": "redeliverWebhook",
+    "line": 543,
+    "signature": "async redeliverWebhook(deliveryId: string): Promise<void>",
+    "source": "  async redeliverWebhook(deliveryId: string): Promise<void> {\n    return this.fetch(`/webhooks/deliveries/${deliveryId}/redeliver`, { method: 'POST' }, 'redeliverWebhook');\n  }"
+  },
+  "regenerateWebhookSecret": {
+    "name": "regenerateWebhookSecret",
+    "line": 547,
+    "signature": "async regenerateWebhookSecret(webhookId: string): Promise<",
+    "source": "  async regenerateWebhookSecret(webhookId: string): Promise<{ secret: string }> {\n    return this.fetch(`/webhooks/${webhookId}/regenerate-secret`, { method: 'POST' }, 'regenerateWebhookSecret');\n  }"
+  },
   "exportBoardCsv": {
     "name": "exportBoardCsv",
-    "line": 512,
+    "line": 552,
     "signature": "async exportBoardCsv(boardId: string): Promise<void>",
     "source": "  async exportBoardCsv(boardId: string): Promise<void> {\n    const token = this.getToken();\n    const response = await fetch(`${API_URL}/boards/${boardId}/csv/export`, {\n      headers: token ? { 'Authorization': `Bearer ${token}` } : {},\n    });\n    if (!response.ok) {\n      const error = await response.json().catch(() => ({ error: 'Export failed' }));\n      throw new Error(error.error || 'Export failed');\n    }\n    const blob = await response.blob();\n    const url = URL.createObjectURL(blob);\n    const a = document.createElement('a');\n    a.href = url;\n    a.download = response.headers.get('Content-Disposition')?.match(/filename=\"(.+)\"/)?.[1] || 'export.csv';\n    document.body.appendChild(a);\n    a.click();\n    document.body.removeChild(a);\n    URL.revokeObjectURL(url);\n  }"
   }

@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken, Webhook, WebhookDelivery } from './types';
 
 const API_URL = '/api';
 
@@ -506,6 +506,46 @@ class ApiClient {
 
   async revokeAllApiTokens(): Promise<void> {
     return this.fetch('/tokens', { method: 'DELETE' }, 'revokeAllApiTokens');
+  }
+
+  // Webhooks
+  async getWebhooks(): Promise<Webhook[]> {
+    return this.fetch('/webhooks', {}, 'getWebhooks');
+  }
+
+  async getBoardWebhooks(boardId: string): Promise<Webhook[]> {
+    return this.fetch(`/webhooks/board/${boardId}`, {}, 'getBoardWebhooks');
+  }
+
+  async createWebhook(data: { url: string; events: string[]; description?: string; board_id?: string }): Promise<Webhook> {
+    return this.fetch('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, 'createWebhook');
+  }
+
+  async updateWebhook(id: string, updates: { url?: string; events?: string[]; description?: string; enabled?: boolean }): Promise<Webhook> {
+    return this.fetch(`/webhooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }, 'updateWebhook');
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    return this.fetch(`/webhooks/${id}`, { method: 'DELETE' }, 'deleteWebhook');
+  }
+
+  async getWebhookDeliveries(webhookId: string, limit?: number): Promise<WebhookDelivery[]> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.fetch(`/webhooks/${webhookId}/deliveries${params}`, {}, 'getWebhookDeliveries');
+  }
+
+  async redeliverWebhook(deliveryId: string): Promise<void> {
+    return this.fetch(`/webhooks/deliveries/${deliveryId}/redeliver`, { method: 'POST' }, 'redeliverWebhook');
+  }
+
+  async regenerateWebhookSecret(webhookId: string): Promise<{ secret: string }> {
+    return this.fetch(`/webhooks/${webhookId}/regenerate-secret`, { method: 'POST' }, 'regenerateWebhookSecret');
   }
 
   // CSV

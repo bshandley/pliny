@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import AppBar from './AppBar';
+import WebhookSettings from './WebhookSettings';
 
 interface ApiEvent {
   id: string;
@@ -43,7 +44,10 @@ const METHOD_COLORS: Record<string, string> = {
   PATCH: '#50e3c2',
 };
 
+type DevTab = 'api-log' | 'webhooks';
+
 export default function DevConsole({ onBack }: DevConsoleProps) {
+  const [activeTab, setActiveTab] = useState<DevTab>('api-log');
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<ApiEvent | null>(null);
   const [fnMap, setFnMap] = useState<Record<string, FnInfo>>({});
@@ -222,6 +226,25 @@ response = requests.${event.method.toLowerCase()}(
     <div className="dev-console">
       <AppBar title="Developer Console" onBack={onBack} />
 
+      <div className="dev-console-tabs">
+        <button
+          className={`dev-tab ${activeTab === 'api-log' ? 'active' : ''}`}
+          onClick={() => setActiveTab('api-log')}
+        >
+          API Log
+        </button>
+        <button
+          className={`dev-tab ${activeTab === 'webhooks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('webhooks')}
+        >
+          Webhooks
+        </button>
+      </div>
+
+      {activeTab === 'webhooks' ? (
+        <WebhookSettings />
+      ) : (
+      <>
       <div className="dev-console-toolbar">
         <div className="dev-console-filters">
           <select value={filterMethod} onChange={e => setFilterMethod(e.target.value)}>
@@ -403,6 +426,8 @@ response = requests.${event.method.toLowerCase()}(
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

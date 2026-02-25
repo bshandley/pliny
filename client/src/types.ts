@@ -190,6 +190,39 @@ export interface ApiToken {
   created_at: string;
 }
 
+export interface Webhook {
+  id: string;
+  board_id: number | null;
+  url: string;
+  secret?: string; // Only present on creation
+  events: string[];
+  enabled: boolean;
+  description: string | null;
+  created_by: number;
+  created_by_username?: string;
+  created_at: string;
+  updated_at: string;
+  last_delivery?: {
+    id: string;
+    status_code: number | null;
+    error: string | null;
+    created_at: string;
+  } | null;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: string;
+  payload: Record<string, any>;
+  status_code: number | null;
+  response_body: string | null;
+  error: string | null;
+  attempt: number;
+  delivered_at: string | null;
+  created_at: string;
+}
+
 export interface BoardTemplate {
   id: string;
   name: string;

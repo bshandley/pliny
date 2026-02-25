@@ -1,0 +1,319 @@
+import { Router, Response } from 'express';
+import crypto from 'crypto';
+import pool from '../db';
+import { authenticate, requireAdmin } from '../middleware/auth';
+import { AuthRequest } from '../types';
+import { redeliverWebhook, WebhookEvent } from '../services/webhookService';
+
+const router = Router();
+
+const VALID_EVENTS: WebhookEvent[] = [
+  'card.created',
+  'card.updated',
+  'card.moved',
+  'card.archived',
+  'card.deleted',
+  'comment.created',
+  'board.created',
+  'board.updated',
+];
+
+// List global webhooks (ADMIN only)
+router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT w.*, u.username as created_by_username,
+        (SELECT json_build_object(
+          'id', wd.id,
+          'status_code', wd.status_code,
+          'error', wd.error,
+          'created_at', wd.created_at
+        ) FROM webhook_deliveries wd
+         WHERE wd.webhook_id = w.id
+         ORDER BY wd.created_at DESC LIMIT 1) as last_delivery
+       FROM webhooks w
+       JOIN users u ON w.created_by = u.id
+       WHERE w.board_id IS NULL
+       ORDER BY w.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error listing webhooks:', err);
+    res.status(500).json({ error: 'Failed to list webhooks' });
+  }
+});
+
+// List board webhooks
+router.get('/board/:boardId', authenticate, async (req: AuthRequest, res: Response) => {
+  const { boardId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT w.*, u.username as created_by_username,
+        (SELECT json_build_object(
+          'id', wd.id,
+          'status_code', wd.status_code,
+          'error', wd.error,
+          'created_at', wd.created_at
+        ) FROM webhook_deliveries wd
+         WHERE wd.webhook_id = w.id
+         ORDER BY wd.created_at DESC LIMIT 1) as last_delivery
+       FROM webhooks w
+       JOIN users u ON w.created_by = u.id
+       WHERE w.board_id = $1
+       ORDER BY w.created_at DESC`,
+      [boardId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error listing board webhooks:', err);
+    res.status(500).json({ error: 'Failed to list webhooks' });
+  }
+});
+
+// Create webhook (global if no board_id, otherwise board-specific)
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
+  const { url, events, description, board_id } = req.body;
+
+  // Global webhooks require admin
+  if (!board_id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin permission required for global webhooks' });
+  }
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+
+  try {
+    new URL(url); // Validate URL format
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  if (!events || !Array.isArray(events) || events.length === 0) {
+    return res.status(400).json({ error: 'At least one event is required' });
+  }
+
+  const invalidEvents = events.filter(e => !VALID_EVENTS.includes(e));
+  if (invalidEvents.length > 0) {
+    return res.status(400).json({ error: `Invalid events: ${invalidEvents.join(', ')}` });
+  }
+
+  if (description && description.length > 255) {
+    return res.status(400).json({ error: 'Description must be 255 characters or fewer' });
+  }
+
+  try {
+    const id = crypto.randomUUID();
+    const secret = crypto.randomBytes(32).toString('hex');
+
+    const result = await pool.query(
+      `INSERT INTO webhooks (id, board_id, url, secret, events, description, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [id, board_id || null, url, secret, events, description?.trim() || null, req.user!.id]
+    );
+
+    // Return secret only on creation
+    res.status(201).json({
+      ...result.rows[0],
+      secret, // Only shown once!
+    });
+  } catch (err) {
+    console.error('Error creating webhook:', err);
+    res.status(500).json({ error: 'Failed to create webhook' });
+  }
+});
+
+// Update webhook
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { url, events, description, enabled } = req.body;
+
+  try {
+    // Check ownership/admin
+    const check = await pool.query(
+      'SELECT * FROM webhooks WHERE id = $1',
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+
+    const webhook = check.rows[0];
+    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (url !== undefined) {
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ error: 'Invalid URL format' });
+      }
+      updates.push(`url = $${paramIndex++}`);
+      values.push(url);
+    }
+
+    if (events !== undefined) {
+      if (!Array.isArray(events) || events.length === 0) {
+        return res.status(400).json({ error: 'At least one event is required' });
+      }
+      const invalidEvents = events.filter(e => !VALID_EVENTS.includes(e));
+      if (invalidEvents.length > 0) {
+        return res.status(400).json({ error: `Invalid events: ${invalidEvents.join(', ')}` });
+      }
+      updates.push(`events = $${paramIndex++}`);
+      values.push(events);
+    }
+
+    if (description !== undefined) {
+      if (description && description.length > 255) {
+        return res.status(400).json({ error: 'Description must be 255 characters or fewer' });
+      }
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description?.trim() || null);
+    }
+
+    if (enabled !== undefined) {
+      updates.push(`enabled = $${paramIndex++}`);
+      values.push(enabled);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(id);
+
+    const result = await pool.query(
+      `UPDATE webhooks SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating webhook:', err);
+    res.status(500).json({ error: 'Failed to update webhook' });
+  }
+});
+
+// Delete webhook
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    // Check ownership/admin
+    const check = await pool.query(
+      'SELECT * FROM webhooks WHERE id = $1',
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+
+    const webhook = check.rows[0];
+    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    await pool.query('DELETE FROM webhooks WHERE id = $1', [id]);
+    res.json({ message: 'Webhook deleted' });
+  } catch (err) {
+    console.error('Error deleting webhook:', err);
+    res.status(500).json({ error: 'Failed to delete webhook' });
+  }
+});
+
+// Get webhook deliveries
+router.get('/:id/deliveries', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM webhook_deliveries
+       WHERE webhook_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [id, limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error listing deliveries:', err);
+    res.status(500).json({ error: 'Failed to list deliveries' });
+  }
+});
+
+// Re-deliver a webhook
+router.post('/deliveries/:id/redeliver', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    // Check that delivery exists and user has permission
+    const check = await pool.query(
+      `SELECT wd.*, w.created_by, w.board_id
+       FROM webhook_deliveries wd
+       JOIN webhooks w ON wd.webhook_id = w.id
+       WHERE wd.id = $1`,
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Delivery not found' });
+    }
+
+    const delivery = check.rows[0];
+    if (delivery.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    await redeliverWebhook(id);
+    res.json({ message: 'Redelivery initiated' });
+  } catch (err: any) {
+    console.error('Error redelivering webhook:', err);
+    res.status(500).json({ error: err.message || 'Failed to redeliver' });
+  }
+});
+
+// Regenerate webhook secret
+router.post('/:id/regenerate-secret', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const check = await pool.query(
+      'SELECT * FROM webhooks WHERE id = $1',
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+
+    const webhook = check.rows[0];
+    if (webhook.created_by !== parseInt(req.user!.id) && req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    const newSecret = crypto.randomBytes(32).toString('hex');
+
+    await pool.query(
+      'UPDATE webhooks SET secret = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [newSecret, id]
+    );
+
+    res.json({ secret: newSecret });
+  } catch (err) {
+    console.error('Error regenerating secret:', err);
+    res.status(500).json({ error: 'Failed to regenerate secret' });
+  }
+});
+
+export default router;

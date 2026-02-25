@@ -4,6 +4,7 @@ import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
 import { notifyCardMembers } from '../services/notificationHelper';
+import { triggerWebhook } from '../services/webhookService';
 
 const router = Router();
 
@@ -25,6 +26,17 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
     );
 
     logActivity(result.rows[0].id, req.user!.id, 'created');
+
+    // Get board_id for webhook
+    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [column_id]);
+    const boardId = colResult.rows[0]?.board_id;
+
+    // Trigger webhook
+    triggerWebhook('card.created', {
+      card: result.rows[0],
+      board_id: boardId,
+      user: { id: req.user!.id, username: req.user!.username },
+    }, boardId);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -225,6 +237,44 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
       }
     }
 
+    // Get board_id for webhooks
+    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [result.rows[0].column_id]);
+    const boardId = colResult.rows[0]?.board_id;
+
+    // Trigger webhooks for specific events
+    if (column_id !== undefined && column_id !== old.column_id) {
+      triggerWebhook('card.moved', {
+        card: result.rows[0],
+        board_id: boardId,
+        from_column_id: old.column_id,
+        to_column_id: column_id,
+        user: { id: req.user!.id, username: req.user!.username },
+      }, boardId);
+    }
+
+    if (req.body.archived !== undefined && req.body.archived !== old.archived && req.body.archived) {
+      triggerWebhook('card.archived', {
+        card: result.rows[0],
+        board_id: boardId,
+        user: { id: req.user!.id, username: req.user!.username },
+      }, boardId);
+    }
+
+    // Generic card.updated for other changes
+    if (title !== undefined || description !== undefined || due_date !== undefined || start_date !== undefined) {
+      triggerWebhook('card.updated', {
+        card: result.rows[0],
+        board_id: boardId,
+        changes: {
+          title: title !== undefined && title !== old.title,
+          description: description !== undefined && (description || null) !== (old.description || null),
+          due_date: due_date !== undefined,
+          start_date: start_date !== undefined,
+        },
+        user: { id: req.user!.id, username: req.user!.username },
+      }, boardId);
+    }
+
     res.json({
       ...result.rows[0],
       assignees: assigneesResult.rows.map(r => r.assignee_name),
@@ -249,6 +299,18 @@ router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Card not found' });
     }
+
+    // Get board_id for webhook
+    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [result.rows[0].column_id]);
+    const boardId = colResult.rows[0]?.board_id;
+
+    // Trigger webhook
+    triggerWebhook('card.deleted', {
+      card_id: id,
+      card: result.rows[0],
+      board_id: boardId,
+      user: { id: req.user!.id, username: req.user!.username },
+    }, boardId);
 
     res.json({ message: 'Card deleted' });
   } catch (error) {
