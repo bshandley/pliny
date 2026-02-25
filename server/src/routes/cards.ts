@@ -3,7 +3,7 @@ import pool from '../db';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
-import { notifyCardMembers } from '../services/notificationHelper';
+import { notifyCardMembers, createNotification } from '../services/notificationHelper';
 import { triggerWebhook } from '../services/webhookService';
 
 const router = Router();
@@ -64,10 +64,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     const old = oldCard.rows[0];
 
     // Fetch old assignees before they get deleted
-    let oldAssignees: string[] = [];
+    let oldAssignees: { user_id: string | null; display_name: string | null }[] = [];
     if (assignees !== undefined) {
-      const oldAssigneesResult = await pool.query('SELECT assignee_name FROM card_assignees WHERE card_id = $1', [id]);
-      oldAssignees = oldAssigneesResult.rows.map((r: any) => r.assignee_name);
+      const oldAssigneesResult = await pool.query('SELECT user_id, display_name FROM card_assignees WHERE card_id = $1', [id]);
+      oldAssignees = oldAssigneesResult.rows;
     }
 
     // Fetch old labels before they get deleted
@@ -130,11 +130,42 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     if (assignees !== undefined) {
       await pool.query('DELETE FROM card_assignees WHERE card_id = $1', [id]);
       if (Array.isArray(assignees) && assignees.length > 0) {
-        const vals = assignees.map((_name: string, i: number) => `($1, $${i + 2})`).join(', ');
-        await pool.query(
-          `INSERT INTO card_assignees (card_id, assignee_name) VALUES ${vals}`,
-          [id, ...assignees]
+        // Get board members for auto-linking
+        const boardResult = await pool.query(
+          'SELECT col.board_id FROM columns col JOIN cards c ON c.column_id = col.id WHERE c.id = $1',
+          [id]
         );
+        const thisBoardId = boardResult.rows[0]?.board_id;
+        let boardMemberMap: Record<string, string> = {};
+        if (thisBoardId) {
+          const bmResult = await pool.query(
+            'SELECT u.id, u.username FROM board_members bm JOIN users u ON bm.user_id = u.id WHERE bm.board_id = $1',
+            [thisBoardId]
+          );
+          bmResult.rows.forEach((r: any) => { boardMemberMap[r.username.toLowerCase()] = r.id; });
+        }
+
+        for (const assignee of assignees) {
+          if (assignee.user_id) {
+            await pool.query(
+              'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [id, assignee.user_id]
+            );
+          } else if (assignee.display_name) {
+            const matchedUserId = boardMemberMap[assignee.display_name.toLowerCase()];
+            if (matchedUserId) {
+              await pool.query(
+                'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [id, matchedUserId]
+              );
+            } else {
+              await pool.query(
+                'INSERT INTO card_assignees (card_id, display_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [id, assignee.display_name]
+              );
+            }
+          }
+        }
       }
     }
 
@@ -153,7 +184,10 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 
     // Fetch updated assignees and labels
     const assigneesResult = await pool.query(
-      'SELECT assignee_name FROM card_assignees WHERE card_id = $1',
+      `SELECT ca.id, ca.user_id, ca.display_name, u.username
+       FROM card_assignees ca
+       LEFT JOIN users u ON ca.user_id = u.id
+       WHERE ca.card_id = $1`,
       [id]
     );
     const labelsResult = await pool.query(
@@ -217,12 +251,39 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
     }
 
     if (assignees !== undefined) {
-      const oldSet = new Set(oldAssignees);
-      const newSet = new Set(assignees as string[]);
-      const added = (assignees as string[]).filter((a: string) => !oldSet.has(a));
-      const removed = oldAssignees.filter((a: string) => !newSet.has(a));
-      if (added.length > 0 || removed.length > 0) {
-        logActivity(id, req.user!.id, 'assignees_changed', { added, removed });
+      const keyFn = (a: any) => a.user_id || a.display_name || '';
+      const nameFn = (a: any) => a.username || a.display_name || '';
+      const oldKeys = new Set(oldAssignees.map(keyFn));
+      const newAssigneeRows = assigneesResult.rows;
+      const newKeys = new Set(newAssigneeRows.map(keyFn));
+      const addedNames = newAssigneeRows.filter((a: any) => !oldKeys.has(keyFn(a))).map(nameFn);
+      const removedNames = oldAssignees.filter(a => !newKeys.has(keyFn(a))).map(a => a.display_name || '');
+      if (addedNames.length > 0 || removedNames.length > 0) {
+        logActivity(id, req.user!.id, 'assignees_changed', { added: addedNames, removed: removedNames });
+      }
+
+      // Notify newly added linked assignees
+      const oldLinkedIds = new Set(oldAssignees.filter(a => a.user_id).map(a => a.user_id));
+      const newLinkedIds = newAssigneeRows.filter((a: any) => a.user_id).map((a: any) => a.user_id);
+      const addedLinkedIds = newLinkedIds.filter((uid: string) => !oldLinkedIds.has(uid));
+      if (addedLinkedIds.length > 0) {
+        const io = req.app.get('io');
+        const userSockets: Map<string, string[]> = req.app.get('userSockets');
+        const cardInfo = await pool.query(
+          `SELECT c.title, col.board_id, b.name as board_name
+           FROM cards c JOIN columns col ON c.column_id = col.id
+           JOIN boards b ON col.board_id = b.id WHERE c.id = $1`, [id]
+        );
+        if (cardInfo.rows.length > 0) {
+          const { title: cardTitle, board_id: bId, board_name } = cardInfo.rows[0];
+          for (const userId of addedLinkedIds) {
+            await createNotification({
+              userId, type: 'assigned_card', cardId: id, boardId: bId,
+              actorId: req.user!.id, actorUsername: req.user!.username,
+              detail: { card_title: cardTitle, board_name }, io, userSockets,
+            });
+          }
+        }
       }
     }
 
@@ -277,7 +338,7 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 
     res.json({
       ...result.rows[0],
-      assignees: assigneesResult.rows.map(r => r.assignee_name),
+      assignees: assigneesResult.rows,
       labels: labelsResult.rows
     });
   } catch (error) {

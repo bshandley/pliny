@@ -73,10 +73,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
-    // Fetch assignees for all cards
+    // Fetch assignees for all cards (unified: linked users + unlinked names)
     const assigneesResult = await pool.query(
-      `SELECT ca.card_id, ca.assignee_name
+      `SELECT ca.card_id, ca.id, ca.user_id, ca.display_name, u.username
        FROM card_assignees ca
+       LEFT JOIN users u ON ca.user_id = u.id
        INNER JOIN cards c ON ca.card_id = c.id
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1`,
@@ -134,33 +135,18 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       [id]
     );
 
-    // Fetch card members for all cards
-    const cardMembersResult = await pool.query(
-      `SELECT cm.card_id, u.id, u.username
-       FROM card_members cm
-       INNER JOIN users u ON cm.user_id = u.id
-       INNER JOIN cards c ON cm.card_id = c.id
-       INNER JOIN columns col ON c.column_id = col.id
-       WHERE col.board_id = $1`,
-      [id]
-    );
-
-    // Group members by card_id
-    const membersByCard: Record<string, { id: string; username: string }[]> = {};
-    cardMembersResult.rows.forEach(row => {
-      if (!membersByCard[row.card_id]) {
-        membersByCard[row.card_id] = [];
-      }
-      membersByCard[row.card_id].push({ id: row.id, username: row.username });
-    });
-
     // Group assignees by card_id
-    const assigneesByCard: Record<string, string[]> = {};
-    assigneesResult.rows.forEach(row => {
+    const assigneesByCard: Record<string, { id: string; user_id: string | null; username: string | null; display_name: string | null }[]> = {};
+    assigneesResult.rows.forEach((row: any) => {
       if (!assigneesByCard[row.card_id]) {
         assigneesByCard[row.card_id] = [];
       }
-      assigneesByCard[row.card_id].push(row.assignee_name);
+      assigneesByCard[row.card_id].push({
+        id: row.id,
+        user_id: row.user_id,
+        username: row.username,
+        display_name: row.display_name,
+      });
     });
 
     // Group labels by card_id
@@ -203,7 +189,6 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
       assignees: assigneesByCard[card.id] || [],
       labels: labelsByCard[card.id] || [],
       checklist: checklistByCard[card.id] || null,
-      members: membersByCard[card.id] || [],
       custom_field_values: customFieldValuesByCard[card.id] || {},
       dated_checklist_items: datedChecklistByCard[card.id] || [],
     }));
