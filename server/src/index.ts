@@ -8,12 +8,10 @@ import boardRoutes from './routes/boards';
 import columnRoutes from './routes/columns';
 import cardRoutes from './routes/cards';
 import userRoutes from './routes/users';
-import assigneeRoutes from './routes/assignees';
 import labelRoutes from './routes/labels';
 import commentRoutes from './routes/comments';
 import checklistRoutes from './routes/checklists';
 import activityRoutes from './routes/activity';
-import cardMembersRoutes from './routes/cardMembers';
 import notificationRoutes from './routes/notifications';
 import settingsRoutes from './routes/settings';
 import totpRoutes from './routes/totp';
@@ -61,12 +59,10 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api', assigneeRoutes);
 app.use('/api', labelRoutes);
 app.use('/api', commentRoutes);
 app.use('/api', checklistRoutes);
 app.use('/api', activityRoutes);
-app.use('/api', cardMembersRoutes);
 app.use('/api/notifications', notificationPreferencesRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -176,7 +172,7 @@ async function checkDueDateReminders() {
 
       // Get card members
       const members = await pool.query(
-        'SELECT user_id FROM card_members WHERE card_id = $1',
+        'SELECT user_id FROM card_assignees WHERE card_id = $1 AND user_id IS NOT NULL',
         [card.id]
       );
 

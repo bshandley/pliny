@@ -199,7 +199,7 @@ export async function notifyCardMembers(
 
     // 2. Get card members
     const membersResult = await pool.query(
-      'SELECT user_id FROM card_members WHERE card_id = $1',
+      'SELECT user_id FROM card_assignees WHERE card_id = $1 AND user_id IS NOT NULL',
       [cardId]
     );
 
