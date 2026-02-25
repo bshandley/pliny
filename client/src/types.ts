@@ -181,6 +181,15 @@ export interface TotpSetupResponse {
   backup_codes: string[];
 }
 
+export interface ApiToken {
+  id: string;
+  name: string;
+  token?: string; // Only present on creation
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
 export interface BoardTemplate {
   id: string;
   name: string;

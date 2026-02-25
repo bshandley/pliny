@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
-import { User } from '../types';
+import { User, ApiToken } from '../types';
 import AppBar from './AppBar';
 
 interface ProfileSettingsProps {
@@ -44,6 +44,16 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
   const [prefsLoading, setPrefsLoading] = useState(true);
 
+  // API Tokens
+  const [tokens, setTokens] = useState<ApiToken[]>([]);
+  const [tokensLoading, setTokensLoading] = useState(true);
+  const [newTokenName, setNewTokenName] = useState('');
+  const [newTokenExpiry, setNewTokenExpiry] = useState<string>('never');
+  const [creatingToken, setCreatingToken] = useState(false);
+  const [showNewToken, setShowNewToken] = useState<ApiToken | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
   useEffect(() => {
     api.getTotpStatus()
       .then(data => setTotpEnabled(data.enabled))
@@ -58,6 +68,12 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
       setSmtpConfigured(smtpData.configured);
       setNotifPrefs(prefs);
     }).finally(() => setPrefsLoading(false));
+
+    // Load API tokens
+    api.getApiTokens()
+      .then(setTokens)
+      .catch(() => {})
+      .finally(() => setTokensLoading(false));
   }, []);
 
   const handleToggleNotifPref = (key: string) => {
@@ -69,6 +85,71 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
       // Revert on error
       setNotifPrefs(prev => ({ ...prev, [key]: currentValue }));
     });
+  };
+
+  const handleCreateToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTokenName.trim()) return;
+    setCreatingToken(true);
+    try {
+      const expiresInDays = newTokenExpiry === 'never' ? undefined :
+        newTokenExpiry === '30' ? 30 :
+        newTokenExpiry === '60' ? 60 :
+        newTokenExpiry === '90' ? 90 : undefined;
+      const token = await api.createApiToken(newTokenName.trim(), expiresInDays);
+      setTokens(prev => [{ ...token, token: undefined }, ...prev]);
+      setShowNewToken(token);
+      setNewTokenName('');
+      setNewTokenExpiry('never');
+      setShowCreateForm(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create token');
+    } finally {
+      setCreatingToken(false);
+    }
+  };
+
+  const handleRevokeToken = async (id: string) => {
+    if (!confirm('Are you sure you want to revoke this token? Any applications using it will stop working.')) return;
+    try {
+      await api.revokeApiToken(id);
+      setTokens(prev => prev.filter(t => t.id !== id));
+    } catch (err: any) {
+      alert(err.message || 'Failed to revoke token');
+    }
+  };
+
+  const handleRevokeAllTokens = async () => {
+    if (!confirm('Are you sure you want to revoke ALL your tokens? All applications using them will stop working.')) return;
+    try {
+      await api.revokeAllApiTokens();
+      setTokens([]);
+    } catch (err: any) {
+      alert(err.message || 'Failed to revoke tokens');
+    }
+  };
+
+  const handleCopyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = token;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    }
+  };
+
+  const formatTokenDate = (date: string | null) => {
+    if (!date) return 'Never';
+    return new Date(date).toLocaleDateString();
   };
 
   const handleStartSetup = async () => {
@@ -315,6 +396,115 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                   );
                 })}
               </div>
+            </>
+          )}
+        </section>
+
+        <section className="profile-section">
+          <h2>API Tokens</h2>
+          <p className="profile-section-desc">Personal access tokens allow third-party applications to access the Plank API on your behalf.</p>
+
+          {tokensLoading ? (
+            <p className="profile-loading">Loading...</p>
+          ) : (
+            <>
+              {/* Show-once modal for new token */}
+              {showNewToken && showNewToken.token && (
+                <div className="token-modal-overlay" onClick={() => setShowNewToken(null)}>
+                  <div className="token-modal" onClick={e => e.stopPropagation()}>
+                    <h3>Token Created</h3>
+                    <p className="token-warning">
+                      Make sure to copy your personal access token now. You won't be able to see it again!
+                    </p>
+                    <div className="token-display">
+                      <code>{showNewToken.token}</code>
+                      <button
+                        className="token-copy-btn"
+                        onClick={() => handleCopyToken(showNewToken.token!)}
+                      >
+                        {tokenCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <button className="btn-primary" onClick={() => setShowNewToken(null)}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Token list */}
+              {tokens.length > 0 && (
+                <div className="token-list">
+                  {tokens.map(token => (
+                    <div key={token.id} className="token-item">
+                      <div className="token-info">
+                        <div className="token-name">{token.name}</div>
+                        <div className="token-meta">
+                          Created {formatTokenDate(token.created_at)}
+                          {token.last_used_at && <> &middot; Last used {formatTokenDate(token.last_used_at)}</>}
+                          {token.expires_at && <> &middot; Expires {formatTokenDate(token.expires_at)}</>}
+                        </div>
+                      </div>
+                      <button
+                        className="btn-danger btn-sm"
+                        onClick={() => handleRevokeToken(token.id)}
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Create form */}
+              {showCreateForm ? (
+                <form className="token-create-form" onSubmit={handleCreateToken}>
+                  <div className="form-group">
+                    <label htmlFor="token-name">Token name</label>
+                    <input
+                      type="text"
+                      id="token-name"
+                      value={newTokenName}
+                      onChange={e => setNewTokenName(e.target.value.slice(0, 100))}
+                      placeholder="e.g. CI/CD Pipeline"
+                      maxLength={100}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="token-expiry">Expiration</label>
+                    <select
+                      id="token-expiry"
+                      value={newTokenExpiry}
+                      onChange={e => setNewTokenExpiry(e.target.value)}
+                    >
+                      <option value="never">No expiration</option>
+                      <option value="30">30 days</option>
+                      <option value="60">60 days</option>
+                      <option value="90">90 days</option>
+                    </select>
+                  </div>
+                  <div className="profile-actions">
+                    <button type="submit" disabled={creatingToken || !newTokenName.trim()}>
+                      {creatingToken ? 'Creating...' : 'Generate token'}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setShowCreateForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="token-actions">
+                  <button onClick={() => setShowCreateForm(true)}>
+                    Generate new token
+                  </button>
+                  {tokens.length > 1 && (
+                    <button className="btn-danger" onClick={handleRevokeAllTokens}>
+                      Revoke all
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </section>

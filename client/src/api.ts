@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken } from './types';
 
 const API_URL = '/api';
 
@@ -481,6 +481,26 @@ class ApiClient {
 
   async deleteAttachment(id: string): Promise<void> {
     return this.fetch(`/attachments/${id}`, { method: 'DELETE' });
+  }
+
+  // API Tokens
+  async getApiTokens(): Promise<ApiToken[]> {
+    return this.fetch('/tokens');
+  }
+
+  async createApiToken(name: string, expiresInDays?: number): Promise<ApiToken> {
+    return this.fetch('/tokens', {
+      method: 'POST',
+      body: JSON.stringify({ name, expires_in_days: expiresInDays }),
+    });
+  }
+
+  async revokeApiToken(id: string): Promise<void> {
+    return this.fetch(`/tokens/${id}`, { method: 'DELETE' });
+  }
+
+  async revokeAllApiTokens(): Promise<void> {
+    return this.fetch('/tokens', { method: 'DELETE' });
   }
 
   // CSV
