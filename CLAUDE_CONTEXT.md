@@ -38,6 +38,32 @@ ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('READ', 'ADMIN
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('READ', 'COLLABORATOR', 'ADMIN'));
 ```
 
+### ⚠️ CRITICAL: All Primary Keys are UUID — NOT INTEGER
+
+The live database uses UUID for ALL primary keys: `users.id`, `cards.id`, `boards.id`, `columns.id`, etc.
+
+**When writing migrations, ALL foreign key references must use UUID:**
+```sql
+-- WRONG: will fail with "incompatible types: integer and uuid"
+user_id INTEGER NOT NULL REFERENCES users(id),
+card_id INTEGER NOT NULL REFERENCES cards(id),
+board_id INTEGER REFERENCES boards(id),
+
+-- RIGHT:
+user_id UUID NOT NULL REFERENCES users(id),
+card_id UUID NOT NULL REFERENCES cards(id),
+board_id UUID REFERENCES boards(id),
+```
+
+**When writing route code, NEVER use parseInt() on user/entity IDs:**
+```ts
+// WRONG: parseInt(uuid) returns NaN
+if (row.created_by !== parseInt(req.user!.id))
+
+// RIGHT: compare strings directly
+if (row.created_by !== req.user!.id)
+```
+
 ## 🔗 Key URLs
 - **Gitea Repo**: http://10.0.0.102:3004/bradley/cork
 - **Dev Frontend**: http://10.0.0.102:5175 (production deploy)
