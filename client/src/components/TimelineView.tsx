@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Board, Card, Column } from '../types';
 import TimelineBar from './TimelineBar';
+import { api } from '../api';
 
 interface TimelineViewProps {
   board: Board;
@@ -53,7 +54,10 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
   const [groupBy, setGroupBy] = useState<GroupBy>('column');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [draggingUnscheduled, setDraggingUnscheduled] = useState<{ card: Card; column: Column } | null>(null);
+  const [dropIndicatorPx, setDropIndicatorPx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   // Compute date range from all card dates
   const dateRange = useMemo(() => {
@@ -92,6 +96,66 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
     const days = px * ZOOM_CONFIG[zoom].unitDays / ZOOM_CONFIG[zoom].columnWidth;
     return addDays(dateRange.start, Math.round(days));
   }, [dateRange.start, zoom]);
+
+  const formatDateISO = (date: Date): string => date.toISOString().split('T')[0];
+
+  // Convert a clientX screen position to chart pixel offset (accounts for scroll)
+  const clientXToChartPx = useCallback((clientX: number): number | null => {
+    if (!chartRef.current) return null;
+    const rect = chartRef.current.getBoundingClientRect();
+    return clientX - rect.left;
+  }, []);
+
+  const handleChipDragStart = (e: React.DragEvent, item: { card: Card; column: Column }) => {
+    if (!isAdmin) { e.preventDefault(); return; }
+    setDraggingUnscheduled(item);
+    // Minimal ghost label
+    const ghost = document.createElement('div');
+    ghost.textContent = item.card.title;
+    ghost.style.cssText = 'position:fixed;top:-100px;padding:4px 8px;background:var(--bg-elevated,#2a2420);color:var(--text-primary,#f0ebe5);border-radius:4px;font-size:12px;pointer-events:none;';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleChipDragEnd = () => {
+    setDraggingUnscheduled(null);
+    setDropIndicatorPx(null);
+  };
+
+  const handleChartDragOver = (e: React.DragEvent) => {
+    if (!draggingUnscheduled) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const px = clientXToChartPx(e.clientX);
+    if (px !== null) setDropIndicatorPx(px);
+  };
+
+  const handleChartDragLeave = (e: React.DragEvent) => {
+    // Only clear if leaving the chart entirely (not entering a child)
+    if (chartRef.current && !chartRef.current.contains(e.relatedTarget as Node)) {
+      setDropIndicatorPx(null);
+    }
+  };
+
+  const handleChartDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingUnscheduled) return;
+    const px = clientXToChartPx(e.clientX);
+    if (px === null) return;
+    const date = pxToDate(px);
+    const dateStr = formatDateISO(date);
+    const { card } = draggingUnscheduled;
+    setDraggingUnscheduled(null);
+    setDropIndicatorPx(null);
+    try {
+      await api.updateCard(card.id, { due_date: dateStr } as any);
+      onCardUpdate();
+    } catch {
+      // revert handled by board reload
+    }
+  };
 
   // Auto-scroll to today on mount and zoom change
   useEffect(() => {
@@ -327,9 +391,13 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
             {unscheduledCards.map(({ card, column }) => (
               <button
                 key={card.id}
-                className="timeline-unscheduled-chip"
+                className={`timeline-unscheduled-chip${draggingUnscheduled?.card.id === card.id ? ' timeline-unscheduled-chip--dragging' : ''}`}
                 onClick={() => onCardClick(card.id)}
+                draggable={isAdmin}
+                onDragStart={e => handleChipDragStart(e, { card, column })}
+                onDragEnd={handleChipDragEnd}
                 style={{ '--chip-color': columnColorMap.get(column.name) || BAR_COLORS[0] } as React.CSSProperties}
+                title={isAdmin ? `${card.title} — drag onto timeline to schedule` : card.title}
               >
                 <span className="timeline-unscheduled-dot" />
                 <span className="timeline-unscheduled-chip-title">{card.title}</span>
@@ -356,7 +424,14 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
           ))}
         </div>
 
-        <div className="timeline-chart" style={{ width: totalWidth }}>
+        <div
+          className={`timeline-chart${draggingUnscheduled ? ' timeline-chart--drop-active' : ''}`}
+          style={{ width: totalWidth }}
+          ref={chartRef}
+          onDragOver={handleChartDragOver}
+          onDragLeave={handleChartDragLeave}
+          onDrop={handleChartDrop}
+        >
           {/* Axis header */}
           <div className="timeline-axis">
             {axisColumns.map((col, i) => (
@@ -380,6 +455,13 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
               );
             })}
             <div className="timeline-today-line" style={{ left: dateToPx(new Date()) }} />
+            {dropIndicatorPx !== null && (
+              <div className="timeline-drop-indicator" style={{ left: dropIndicatorPx }}>
+                <div className="timeline-drop-indicator-label">
+                  {formatDateISO(pxToDate(dropIndicatorPx))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Swimlane rows with bars */}

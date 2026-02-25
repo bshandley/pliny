@@ -3878,6 +3878,19 @@ button:disabled {
   transform: translateY(-1px);
 }
 
+.timeline-unscheduled-chip[draggable="true"] {
+  cursor: grab;
+}
+
+.timeline-unscheduled-chip[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.timeline-unscheduled-chip--dragging {
+  opacity: 0.45;
+  transform: scale(0.96);
+}
+
 .timeline-unscheduled-dot {
   width: 6px;
   height: 6px;
@@ -4055,6 +4068,36 @@ button:disabled {
   z-index: 2;
   pointer-events: none;
   box-shadow: 0 0 6px rgba(197, 48, 48, 0.25);
+}
+
+/* Drop indicator when dragging an unscheduled chip onto the timeline */
+.timeline-chart--drop-active {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+
+.timeline-drop-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary);
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 50%, transparent);
+}
+
+.timeline-drop-indicator-label {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .timeline-swimlane-header {
