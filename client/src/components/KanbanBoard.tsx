@@ -7,7 +7,6 @@ import { useConfirm } from '../contexts/ConfirmContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
-import BoardAssignees from './BoardAssignees';
 import BoardLabels from './BoardLabels';
 import AppBar from './AppBar';
 import CalendarView from './CalendarView';
@@ -31,7 +30,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [assignees, setAssignees] = useState<{ id: string; name: string }[]>([]);
   const [boardLabels, setBoardLabels] = useState<Label[]>([]);
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
   const [showNewColumn, setShowNewColumn] = useState(false);
@@ -39,7 +37,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [showNewCard, setShowNewCard] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [showMembers, setShowMembers] = useState(false);
-  const [showAssignees, setShowAssignees] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showFieldManager, setShowFieldManager] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -107,7 +104,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
   useEffect(() => {
     loadBoard();
-    loadAssignees();
     loadLabels();
     loadBoardMembers();
 
@@ -116,7 +112,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     newSocket.emit('join-board', boardId);
     newSocket.on('board-updated', () => {
       loadBoard();
-      loadAssignees();
       loadLabels();
       loadBoardMembers();
       setRefreshKey(k => k + 1);
@@ -192,15 +187,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
-  const loadAssignees = async () => {
-    try {
-      const data = await api.getBoardAssignees(boardId);
-      setAssignees(data);
-    } catch (error) {
-      console.error('Failed to load assignees:', error);
-    }
-  };
-
   const loadLabels = async () => {
     try {
       const data = await api.getBoardLabels(boardId);
@@ -226,7 +212,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
     if (filterAssignee === '__unassigned__') {
       if (card.assignees && card.assignees.length > 0) return false;
-    } else if (filterAssignee && (!card.assignees || !card.assignees.includes(filterAssignee))) return false;
+    } else if (filterAssignee && (!card.assignees || !card.assignees.some(a => a.display_name === filterAssignee))) return false;
     if (filterLabel && (!card.labels || !card.labels.some(l => l.id === filterLabel))) return false;
     if (filterDue === 'overdue') {
       if (!card.due_date) return false;
@@ -444,18 +430,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
-  const handleAddAssignee = async (name: string): Promise<boolean> => {
-    try {
-      const newAssignee = await api.addBoardAssignee(boardId, name);
-      setAssignees(prev => [...prev, newAssignee]);
-      socket?.emit('board-updated', boardId);
-      return true;
-    } catch (error: any) {
-      console.error('Failed to add assignee:', error);
-      return false;
-    }
-  };
-
   const handleDeleteColumn = async (columnId: string, columnName: string) => {
     setColumnMenuId(null);
     if (!await confirm(`Delete column "${columnName}" and all its cards?`, { confirmLabel: 'Delete' })) return;
@@ -639,7 +613,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 </button>
                 <div className="board-settings-divider" />
                 <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
-                <button onClick={() => { setShowAssignees(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Assignees</button>
                 <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
                 <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
                 <div className="board-settings-divider" />
@@ -675,7 +648,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="filter-select">
           <option value="">All assignees</option>
           <option value="__unassigned__">Unassigned</option>
-          {assignees.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+          {(() => {
+            const names = new Set<string>();
+            board?.columns?.forEach(col => col.cards?.forEach(card => card.assignees?.forEach(a => {
+              if (a.display_name) names.add(a.display_name);
+            })));
+            return Array.from(names).sort().map(name => <option key={name} value={name}>{name}</option>);
+          })()}
         </select>
         {boardLabels.length > 0 && (
           <div className="label-filter-dropdown" ref={labelDropdownRef}>
@@ -800,7 +779,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => handleOpenInBoard(cardId)}
             boardMembers={boardMembers}
-            assignees={assignees}
           />
         ) : viewMode === 'timeline' ? (
           <TimelineView
@@ -902,10 +880,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             onDelete={() => handleDeleteCard(card.id)}
                                             onArchive={() => handleArchiveCard(card.id)}
                                             onUpdate={(updates) => handleUpdateCard(card.id, updates)}
-                                            assignees={assignees}
                                             boardLabels={boardLabels}
                                             boardId={boardId}
-                                            onAddAssignee={handleAddAssignee}
                                             isMobile={isMobile}
                                             columns={board?.columns}
                                             onMoveToColumn={handleMoveToColumn}
@@ -960,10 +936,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             onDelete={() => handleDeleteCard(editCard.id)}
             onArchive={() => handleArchiveCard(editCard.id)}
             onUpdate={(updates) => handleUpdateCard(editCard.id, updates)}
-            assignees={assignees}
             boardLabels={boardLabels}
             boardId={boardId}
-            onAddAssignee={handleAddAssignee}
             isMobile={true}
             columns={board?.columns}
             onMoveToColumn={handleMoveToColumn}
@@ -992,12 +966,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       )}
 
       {showMembers && <BoardMembers boardId={boardId} onClose={() => setShowMembers(false)} />}
-      {showAssignees && (
-        <BoardAssignees
-          boardId={boardId}
-          onClose={() => { setShowAssignees(false); loadAssignees(); }}
-        />
-      )}
       {showLabels && (
         <BoardLabels
           boardId={boardId}
