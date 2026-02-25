@@ -59,13 +59,16 @@ export interface ChecklistItem {
   checked: boolean;
   position: number;
   assignee_name?: string | null;
+  assignee_user_id?: string | null;
   due_date?: string | null;
   priority?: 'low' | 'medium' | 'high' | null;
 }
 
-export interface CardMember {
+export interface CardAssignee {
   id: string;
-  username: string;
+  user_id?: string | null;
+  username?: string | null;
+  display_name?: string | null;
 }
 
 export interface ActivityEntry {
@@ -114,14 +117,13 @@ export interface Card {
   title: string;
   description?: string;
   assignee?: string; // Deprecated, use assignees
-  assignees?: string[];
+  assignees?: CardAssignee[];
   labels?: Label[];
   due_date?: string | null;
   start_date?: string | null;
   archived?: boolean;
   checklist?: { total: number; checked: number; overdue?: number } | null;
   dated_checklist_items?: ChecklistItem[];
-  members?: CardMember[];
   custom_field_values?: Record<string, CustomFieldValue>;
   position: number;
   created_at: string;

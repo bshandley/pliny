@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, CardMember, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken, Webhook, WebhookDelivery } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken, Webhook, WebhookDelivery } from './types';
 
 const API_URL = '/api';
 
@@ -172,31 +172,6 @@ class ApiClient {
     return this.fetch(`/cards/${id}`, { method: 'DELETE' }, 'deleteCard');
   }
 
-  // Assignees
-  async getBoardAssignees(boardId: string): Promise<{ id: string; name: string; created_at: string }[]> {
-    return this.fetch(`/boards/${boardId}/assignees`, {}, 'getBoardAssignees');
-  }
-
-  async addBoardAssignee(boardId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
-    return this.fetch(`/boards/${boardId}/assignees`, {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    }, 'addBoardAssignee');
-  }
-
-  async renameBoardAssignee(boardId: string, assigneeId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
-    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name }),
-    }, 'renameBoardAssignee');
-  }
-
-  async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void> {
-    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
-      method: 'DELETE',
-    }, 'deleteBoardAssignee');
-  }
-
   // Labels
   async getBoardLabels(boardId: string): Promise<Label[]> {
     return this.fetch(`/boards/${boardId}/labels`, {}, 'getBoardLabels');
@@ -286,18 +261,6 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(values),
     }, 'setCardCustomFields');
-  }
-
-  // Card Members
-  async getCardMembers(cardId: string): Promise<CardMember[]> {
-    return this.fetch(`/cards/${cardId}/members`, {}, 'getCardMembers');
-  }
-
-  async setCardMembers(cardId: string, memberIds: string[]): Promise<CardMember[]> {
-    return this.fetch(`/cards/${cardId}/members`, {
-      method: 'PUT',
-      body: JSON.stringify({ members: memberIds }),
-    }, 'setCardMembers');
   }
 
   // Analytics
