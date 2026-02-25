@@ -302,16 +302,22 @@ export default function DevConsole({ isOpen, onClose }: DevConsoleProps) {
                 <button
                   className={`devconsole-ctrl-btn ${paused ? 'active' : ''}`}
                   onClick={() => setPaused(!paused)}
-                  title={paused ? 'Resume' : 'Pause'}
+                  title={paused ? 'Resume live feed' : 'Pause live feed'}
                 >
                   {paused ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      Resume
+                    </>
                   ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
-                    </svg>
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                      Pause
+                    </>
                   )}
                 </button>
                 <button
@@ -319,16 +325,17 @@ export default function DevConsole({ isOpen, onClose }: DevConsoleProps) {
                   onClick={toggleLogging}
                 >
                   <span className="devconsole-recording-dot" />
-                  {loggingEnabled ? 'Recording' : 'Stopped'}
+                  {loggingEnabled ? 'Logging On' : 'Logging Off'}
                 </button>
                 <button
                   className="devconsole-ctrl-btn"
                   onClick={() => { setEvents([]); setSelectedEvent(null); }}
-                  title="Clear"
+                  title="Clear all events"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/>
                   </svg>
+                  Clear
                 </button>
               </div>
             </div>
