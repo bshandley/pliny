@@ -48,14 +48,15 @@ router.get('/boards/:boardId/analytics', authenticate, async (req: Request, res:
   // Cards by assignee
   const byAssigneeResult = await pool.query(
     `SELECT
-       COALESCE(ca.assignee_name, 'Unassigned') as assignee,
+       COALESCE(u.username, ca.display_name, 'Unassigned') as assignee,
        COUNT(DISTINCT c.id)::int as total,
        COUNT(DISTINCT c.id) FILTER (WHERE c.column_id = $2)::int as completed
      FROM cards c
      INNER JOIN columns col ON c.column_id = col.id
      LEFT JOIN card_assignees ca ON ca.card_id = c.id
+     LEFT JOIN users u ON ca.user_id = u.id
      WHERE col.board_id = $1 AND c.archived = false
-     GROUP BY ca.assignee_name
+     GROUP BY COALESCE(u.username, ca.display_name)
      ORDER BY total DESC`,
     [boardId, lastColumnId]
   );

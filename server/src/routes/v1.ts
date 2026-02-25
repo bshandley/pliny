@@ -290,7 +290,30 @@ router.get('/boards/:id/cards', authenticate, async (req: AuthRequest, res: Resp
        ORDER BY col.position, c.position`,
       [id]
     );
-    res.json(result.rows);
+
+    // Fetch assignees for all cards in this board
+    const assigneesResult = await pool.query(
+      `SELECT ca.id, ca.card_id, ca.user_id, u.username, ca.display_name
+       FROM card_assignees ca
+       LEFT JOIN users u ON ca.user_id = u.id
+       INNER JOIN cards c ON ca.card_id = c.id
+       INNER JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1`,
+      [id]
+    );
+    const assigneesByCard = new Map<string, any[]>();
+    for (const row of assigneesResult.rows) {
+      const list = assigneesByCard.get(row.card_id) || [];
+      list.push({ id: row.id, user_id: row.user_id, username: row.username, display_name: row.display_name });
+      assigneesByCard.set(row.card_id, list);
+    }
+
+    const cards = result.rows.map((card: any) => ({
+      ...card,
+      assignees: assigneesByCard.get(card.id) || [],
+    }));
+
+    res.json(cards);
   } catch (err) {
     console.error('Error listing cards:', err);
     res.status(500).json({ error: 'Failed to list cards' });
@@ -354,7 +377,19 @@ router.get('/cards/:id', authenticate, async (req: AuthRequest, res: Response) =
       return res.status(404).json({ error: 'Card not found' });
     }
 
-    res.json(result.rows[0]);
+    // Fetch assignees for this card
+    const assigneesResult = await pool.query(
+      `SELECT ca.id, ca.card_id, ca.user_id, u.username, ca.display_name
+       FROM card_assignees ca
+       LEFT JOIN users u ON ca.user_id = u.id
+       WHERE ca.card_id = $1`,
+      [id]
+    );
+    const assignees = assigneesResult.rows.map((row: any) => ({
+      id: row.id, user_id: row.user_id, username: row.username, display_name: row.display_name,
+    }));
+
+    res.json({ ...result.rows[0], assignees });
   } catch (err) {
     console.error('Error fetching card:', err);
     res.status(500).json({ error: 'Failed to fetch card' });
@@ -557,7 +592,7 @@ router.get('/cards/:id/checklists', authenticate, async (req: AuthRequest, res: 
 // POST /api/v1/cards/:id/checklists - Add checklist item
 router.post('/cards/:id/checklists', authenticate, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { text, position, assignee_name, due_date, priority } = req.body;
+  const { text, position, assignee_name, assignee_user_id, due_date, priority } = req.body;
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Checklist item text is required' });
@@ -571,10 +606,10 @@ router.post('/cards/:id/checklists', authenticate, async (req: AuthRequest, res:
 
   try {
     const result = await pool.query(
-      `INSERT INTO card_checklist_items (card_id, text, position, assignee_name, due_date, priority)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO card_checklist_items (card_id, text, position, assignee_name, assignee_user_id, due_date, priority)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [id, text.trim(), position ?? 0, assignee_name || null, due_date || null, priority || null]
+      [id, text.trim(), position ?? 0, assignee_name || null, assignee_user_id || null, due_date || null, priority || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

@@ -52,8 +52,9 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
 
     // Fetch assignees for all cards
     const assigneesResult = await pool.query(
-      `SELECT ca.card_id, ca.assignee_name
+      `SELECT ca.card_id, COALESCE(u.username, ca.display_name) as name
        FROM card_assignees ca
+       LEFT JOIN users u ON ca.user_id = u.id
        INNER JOIN cards c ON ca.card_id = c.id
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1 AND c.archived = false`,
@@ -62,7 +63,7 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
     const assigneesByCard = new Map<string, string[]>();
     for (const row of assigneesResult.rows) {
       const list = assigneesByCard.get(row.card_id) || [];
-      list.push(row.assignee_name);
+      list.push(row.name);
       assigneesByCard.set(row.card_id, list);
     }
 
@@ -295,13 +296,6 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireAdmin, a
     );
     const labelByName = new Map(existingLabels.rows.map((l: any) => [l.name.toLowerCase(), l.id]));
 
-    // Fetch existing assignees
-    const existingAssignees = await pool.query(
-      'SELECT name FROM board_assignees WHERE board_id = $1',
-      [boardId]
-    );
-    const assigneeSet = new Set(existingAssignees.rows.map((a: any) => a.name.toLowerCase()));
-
     // Get max positions per column
     const positionsResult = await pool.query(
       `SELECT c.column_id, COALESCE(MAX(c.position), -1) as max_pos
@@ -416,20 +410,27 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireAdmin, a
 
         // Handle assignees (comma-separated)
         if (assigneesStr) {
-          const names = assigneesStr.split(',').map(n => n.trim()).filter(Boolean);
-          for (const name of names) {
-            // Auto-create board assignee if not exists
-            if (!assigneeSet.has(name.toLowerCase())) {
-              await client.query(
-                'INSERT INTO board_assignees (board_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                [boardId, name]
-              );
-              assigneeSet.add(name.toLowerCase());
-            }
-            await client.query(
-              'INSERT INTO card_assignees (card_id, assignee_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-              [cardId, name]
+          const assigneeNames = assigneesStr.split(',').map(n => n.trim()).filter(Boolean);
+          for (const name of assigneeNames) {
+            const trimmed = name.trim();
+            if (!trimmed) continue;
+            const memberMatch = await client.query(
+              `SELECT u.id FROM board_members bm
+               JOIN users u ON bm.user_id = u.id
+               WHERE bm.board_id = $1 AND LOWER(u.username) = LOWER($2)`,
+              [boardId, trimmed]
             );
+            if (memberMatch.rows.length > 0) {
+              await client.query(
+                'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [cardId, memberMatch.rows[0].id]
+              );
+            } else {
+              await client.query(
+                'INSERT INTO card_assignees (card_id, display_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [cardId, trimmed]
+              );
+            }
           }
         }
 
