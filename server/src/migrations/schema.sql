@@ -25,14 +25,6 @@ CREATE TABLE IF NOT EXISTS board_members (
   PRIMARY KEY (board_id, user_id)
 );
 
--- Board assignees (names that can be assigned to cards)
-CREATE TABLE IF NOT EXISTS board_assignees (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
-  name VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Columns table
 CREATE TABLE IF NOT EXISTS columns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,12 +49,14 @@ CREATE TABLE IF NOT EXISTS cards (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Card assignees (multiple assignees per card)
+-- Card assignees (unified: linked users + unlinked free-text names)
 CREATE TABLE IF NOT EXISTS card_assignees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-  assignee_name VARCHAR(100) NOT NULL,
-  added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (card_id, assignee_name)
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  display_name VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT card_assignees_must_have_identity CHECK (user_id IS NOT NULL OR display_name IS NOT NULL)
 );
 
 -- Board labels (colored tags)
@@ -97,6 +91,7 @@ CREATE TABLE IF NOT EXISTS card_checklist_items (
   text VARCHAR(500) NOT NULL,
   checked BOOLEAN NOT NULL DEFAULT false,
   position INTEGER NOT NULL DEFAULT 0,
+  assignee_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -106,8 +101,10 @@ CREATE INDEX IF NOT EXISTS idx_cards_column_id ON cards(column_id);
 CREATE INDEX IF NOT EXISTS idx_boards_created_by ON boards(created_by);
 CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
-CREATE INDEX IF NOT EXISTS idx_board_assignees_board_id ON board_assignees(board_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_card_assignees_linked ON card_assignees (card_id, user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_card_assignees_unlinked ON card_assignees (card_id, display_name) WHERE user_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_card_assignees_card_id ON card_assignees(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_assignees_user_id ON card_assignees(user_id) WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_board_labels_board_id ON board_labels(board_id);
 CREATE INDEX IF NOT EXISTS idx_card_labels_card_id ON card_labels(card_id);
 CREATE INDEX IF NOT EXISTS idx_card_labels_label_id ON card_labels(label_id);
@@ -125,17 +122,6 @@ CREATE TABLE IF NOT EXISTS card_activity (
 );
 
 CREATE INDEX IF NOT EXISTS idx_card_activity_card_id ON card_activity(card_id);
-
--- Card members (real user accounts linked to cards)
-CREATE TABLE IF NOT EXISTS card_members (
-  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (card_id, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_card_members_card_id ON card_members(card_id);
-CREATE INDEX IF NOT EXISTS idx_card_members_user_id ON card_members(user_id);
 
 -- Notifications
 CREATE TABLE IF NOT EXISTS notifications (
