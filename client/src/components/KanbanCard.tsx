@@ -974,7 +974,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     ref={commentInputRef}
                     value={newComment}
                     onChange={handleCommentChange}
-                    placeholder="Write a comment... (@ to mention)"
+                    placeholder="Add a comment..."
                     className="comment-input"
                     onKeyDown={handleCommentKeyDown}
                     maxLength={5000}
@@ -1238,7 +1238,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       ref={commentInputRef}
                       value={newComment}
                       onChange={handleCommentChange}
-                      placeholder="Write a comment... (@ to mention)"
+                      placeholder="Add a comment..."
                       className="comment-input"
                       onKeyDown={handleCommentKeyDown}
                       maxLength={5000}
