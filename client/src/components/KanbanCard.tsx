@@ -516,13 +516,19 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
     handleChecklistItemUpdate(item.id, { priority: next } as any);
   };
 
-  const openChecklistDatePicker = (itemId: string, currentDate?: string | null) => {
+  const openChecklistDatePicker = (itemId: string, currentDate?: string | null, event?: React.MouseEvent) => {
     const input = document.createElement('input');
     input.type = 'date';
-    if (currentDate) input.value = currentDate;
-    input.style.position = 'absolute';
+    const normalized = currentDate ? currentDate.split('T')[0].split(' ')[0] : '';
+    if (normalized) input.value = normalized;
+    input.style.position = 'fixed';
     input.style.opacity = '0';
     input.style.pointerEvents = 'none';
+    if (event) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      input.style.top = `${rect.bottom}px`;
+      input.style.left = `${rect.left}px`;
+    }
     document.body.appendChild(input);
     input.addEventListener('change', () => {
       handleChecklistItemUpdate(itemId, { due_date: input.value || null } as any);
@@ -842,11 +848,11 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     </div>
                     <button
                       type="button"
-                      className={`checklist-meta-chip${item.due_date && new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}${!item.due_date ? ' placeholder' : ''}`}
-                      onClick={() => openChecklistDatePicker(item.id, item.due_date)}
+                      className={`checklist-meta-chip${item.due_date && new Date(item.due_date.split('T')[0] + 'T12:00:00') < new Date() && !item.checked ? ' overdue' : ''}${!item.due_date ? ' placeholder' : ''}`}
+                      onClick={(e) => openChecklistDatePicker(item.id, item.due_date, e)}
                     >
                       {item.due_date
-                        ? new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        ? new Date(item.due_date.split('T')[0].split(' ')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                         : 'Date'}
                     </button>
                     <button
@@ -1153,8 +1159,8 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                     <div className="checklist-meta-row read-only">
                       {item.assignee_name && <span className="checklist-meta-chip">{item.assignee_name}</span>}
                       {item.due_date && (
-                        <span className={`checklist-meta-chip${new Date(item.due_date) < new Date() && !item.checked ? ' overdue' : ''}`}>
-                          {new Date(item.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        <span className={`checklist-meta-chip${new Date(item.due_date.split('T')[0] + 'T12:00:00') < new Date() && !item.checked ? ' overdue' : ''}`}>
+                          {new Date(item.due_date.split('T')[0].split(' ')[0] + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}
                       {item.priority && <span className={`checklist-meta-chip priority-${item.priority}`}>{item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}</span>}
