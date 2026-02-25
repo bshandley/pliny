@@ -1127,7 +1127,7 @@ button:disabled {
   cursor: pointer;
   transition: all 0.2s var(--ease);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .board-card::before {
@@ -1140,6 +1140,7 @@ button:disabled {
   background: var(--primary);
   opacity: 0;
   transition: opacity 0.2s var(--ease);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .board-card:hover {
