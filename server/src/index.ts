@@ -27,6 +27,8 @@ import csvRoutes from './routes/csv';
 import searchRoutes from './routes/search';
 import attachmentRoutes from './routes/attachments';
 import apiTokenRoutes from './routes/apiTokens';
+import devConsoleRoutes, { setupDevConsoleWebSocket } from './routes/devConsole';
+import { apiLoggerMiddleware } from './middleware/apiLogger';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
 import { seedBuiltinTemplates } from './templates/seed';
@@ -49,6 +51,7 @@ const io = new Server(httpServer, {
 app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(apiLoggerMiddleware);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -75,6 +78,7 @@ app.use('/api', csvRoutes);
 app.use('/api', searchRoutes);
 app.use('/api', attachmentRoutes);
 app.use('/api/tokens', apiTokenRoutes);
+app.use('/api/dev', devConsoleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -137,6 +141,9 @@ io.on('connection', (socket) => {
 
 // Broadcast helper (attach to app for use in routes)
 app.set('io', io);
+
+// Set up dev console WebSocket namespace
+setupDevConsoleWebSocket(io);
 
 async function checkDueDateReminders() {
   if (!isSmtpConfigured()) return;
