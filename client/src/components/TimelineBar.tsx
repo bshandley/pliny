@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Card } from '../types';
 import { api } from '../api';
 
@@ -35,7 +35,11 @@ function formatDateISO(date: Date): string {
 
 export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick, onBarDragStart, onBarDragEnd }: TimelineBarProps) {
   const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [resizeOffset, setResizeOffset] = useState<{ edge: 'left' | 'right'; dx: number } | null>(null);
+  // Track whether mouse moved enough to count as a drag (prevents click-after-drag)
+  const didDragRef = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
 
   const barStyle = useMemo(() => {
     if (!card.start_date && !card.due_date) return null;
@@ -69,6 +73,10 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
     if (!isAdmin || (!card.start_date && !card.due_date)) return;
     e.preventDefault();
     const startX = e.clientX;
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    didDragRef.current = false;
+    setIsDragging(true);
+
     const origStart = card.start_date ? new Date(card.start_date) : null;
     const origEnd = card.due_date ? new Date(card.due_date) : null;
     const isMarkerDrag = !card.start_date && card.due_date;
@@ -76,12 +84,15 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
     onBarDragStart?.();
 
     const handleMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - dragStartPos.current.x;
+      if (Math.abs(dx) > 5) didDragRef.current = true;
       setDragOffset(moveEvent.clientX - startX);
     };
 
     const handleUp = async (upEvent: MouseEvent) => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
+      setIsDragging(false);
 
       onBarDragEnd?.(upEvent.clientX, upEvent.clientY);
 
@@ -187,7 +198,7 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
 
   return (
     <div
-      className={`timeline-bar${isMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${dragOffset !== 0 ? ' timeline-bar--dragging' : ''}`}
+      className={`timeline-bar${isMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${isDragging ? ' timeline-bar--dragging' : ''}`}
       style={{
         position: 'absolute',
         left: displayLeft,
@@ -196,7 +207,12 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
         '--bar-color': barColor,
       } as React.CSSProperties}
       onMouseDown={handleMouseDown}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Suppress click if the mouse moved enough to count as a drag
+        if (didDragRef.current) return;
+        onClick();
+      }}
       title={`${card.title}\n${columnName}\n${card.start_date || '?'} – ${card.due_date || '?'}`}
     >
       {isAdmin && !isMarker && card.start_date && (
