@@ -1,1 +1,440 @@
-{}
+{
+  "login": {
+    "name": "login",
+    "line": 53,
+    "signature": "async login(username: string, password: string): Promise<any>",
+    "source": "  async login(username: string, password: string): Promise<any> {\n    const data = await this.fetch('/auth/login', {\n      method: 'POST',\n      body: JSON.stringify({ username, password }),\n    }, 'login');\n    if (data.requires_2fa) {\n      return { requires_2fa: true, ticket: data.ticket };\n    }\n    this.setToken(data.token);\n    return { user: data.user };\n  }"
+  },
+  "me": {
+    "name": "me",
+    "line": 65,
+    "signature": "async me(): Promise<User>",
+    "source": "  async me(): Promise<User> {\n    return this.fetch('/auth/me', {}, 'me');\n  }"
+  },
+  "register": {
+    "name": "register",
+    "line": 69,
+    "signature": "async register(username: string, password: string, role: 'READ' | 'COLLABORATOR' | 'ADMIN'): Promise<any>",
+    "source": "  async register(username: string, password: string, role: 'READ' | 'COLLABORATOR' | 'ADMIN') {\n    return this.fetch('/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ username, password, role }),\n    }, 'register');\n  }"
+  },
+  "getUsers": {
+    "name": "getUsers",
+    "line": 77,
+    "signature": "async getUsers(): Promise<User[]>",
+    "source": "  async getUsers(): Promise<User[]> {\n    return this.fetch('/users', {}, 'getUsers');\n  }"
+  },
+  "updateUser": {
+    "name": "updateUser",
+    "line": 81,
+    "signature": "async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' }): Promise<User>",
+    "source": "  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' }): Promise<User> {\n    return this.fetch(`/users/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateUser');\n  }"
+  },
+  "deleteUser": {
+    "name": "deleteUser",
+    "line": 88,
+    "signature": "async deleteUser(id: string): Promise<void>",
+    "source": "  async deleteUser(id: string): Promise<void> {\n    return this.fetch(`/users/${id}`, { method: 'DELETE' }, 'deleteUser');\n  }"
+  },
+  "getBoards": {
+    "name": "getBoards",
+    "line": 93,
+    "signature": "async getBoards(): Promise<Board[]>",
+    "source": "  async getBoards(): Promise<Board[]> {\n    return this.fetch('/boards', {}, 'getBoards');\n  }"
+  },
+  "getBoard": {
+    "name": "getBoard",
+    "line": 97,
+    "signature": "async getBoard(id: string): Promise<Board>",
+    "source": "  async getBoard(id: string): Promise<Board> {\n    return this.fetch(`/boards/${id}`, {}, 'getBoard');\n  }"
+  },
+  "createBoard": {
+    "name": "createBoard",
+    "line": 101,
+    "signature": "async createBoard(name: string, description?: string): Promise<Board>",
+    "source": "  async createBoard(name: string, description?: string): Promise<Board> {\n    return this.fetch('/boards', {\n      method: 'POST',\n      body: JSON.stringify({ name, description }),\n    }, 'createBoard');\n  }"
+  },
+  "updateBoard": {
+    "name": "updateBoard",
+    "line": 108,
+    "signature": "async updateBoard(id: string, updates: Partial<Board>): Promise<Board>",
+    "source": "  async updateBoard(id: string, updates: Partial<Board>): Promise<Board> {\n    return this.fetch(`/boards/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateBoard');\n  }"
+  },
+  "deleteBoard": {
+    "name": "deleteBoard",
+    "line": 115,
+    "signature": "async deleteBoard(id: string): Promise<void>",
+    "source": "  async deleteBoard(id: string): Promise<void> {\n    return this.fetch(`/boards/${id}`, { method: 'DELETE' }, 'deleteBoard');\n  }"
+  },
+  "getBoardMembers": {
+    "name": "getBoardMembers",
+    "line": 120,
+    "signature": "async getBoardMembers(boardId: string): Promise<BoardMember[]>",
+    "source": "  async getBoardMembers(boardId: string): Promise<BoardMember[]> {\n    return this.fetch(`/boards/${boardId}/members`, {}, 'getBoardMembers');\n  }"
+  },
+  "addBoardMember": {
+    "name": "addBoardMember",
+    "line": 124,
+    "signature": "async addBoardMember(boardId: string, userId: string): Promise<void>",
+    "source": "  async addBoardMember(boardId: string, userId: string): Promise<void> {\n    return this.fetch(`/boards/${boardId}/members`, {\n      method: 'POST',\n      body: JSON.stringify({ user_id: userId }),\n    }, 'addBoardMember');\n  }"
+  },
+  "removeBoardMember": {
+    "name": "removeBoardMember",
+    "line": 131,
+    "signature": "async removeBoardMember(boardId: string, userId: string): Promise<void>",
+    "source": "  async removeBoardMember(boardId: string, userId: string): Promise<void> {\n    return this.fetch(`/boards/${boardId}/members/${userId}`, {\n      method: 'DELETE',\n    }, 'removeBoardMember');\n  }"
+  },
+  "createColumn": {
+    "name": "createColumn",
+    "line": 138,
+    "signature": "async createColumn(board_id: string, name: string, position: number): Promise<Column>",
+    "source": "  async createColumn(board_id: string, name: string, position: number): Promise<Column> {\n    return this.fetch('/columns', {\n      method: 'POST',\n      body: JSON.stringify({ board_id, name, position }),\n    }, 'createColumn');\n  }"
+  },
+  "updateColumn": {
+    "name": "updateColumn",
+    "line": 145,
+    "signature": "async updateColumn(id: string, updates: Partial<Column>): Promise<Column>",
+    "source": "  async updateColumn(id: string, updates: Partial<Column>): Promise<Column> {\n    return this.fetch(`/columns/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateColumn');\n  }"
+  },
+  "deleteColumn": {
+    "name": "deleteColumn",
+    "line": 152,
+    "signature": "async deleteColumn(id: string): Promise<void>",
+    "source": "  async deleteColumn(id: string): Promise<void> {\n    return this.fetch(`/columns/${id}`, { method: 'DELETE' }, 'deleteColumn');\n  }"
+  },
+  "createCard": {
+    "name": "createCard",
+    "line": 157,
+    "signature": "async createCard(column_id: string, title: string, position: number, description?: string, assignee?: string): Promise<Card>",
+    "source": "  async createCard(column_id: string, title: string, position: number, description?: string, assignee?: string): Promise<Card> {\n    return this.fetch('/cards', {\n      method: 'POST',\n      body: JSON.stringify({ column_id, title, description, assignee, position }),\n    }, 'createCard');\n  }"
+  },
+  "updateCard": {
+    "name": "updateCard",
+    "line": 164,
+    "signature": "async updateCard(id: string, updates: Partial<Card>): Promise<Card>",
+    "source": "  async updateCard(id: string, updates: Partial<Card>): Promise<Card> {\n    return this.fetch(`/cards/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateCard');\n  }"
+  },
+  "deleteCard": {
+    "name": "deleteCard",
+    "line": 171,
+    "signature": "async deleteCard(id: string): Promise<void>",
+    "source": "  async deleteCard(id: string): Promise<void> {\n    return this.fetch(`/cards/${id}`, { method: 'DELETE' }, 'deleteCard');\n  }"
+  },
+  "getBoardAssignees": {
+    "name": "getBoardAssignees",
+    "line": 176,
+    "signature": "async getBoardAssignees(boardId: string): Promise<",
+    "source": "  async getBoardAssignees(boardId: string): Promise<{ id: string; name: string; created_at: string }[]> {\n    return this.fetch(`/boards/${boardId}/assignees`, {}, 'getBoardAssignees');\n  }"
+  },
+  "addBoardAssignee": {
+    "name": "addBoardAssignee",
+    "line": 180,
+    "signature": "async addBoardAssignee(boardId: string, name: string): Promise<",
+    "source": "  async addBoardAssignee(boardId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {\n    return this.fetch(`/boards/${boardId}/assignees`, {\n      method: 'POST',\n      body: JSON.stringify({ name }),\n    }, 'addBoardAssignee');\n  }"
+  },
+  "renameBoardAssignee": {
+    "name": "renameBoardAssignee",
+    "line": 187,
+    "signature": "async renameBoardAssignee(boardId: string, assigneeId: string, name: string): Promise<",
+    "source": "  async renameBoardAssignee(boardId: string, assigneeId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {\n    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {\n      method: 'PUT',\n      body: JSON.stringify({ name }),\n    }, 'renameBoardAssignee');\n  }"
+  },
+  "deleteBoardAssignee": {
+    "name": "deleteBoardAssignee",
+    "line": 194,
+    "signature": "async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void>",
+    "source": "  async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void> {\n    return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {\n      method: 'DELETE',\n    }, 'deleteBoardAssignee');\n  }"
+  },
+  "getBoardLabels": {
+    "name": "getBoardLabels",
+    "line": 201,
+    "signature": "async getBoardLabels(boardId: string): Promise<Label[]>",
+    "source": "  async getBoardLabels(boardId: string): Promise<Label[]> {\n    return this.fetch(`/boards/${boardId}/labels`, {}, 'getBoardLabels');\n  }"
+  },
+  "createLabel": {
+    "name": "createLabel",
+    "line": 205,
+    "signature": "async createLabel(boardId: string, name: string, color: string): Promise<Label>",
+    "source": "  async createLabel(boardId: string, name: string, color: string): Promise<Label> {\n    return this.fetch(`/boards/${boardId}/labels`, {\n      method: 'POST',\n      body: JSON.stringify({ name, color }),\n    }, 'createLabel');\n  }"
+  },
+  "updateLabel": {
+    "name": "updateLabel",
+    "line": 212,
+    "signature": "async updateLabel(id: string, name: string, color: string): Promise<Label>",
+    "source": "  async updateLabel(id: string, name: string, color: string): Promise<Label> {\n    return this.fetch(`/labels/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify({ name, color }),\n    }, 'updateLabel');\n  }"
+  },
+  "deleteLabel": {
+    "name": "deleteLabel",
+    "line": 219,
+    "signature": "async deleteLabel(id: string): Promise<void>",
+    "source": "  async deleteLabel(id: string): Promise<void> {\n    return this.fetch(`/labels/${id}`, { method: 'DELETE' }, 'deleteLabel');\n  }"
+  },
+  "getCardComments": {
+    "name": "getCardComments",
+    "line": 224,
+    "signature": "async getCardComments(cardId: string): Promise<Comment[]>",
+    "source": "  async getCardComments(cardId: string): Promise<Comment[]> {\n    return this.fetch(`/cards/${cardId}/comments`, {}, 'getCardComments');\n  }"
+  },
+  "addCardComment": {
+    "name": "addCardComment",
+    "line": 228,
+    "signature": "async addCardComment(cardId: string, text: string): Promise<Comment>",
+    "source": "  async addCardComment(cardId: string, text: string): Promise<Comment> {\n    return this.fetch(`/cards/${cardId}/comments`, {\n      method: 'POST',\n      body: JSON.stringify({ text }),\n    }, 'addCardComment');\n  }"
+  },
+  "deleteComment": {
+    "name": "deleteComment",
+    "line": 235,
+    "signature": "async deleteComment(id: string): Promise<void>",
+    "source": "  async deleteComment(id: string): Promise<void> {\n    return this.fetch(`/comments/${id}`, { method: 'DELETE' }, 'deleteComment');\n  }"
+  },
+  "getCardChecklist": {
+    "name": "getCardChecklist",
+    "line": 240,
+    "signature": "async getCardChecklist(cardId: string): Promise<ChecklistItem[]>",
+    "source": "  async getCardChecklist(cardId: string): Promise<ChecklistItem[]> {\n    return this.fetch(`/cards/${cardId}/checklist`, {}, 'getCardChecklist');\n  }"
+  },
+  "addChecklistItem": {
+    "name": "addChecklistItem",
+    "line": 244,
+    "signature": "async addChecklistItem(cardId: string, text: string): Promise<ChecklistItem>",
+    "source": "  async addChecklistItem(cardId: string, text: string): Promise<ChecklistItem> {\n    return this.fetch(`/cards/${cardId}/checklist`, {\n      method: 'POST',\n      body: JSON.stringify({ text }),\n    }, 'addChecklistItem');\n  }"
+  },
+  "updateChecklistItem": {
+    "name": "updateChecklistItem",
+    "line": 251,
+    "signature": "async updateChecklistItem(id: string, updates: Partial<ChecklistItem>): Promise<ChecklistItem>",
+    "source": "  async updateChecklistItem(id: string, updates: Partial<ChecklistItem>): Promise<ChecklistItem> {\n    return this.fetch(`/checklist/${id}`, {\n      method: 'PUT',\n      body: JSON.stringify(updates),\n    }, 'updateChecklistItem');\n  }"
+  },
+  "deleteChecklistItem": {
+    "name": "deleteChecklistItem",
+    "line": 258,
+    "signature": "async deleteChecklistItem(id: string): Promise<void>",
+    "source": "  async deleteChecklistItem(id: string): Promise<void> {\n    return this.fetch(`/checklist/${id}`, { method: 'DELETE' }, 'deleteChecklistItem');\n  }"
+  },
+  "getCustomFields": {
+    "name": "getCustomFields",
+    "line": 262,
+    "signature": "async getCustomFields(boardId: string): Promise<CustomField[]>",
+    "source": "  async getCustomFields(boardId: string): Promise<CustomField[]> {\n    return this.fetch(`/boards/${boardId}/custom-fields`, {}, 'getCustomFields');\n  }"
+  },
+  "createCustomField": {
+    "name": "createCustomField",
+    "line": 266,
+    "signature": "async createCustomField(boardId: string, data: { name: string; field_type: string; options?: string[]; show_on_card?: boolean }): Promise<CustomField>",
+    "source": "  async createCustomField(boardId: string, data: { name: string; field_type: string; options?: string[]; show_on_card?: boolean }): Promise<CustomField> {\n    return this.fetch(`/boards/${boardId}/custom-fields`, {\n      method: 'POST',\n      body: JSON.stringify(data),\n    }, 'createCustomField');\n  }"
+  },
+  "updateCustomField": {
+    "name": "updateCustomField",
+    "line": 273,
+    "signature": "async updateCustomField(fieldId: string, data: Partial<{ name: string; options: string[]; position: number; show_on_card: boolean }>): Promise<CustomField>",
+    "source": "  async updateCustomField(fieldId: string, data: Partial<{ name: string; options: string[]; position: number; show_on_card: boolean }>): Promise<CustomField> {\n    return this.fetch(`/custom-fields/${fieldId}`, {\n      method: 'PUT',\n      body: JSON.stringify(data),\n    }, 'updateCustomField');\n  }"
+  },
+  "deleteCustomField": {
+    "name": "deleteCustomField",
+    "line": 280,
+    "signature": "async deleteCustomField(fieldId: string): Promise<void>",
+    "source": "  async deleteCustomField(fieldId: string): Promise<void> {\n    return this.fetch(`/custom-fields/${fieldId}`, { method: 'DELETE' }, 'deleteCustomField');\n  }"
+  },
+  "setCardCustomFields": {
+    "name": "setCardCustomFields",
+    "line": 284,
+    "signature": "async setCardCustomFields(cardId: string, values: Record<string, string | null>): Promise<void>",
+    "source": "  async setCardCustomFields(cardId: string, values: Record<string, string | null>): Promise<void> {\n    return this.fetch(`/cards/${cardId}/custom-fields`, {\n      method: 'PUT',\n      body: JSON.stringify(values),\n    }, 'setCardCustomFields');\n  }"
+  },
+  "getCardMembers": {
+    "name": "getCardMembers",
+    "line": 292,
+    "signature": "async getCardMembers(cardId: string): Promise<CardMember[]>",
+    "source": "  async getCardMembers(cardId: string): Promise<CardMember[]> {\n    return this.fetch(`/cards/${cardId}/members`, {}, 'getCardMembers');\n  }"
+  },
+  "setCardMembers": {
+    "name": "setCardMembers",
+    "line": 296,
+    "signature": "async setCardMembers(cardId: string, memberIds: string[]): Promise<CardMember[]>",
+    "source": "  async setCardMembers(cardId: string, memberIds: string[]): Promise<CardMember[]> {\n    return this.fetch(`/cards/${cardId}/members`, {\n      method: 'PUT',\n      body: JSON.stringify({ members: memberIds }),\n    }, 'setCardMembers');\n  }"
+  },
+  "getBoardAnalytics": {
+    "name": "getBoardAnalytics",
+    "line": 304,
+    "signature": "async getBoardAnalytics(boardId: string, days: number = 30): Promise<any>",
+    "source": "  async getBoardAnalytics(boardId: string, days: number = 30): Promise<any> {\n    return this.fetch(`/boards/${boardId}/analytics?days=${days}`, {}, 'getBoardAnalytics');\n  }"
+  },
+  "getCardActivity": {
+    "name": "getCardActivity",
+    "line": 309,
+    "signature": "async getCardActivity(cardId: string): Promise<ActivityEntry[]>",
+    "source": "  async getCardActivity(cardId: string): Promise<ActivityEntry[]> {\n    return this.fetch(`/cards/${cardId}/activity`, {}, 'getCardActivity');\n  }"
+  },
+  "getNotifications": {
+    "name": "getNotifications",
+    "line": 314,
+    "signature": "async getNotifications(): Promise<Notification[]>",
+    "source": "  async getNotifications(): Promise<Notification[]> {\n    return this.fetch('/notifications', {}, 'getNotifications');\n  }"
+  },
+  "markNotificationRead": {
+    "name": "markNotificationRead",
+    "line": 318,
+    "signature": "async markNotificationRead(id: string): Promise<void>",
+    "source": "  async markNotificationRead(id: string): Promise<void> {\n    return this.fetch(`/notifications/${id}/read`, { method: 'PUT' }, 'markNotificationRead');\n  }"
+  },
+  "markAllNotificationsRead": {
+    "name": "markAllNotificationsRead",
+    "line": 322,
+    "signature": "async markAllNotificationsRead(): Promise<void>",
+    "source": "  async markAllNotificationsRead(): Promise<void> {\n    return this.fetch('/notifications/read-all', { method: 'PUT' }, 'markAllNotificationsRead');\n  }"
+  },
+  "getOidcPublicConfig": {
+    "name": "getOidcPublicConfig",
+    "line": 327,
+    "signature": "async getOidcPublicConfig(): Promise<",
+    "source": "  async getOidcPublicConfig(): Promise<{ enabled: boolean; button_label: string }> {\n    const response = await fetch('/api/auth/oidc/config');\n    return response.json();\n  }"
+  },
+  "getOidcSettings": {
+    "name": "getOidcSettings",
+    "line": 333,
+    "signature": "async getOidcSettings(): Promise<any>",
+    "source": "  async getOidcSettings() {\n    return this.fetch('/settings/oidc', {}, 'getOidcSettings');\n  }"
+  },
+  "getTemplates": {
+    "name": "getTemplates",
+    "line": 355,
+    "signature": "async getTemplates(): Promise<BoardTemplate[]>",
+    "source": "  async getTemplates(): Promise<BoardTemplate[]> {\n    return this.fetch('/templates', {}, 'getTemplates');\n  }"
+  },
+  "createTemplateFromBoard": {
+    "name": "createTemplateFromBoard",
+    "line": 359,
+    "signature": "async createTemplateFromBoard(boardId: string, name: string, description?: string): Promise<BoardTemplate>",
+    "source": "  async createTemplateFromBoard(boardId: string, name: string, description?: string): Promise<BoardTemplate> {\n    return this.fetch('/templates', {\n      method: 'POST',\n      body: JSON.stringify({ board_id: boardId, name, description }),\n    }, 'createTemplateFromBoard');\n  }"
+  },
+  "useTemplate": {
+    "name": "useTemplate",
+    "line": 366,
+    "signature": "async useTemplate(templateId: string, name: string, description?: string): Promise<Board>",
+    "source": "  async useTemplate(templateId: string, name: string, description?: string): Promise<Board> {\n    return this.fetch(`/templates/${templateId}/use`, {\n      method: 'POST',\n      body: JSON.stringify({ name, description }),\n    }, 'useTemplate');\n  }"
+  },
+  "deleteTemplate": {
+    "name": "deleteTemplate",
+    "line": 373,
+    "signature": "async deleteTemplate(templateId: string): Promise<void>",
+    "source": "  async deleteTemplate(templateId: string): Promise<void> {\n    return this.fetch(`/templates/${templateId}`, { method: 'DELETE' }, 'deleteTemplate');\n  }"
+  },
+  "getAppSettings": {
+    "name": "getAppSettings",
+    "line": 378,
+    "signature": "async getAppSettings(): Promise<Record<string, any>>",
+    "source": "  async getAppSettings(): Promise<Record<string, any>> {\n    return this.fetch('/app-settings', {}, 'getAppSettings');\n  }"
+  },
+  "updateAppSetting": {
+    "name": "updateAppSetting",
+    "line": 382,
+    "signature": "async updateAppSetting(key: string, value: any): Promise<void>",
+    "source": "  async updateAppSetting(key: string, value: any): Promise<void> {\n    return this.fetch(`/app-settings/${key}`, {\n      method: 'PUT',\n      body: JSON.stringify({ value }),\n    }, 'updateAppSetting');\n  }"
+  },
+  "testSmtp": {
+    "name": "testSmtp",
+    "line": 389,
+    "signature": "async testSmtp(to: string): Promise<",
+    "source": "  async testSmtp(to: string): Promise<{ message: string }> {\n    return this.fetch('/app-settings/smtp-test', {\n      method: 'POST',\n      body: JSON.stringify({ to }),\n    }, 'testSmtp');\n  }"
+  },
+  "getNotificationPreferences": {
+    "name": "getNotificationPreferences",
+    "line": 396,
+    "signature": "async getNotificationPreferences(): Promise<Record<string, boolean>>",
+    "source": "  async getNotificationPreferences(): Promise<Record<string, boolean>> {\n    return this.fetch('/notifications/preferences', {}, 'getNotificationPreferences');\n  }"
+  },
+  "updateNotificationPreferences": {
+    "name": "updateNotificationPreferences",
+    "line": 400,
+    "signature": "async updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>>",
+    "source": "  async updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>> {\n    return this.fetch('/notifications/preferences', {\n      method: 'PUT',\n      body: JSON.stringify(prefs),\n    }, 'updateNotificationPreferences');\n  }"
+  },
+  "getSmtpStatus": {
+    "name": "getSmtpStatus",
+    "line": 407,
+    "signature": "async getSmtpStatus(): Promise<",
+    "source": "  async getSmtpStatus(): Promise<{ configured: boolean }> {\n    return this.fetch('/app-settings/smtp-status', {}, 'getSmtpStatus');\n  }"
+  },
+  "getTotpStatus": {
+    "name": "getTotpStatus",
+    "line": 412,
+    "signature": "async getTotpStatus(): Promise<",
+    "source": "  async getTotpStatus(): Promise<{ enabled: boolean }> {\n    return this.fetch('/settings/totp/status', {}, 'getTotpStatus');\n  }"
+  },
+  "setupTotp": {
+    "name": "setupTotp",
+    "line": 416,
+    "signature": "async setupTotp(): Promise<",
+    "source": "  async setupTotp(): Promise<{ qr_code: string; secret: string; backup_codes: string[] }> {\n    return this.fetch('/settings/totp/setup', { method: 'POST' }, 'setupTotp');\n  }"
+  },
+  "enableTotp": {
+    "name": "enableTotp",
+    "line": 420,
+    "signature": "async enableTotp(code: string): Promise<",
+    "source": "  async enableTotp(code: string): Promise<{ message: string }> {\n    return this.fetch('/settings/totp/enable', {\n      method: 'POST',\n      body: JSON.stringify({ code }),\n    }, 'enableTotp');\n  }"
+  },
+  "disableTotp": {
+    "name": "disableTotp",
+    "line": 427,
+    "signature": "async disableTotp(password: string): Promise<",
+    "source": "  async disableTotp(password: string): Promise<{ message: string }> {\n    return this.fetch('/settings/totp', {\n      method: 'DELETE',\n      body: JSON.stringify({ password }),\n    }, 'disableTotp');\n  }"
+  },
+  "verify2fa": {
+    "name": "verify2fa",
+    "line": 434,
+    "signature": "async verify2fa(ticket: string, code: string): Promise<any>",
+    "source": "  async verify2fa(ticket: string, code: string) {\n    const data = await this.fetch('/auth/verify-2fa', {\n      method: 'POST',\n      body: JSON.stringify({ ticket, code }),\n    }, 'verify2fa');\n    this.setToken(data.token);\n    return data.user;\n  }"
+  },
+  "search": {
+    "name": "search",
+    "line": 443,
+    "signature": "async search(q: string, limit: number = 20): Promise<SearchResponse>",
+    "source": "  async search(q: string, limit: number = 20): Promise<SearchResponse> {\n    return this.fetch(`/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, 'search');\n  }"
+  },
+  "getAttachments": {
+    "name": "getAttachments",
+    "line": 448,
+    "signature": "async getAttachments(cardId: string): Promise<Attachment[]>",
+    "source": "  async getAttachments(cardId: string): Promise<Attachment[]> {\n    return this.fetch(`/cards/${cardId}/attachments`, {}, 'getAttachments');\n  }"
+  },
+  "uploadAttachment": {
+    "name": "uploadAttachment",
+    "line": 452,
+    "signature": "async uploadAttachment(cardId: string, file: File, onProgress?: (pct: number): Promise<any>",
+    "source": "  async uploadAttachment(cardId: string, file: File, onProgress?: (pct: number) => void): Promise<Attachment> {\n    return new Promise((resolve, reject) => {\n      const xhr = new XMLHttpRequest();\n      const formData = new FormData();\n      formData.append('file', file);\n\n      if (onProgress) {\n        xhr.upload.addEventListener('progress', (e) => {\n          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));\n        });\n      }\n\n      xhr.addEventListener('load', () => {\n        if (xhr.status >= 200 && xhr.status < 300) {\n          resolve(JSON.parse(xhr.responseText));\n        } else {\n          try {\n            const err = JSON.parse(xhr.responseText);\n            reject(new Error(err.error || 'Upload failed'));\n          } catch {\n            reject(new Error('Upload failed'));\n          }\n        }\n      });\n\n      xhr.addEventListener('error', () => reject(new Error('Upload failed')));\n\n      const token = this.getToken();\n      xhr.open('POST', `${API_URL}/cards/${cardId}/attachments`);\n      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);\n      xhr.setRequestHeader('X-Client-Fn', 'uploadAttachment');\n      xhr.send(formData);\n    });\n  }"
+  },
+  "deleteAttachment": {
+    "name": "deleteAttachment",
+    "line": 487,
+    "signature": "async deleteAttachment(id: string): Promise<void>",
+    "source": "  async deleteAttachment(id: string): Promise<void> {\n    return this.fetch(`/attachments/${id}`, { method: 'DELETE' }, 'deleteAttachment');\n  }"
+  },
+  "getApiTokens": {
+    "name": "getApiTokens",
+    "line": 492,
+    "signature": "async getApiTokens(): Promise<ApiToken[]>",
+    "source": "  async getApiTokens(): Promise<ApiToken[]> {\n    return this.fetch('/tokens', {}, 'getApiTokens');\n  }"
+  },
+  "createApiToken": {
+    "name": "createApiToken",
+    "line": 496,
+    "signature": "async createApiToken(name: string, expiresInDays?: number): Promise<ApiToken>",
+    "source": "  async createApiToken(name: string, expiresInDays?: number): Promise<ApiToken> {\n    return this.fetch('/tokens', {\n      method: 'POST',\n      body: JSON.stringify({ name, expires_in_days: expiresInDays }),\n    }, 'createApiToken');\n  }"
+  },
+  "revokeApiToken": {
+    "name": "revokeApiToken",
+    "line": 503,
+    "signature": "async revokeApiToken(id: string): Promise<void>",
+    "source": "  async revokeApiToken(id: string): Promise<void> {\n    return this.fetch(`/tokens/${id}`, { method: 'DELETE' }, 'revokeApiToken');\n  }"
+  },
+  "revokeAllApiTokens": {
+    "name": "revokeAllApiTokens",
+    "line": 507,
+    "signature": "async revokeAllApiTokens(): Promise<void>",
+    "source": "  async revokeAllApiTokens(): Promise<void> {\n    return this.fetch('/tokens', { method: 'DELETE' }, 'revokeAllApiTokens');\n  }"
+  },
+  "exportBoardCsv": {
+    "name": "exportBoardCsv",
+    "line": 512,
+    "signature": "async exportBoardCsv(boardId: string): Promise<void>",
+    "source": "  async exportBoardCsv(boardId: string): Promise<void> {\n    const token = this.getToken();\n    const response = await fetch(`${API_URL}/boards/${boardId}/csv/export`, {\n      headers: token ? { 'Authorization': `Bearer ${token}` } : {},\n    });\n    if (!response.ok) {\n      const error = await response.json().catch(() => ({ error: 'Export failed' }));\n      throw new Error(error.error || 'Export failed');\n    }\n    const blob = await response.blob();\n    const url = URL.createObjectURL(blob);\n    const a = document.createElement('a');\n    a.href = url;\n    a.download = response.headers.get('Content-Disposition')?.match(/filename=\"(.+)\"/)?.[1] || 'export.csv';\n    document.body.appendChild(a);\n    a.click();\n    document.body.removeChild(a);\n    URL.revokeObjectURL(url);\n  }"
+  }
+}

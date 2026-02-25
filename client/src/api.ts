@@ -21,7 +21,7 @@ class ApiClient {
     return this.token;
   }
 
-  private async fetch(url: string, options: RequestInit = {}) {
+  private async fetch(url: string, options: RequestInit = {}, fnName?: string) {
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -30,6 +30,10 @@ class ApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (fnName) {
+      headers['X-Client-Fn'] = fnName;
     }
 
     const response = await fetch(`${API_URL}${url}`, {
@@ -50,7 +54,7 @@ class ApiClient {
     const data = await this.fetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
-    });
+    }, 'login');
     if (data.requires_2fa) {
       return { requires_2fa: true, ticket: data.ticket };
     }
@@ -59,75 +63,75 @@ class ApiClient {
   }
 
   async me(): Promise<User> {
-    return this.fetch('/auth/me');
+    return this.fetch('/auth/me', {}, 'me');
   }
 
   async register(username: string, password: string, role: 'READ' | 'COLLABORATOR' | 'ADMIN') {
     return this.fetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password, role }),
-    });
+    }, 'register');
   }
 
   // Users
   async getUsers(): Promise<User[]> {
-    return this.fetch('/users');
+    return this.fetch('/users', {}, 'getUsers');
   }
 
   async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' }): Promise<User> {
     return this.fetch(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
-    });
+    }, 'updateUser');
   }
 
   async deleteUser(id: string): Promise<void> {
-    return this.fetch(`/users/${id}`, { method: 'DELETE' });
+    return this.fetch(`/users/${id}`, { method: 'DELETE' }, 'deleteUser');
   }
 
   // Boards
   async getBoards(): Promise<Board[]> {
-    return this.fetch('/boards');
+    return this.fetch('/boards', {}, 'getBoards');
   }
 
   async getBoard(id: string): Promise<Board> {
-    return this.fetch(`/boards/${id}`);
+    return this.fetch(`/boards/${id}`, {}, 'getBoard');
   }
 
   async createBoard(name: string, description?: string): Promise<Board> {
     return this.fetch('/boards', {
       method: 'POST',
       body: JSON.stringify({ name, description }),
-    });
+    }, 'createBoard');
   }
 
   async updateBoard(id: string, updates: Partial<Board>): Promise<Board> {
     return this.fetch(`/boards/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
-    });
+    }, 'updateBoard');
   }
 
   async deleteBoard(id: string): Promise<void> {
-    return this.fetch(`/boards/${id}`, { method: 'DELETE' });
+    return this.fetch(`/boards/${id}`, { method: 'DELETE' }, 'deleteBoard');
   }
 
   // Board Members
   async getBoardMembers(boardId: string): Promise<BoardMember[]> {
-    return this.fetch(`/boards/${boardId}/members`);
+    return this.fetch(`/boards/${boardId}/members`, {}, 'getBoardMembers');
   }
 
   async addBoardMember(boardId: string, userId: string): Promise<void> {
     return this.fetch(`/boards/${boardId}/members`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
-    });
+    }, 'addBoardMember');
   }
 
   async removeBoardMember(boardId: string, userId: string): Promise<void> {
     return this.fetch(`/boards/${boardId}/members/${userId}`, {
       method: 'DELETE',
-    });
+    }, 'removeBoardMember');
   }
 
   // Columns
@@ -135,18 +139,18 @@ class ApiClient {
     return this.fetch('/columns', {
       method: 'POST',
       body: JSON.stringify({ board_id, name, position }),
-    });
+    }, 'createColumn');
   }
 
   async updateColumn(id: string, updates: Partial<Column>): Promise<Column> {
     return this.fetch(`/columns/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
-    });
+    }, 'updateColumn');
   }
 
   async deleteColumn(id: string): Promise<void> {
-    return this.fetch(`/columns/${id}`, { method: 'DELETE' });
+    return this.fetch(`/columns/${id}`, { method: 'DELETE' }, 'deleteColumn');
   }
 
   // Cards
@@ -154,169 +158,169 @@ class ApiClient {
     return this.fetch('/cards', {
       method: 'POST',
       body: JSON.stringify({ column_id, title, description, assignee, position }),
-    });
+    }, 'createCard');
   }
 
   async updateCard(id: string, updates: Partial<Card>): Promise<Card> {
     return this.fetch(`/cards/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
-    });
+    }, 'updateCard');
   }
 
   async deleteCard(id: string): Promise<void> {
-    return this.fetch(`/cards/${id}`, { method: 'DELETE' });
+    return this.fetch(`/cards/${id}`, { method: 'DELETE' }, 'deleteCard');
   }
 
   // Assignees
   async getBoardAssignees(boardId: string): Promise<{ id: string; name: string; created_at: string }[]> {
-    return this.fetch(`/boards/${boardId}/assignees`);
+    return this.fetch(`/boards/${boardId}/assignees`, {}, 'getBoardAssignees');
   }
 
   async addBoardAssignee(boardId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
     return this.fetch(`/boards/${boardId}/assignees`, {
       method: 'POST',
       body: JSON.stringify({ name }),
-    });
+    }, 'addBoardAssignee');
   }
 
   async renameBoardAssignee(boardId: string, assigneeId: string, name: string): Promise<{ id: string; name: string; created_at: string }> {
     return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
       method: 'PUT',
       body: JSON.stringify({ name }),
-    });
+    }, 'renameBoardAssignee');
   }
 
   async deleteBoardAssignee(boardId: string, assigneeId: string): Promise<void> {
     return this.fetch(`/boards/${boardId}/assignees/${assigneeId}`, {
       method: 'DELETE',
-    });
+    }, 'deleteBoardAssignee');
   }
 
   // Labels
   async getBoardLabels(boardId: string): Promise<Label[]> {
-    return this.fetch(`/boards/${boardId}/labels`);
+    return this.fetch(`/boards/${boardId}/labels`, {}, 'getBoardLabels');
   }
 
   async createLabel(boardId: string, name: string, color: string): Promise<Label> {
     return this.fetch(`/boards/${boardId}/labels`, {
       method: 'POST',
       body: JSON.stringify({ name, color }),
-    });
+    }, 'createLabel');
   }
 
   async updateLabel(id: string, name: string, color: string): Promise<Label> {
     return this.fetch(`/labels/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ name, color }),
-    });
+    }, 'updateLabel');
   }
 
   async deleteLabel(id: string): Promise<void> {
-    return this.fetch(`/labels/${id}`, { method: 'DELETE' });
+    return this.fetch(`/labels/${id}`, { method: 'DELETE' }, 'deleteLabel');
   }
 
   // Comments
   async getCardComments(cardId: string): Promise<Comment[]> {
-    return this.fetch(`/cards/${cardId}/comments`);
+    return this.fetch(`/cards/${cardId}/comments`, {}, 'getCardComments');
   }
 
   async addCardComment(cardId: string, text: string): Promise<Comment> {
     return this.fetch(`/cards/${cardId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ text }),
-    });
+    }, 'addCardComment');
   }
 
   async deleteComment(id: string): Promise<void> {
-    return this.fetch(`/comments/${id}`, { method: 'DELETE' });
+    return this.fetch(`/comments/${id}`, { method: 'DELETE' }, 'deleteComment');
   }
 
   // Checklists
   async getCardChecklist(cardId: string): Promise<ChecklistItem[]> {
-    return this.fetch(`/cards/${cardId}/checklist`);
+    return this.fetch(`/cards/${cardId}/checklist`, {}, 'getCardChecklist');
   }
 
   async addChecklistItem(cardId: string, text: string): Promise<ChecklistItem> {
     return this.fetch(`/cards/${cardId}/checklist`, {
       method: 'POST',
       body: JSON.stringify({ text }),
-    });
+    }, 'addChecklistItem');
   }
 
   async updateChecklistItem(id: string, updates: Partial<ChecklistItem>): Promise<ChecklistItem> {
     return this.fetch(`/checklist/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
-    });
+    }, 'updateChecklistItem');
   }
 
   async deleteChecklistItem(id: string): Promise<void> {
-    return this.fetch(`/checklist/${id}`, { method: 'DELETE' });
+    return this.fetch(`/checklist/${id}`, { method: 'DELETE' }, 'deleteChecklistItem');
   }
   // Custom Fields
   async getCustomFields(boardId: string): Promise<CustomField[]> {
-    return this.fetch(`/boards/${boardId}/custom-fields`);
+    return this.fetch(`/boards/${boardId}/custom-fields`, {}, 'getCustomFields');
   }
 
   async createCustomField(boardId: string, data: { name: string; field_type: string; options?: string[]; show_on_card?: boolean }): Promise<CustomField> {
     return this.fetch(`/boards/${boardId}/custom-fields`, {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, 'createCustomField');
   }
 
   async updateCustomField(fieldId: string, data: Partial<{ name: string; options: string[]; position: number; show_on_card: boolean }>): Promise<CustomField> {
     return this.fetch(`/custom-fields/${fieldId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    });
+    }, 'updateCustomField');
   }
 
   async deleteCustomField(fieldId: string): Promise<void> {
-    return this.fetch(`/custom-fields/${fieldId}`, { method: 'DELETE' });
+    return this.fetch(`/custom-fields/${fieldId}`, { method: 'DELETE' }, 'deleteCustomField');
   }
 
   async setCardCustomFields(cardId: string, values: Record<string, string | null>): Promise<void> {
     return this.fetch(`/cards/${cardId}/custom-fields`, {
       method: 'PUT',
       body: JSON.stringify(values),
-    });
+    }, 'setCardCustomFields');
   }
 
   // Card Members
   async getCardMembers(cardId: string): Promise<CardMember[]> {
-    return this.fetch(`/cards/${cardId}/members`);
+    return this.fetch(`/cards/${cardId}/members`, {}, 'getCardMembers');
   }
 
   async setCardMembers(cardId: string, memberIds: string[]): Promise<CardMember[]> {
     return this.fetch(`/cards/${cardId}/members`, {
       method: 'PUT',
       body: JSON.stringify({ members: memberIds }),
-    });
+    }, 'setCardMembers');
   }
 
   // Analytics
   async getBoardAnalytics(boardId: string, days: number = 30): Promise<any> {
-    return this.fetch(`/boards/${boardId}/analytics?days=${days}`);
+    return this.fetch(`/boards/${boardId}/analytics?days=${days}`, {}, 'getBoardAnalytics');
   }
 
   // Activity
   async getCardActivity(cardId: string): Promise<ActivityEntry[]> {
-    return this.fetch(`/cards/${cardId}/activity`);
+    return this.fetch(`/cards/${cardId}/activity`, {}, 'getCardActivity');
   }
 
   // Notifications
   async getNotifications(): Promise<Notification[]> {
-    return this.fetch('/notifications');
+    return this.fetch('/notifications', {}, 'getNotifications');
   }
 
   async markNotificationRead(id: string): Promise<void> {
-    return this.fetch(`/notifications/${id}/read`, { method: 'PUT' });
+    return this.fetch(`/notifications/${id}/read`, { method: 'PUT' }, 'markNotificationRead');
   }
 
   async markAllNotificationsRead(): Promise<void> {
-    return this.fetch('/notifications/read-all', { method: 'PUT' });
+    return this.fetch('/notifications/read-all', { method: 'PUT' }, 'markAllNotificationsRead');
   }
 
   // SSO
@@ -327,7 +331,7 @@ class ApiClient {
 
   // SSO Admin Settings
   async getOidcSettings() {
-    return this.fetch('/settings/oidc');
+    return this.fetch('/settings/oidc', {}, 'getOidcSettings');
   }
 
   async updateOidcSettings(settings: {
@@ -344,105 +348,105 @@ class ApiClient {
     return this.fetch('/settings/oidc', {
       method: 'PUT',
       body: JSON.stringify(settings),
-    });
+    }, 'updateOidcSettings');
   }
 
   // Templates
   async getTemplates(): Promise<BoardTemplate[]> {
-    return this.fetch('/templates');
+    return this.fetch('/templates', {}, 'getTemplates');
   }
 
   async createTemplateFromBoard(boardId: string, name: string, description?: string): Promise<BoardTemplate> {
     return this.fetch('/templates', {
       method: 'POST',
       body: JSON.stringify({ board_id: boardId, name, description }),
-    });
+    }, 'createTemplateFromBoard');
   }
 
   async useTemplate(templateId: string, name: string, description?: string): Promise<Board> {
     return this.fetch(`/templates/${templateId}/use`, {
       method: 'POST',
       body: JSON.stringify({ name, description }),
-    });
+    }, 'useTemplate');
   }
 
   async deleteTemplate(templateId: string): Promise<void> {
-    return this.fetch(`/templates/${templateId}`, { method: 'DELETE' });
+    return this.fetch(`/templates/${templateId}`, { method: 'DELETE' }, 'deleteTemplate');
   }
 
   // App Settings
   async getAppSettings(): Promise<Record<string, any>> {
-    return this.fetch('/app-settings');
+    return this.fetch('/app-settings', {}, 'getAppSettings');
   }
 
   async updateAppSetting(key: string, value: any): Promise<void> {
     return this.fetch(`/app-settings/${key}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),
-    });
+    }, 'updateAppSetting');
   }
 
   async testSmtp(to: string): Promise<{ message: string }> {
     return this.fetch('/app-settings/smtp-test', {
       method: 'POST',
       body: JSON.stringify({ to }),
-    });
+    }, 'testSmtp');
   }
 
   async getNotificationPreferences(): Promise<Record<string, boolean>> {
-    return this.fetch('/notifications/preferences');
+    return this.fetch('/notifications/preferences', {}, 'getNotificationPreferences');
   }
 
   async updateNotificationPreferences(prefs: Record<string, boolean>): Promise<Record<string, boolean>> {
     return this.fetch('/notifications/preferences', {
       method: 'PUT',
       body: JSON.stringify(prefs),
-    });
+    }, 'updateNotificationPreferences');
   }
 
   async getSmtpStatus(): Promise<{ configured: boolean }> {
-    return this.fetch('/app-settings/smtp-status');
+    return this.fetch('/app-settings/smtp-status', {}, 'getSmtpStatus');
   }
 
   // TOTP 2FA
   async getTotpStatus(): Promise<{ enabled: boolean }> {
-    return this.fetch('/settings/totp/status');
+    return this.fetch('/settings/totp/status', {}, 'getTotpStatus');
   }
 
   async setupTotp(): Promise<{ qr_code: string; secret: string; backup_codes: string[] }> {
-    return this.fetch('/settings/totp/setup', { method: 'POST' });
+    return this.fetch('/settings/totp/setup', { method: 'POST' }, 'setupTotp');
   }
 
   async enableTotp(code: string): Promise<{ message: string }> {
     return this.fetch('/settings/totp/enable', {
       method: 'POST',
       body: JSON.stringify({ code }),
-    });
+    }, 'enableTotp');
   }
 
   async disableTotp(password: string): Promise<{ message: string }> {
     return this.fetch('/settings/totp', {
       method: 'DELETE',
       body: JSON.stringify({ password }),
-    });
+    }, 'disableTotp');
   }
 
   async verify2fa(ticket: string, code: string) {
     const data = await this.fetch('/auth/verify-2fa', {
       method: 'POST',
       body: JSON.stringify({ ticket, code }),
-    });
+    }, 'verify2fa');
     this.setToken(data.token);
     return data.user;
   }
   // Search
   async search(q: string, limit: number = 20): Promise<SearchResponse> {
-    return this.fetch(`/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+    return this.fetch(`/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, 'search');
   }
 
   // Attachments
   async getAttachments(cardId: string): Promise<Attachment[]> {
-    return this.fetch(`/cards/${cardId}/attachments`);
+    return this.fetch(`/cards/${cardId}/attachments`, {}, 'getAttachments');
   }
 
   async uploadAttachment(cardId: string, file: File, onProgress?: (pct: number) => void): Promise<Attachment> {
@@ -475,32 +479,33 @@ class ApiClient {
       const token = this.getToken();
       xhr.open('POST', `${API_URL}/cards/${cardId}/attachments`);
       if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('X-Client-Fn', 'uploadAttachment');
       xhr.send(formData);
     });
   }
 
   async deleteAttachment(id: string): Promise<void> {
-    return this.fetch(`/attachments/${id}`, { method: 'DELETE' });
+    return this.fetch(`/attachments/${id}`, { method: 'DELETE' }, 'deleteAttachment');
   }
 
   // API Tokens
   async getApiTokens(): Promise<ApiToken[]> {
-    return this.fetch('/tokens');
+    return this.fetch('/tokens', {}, 'getApiTokens');
   }
 
   async createApiToken(name: string, expiresInDays?: number): Promise<ApiToken> {
     return this.fetch('/tokens', {
       method: 'POST',
       body: JSON.stringify({ name, expires_in_days: expiresInDays }),
-    });
+    }, 'createApiToken');
   }
 
   async revokeApiToken(id: string): Promise<void> {
-    return this.fetch(`/tokens/${id}`, { method: 'DELETE' });
+    return this.fetch(`/tokens/${id}`, { method: 'DELETE' }, 'revokeApiToken');
   }
 
   async revokeAllApiTokens(): Promise<void> {
-    return this.fetch('/tokens', { method: 'DELETE' });
+    return this.fetch('/tokens', { method: 'DELETE' }, 'revokeAllApiTokens');
   }
 
   // CSV
