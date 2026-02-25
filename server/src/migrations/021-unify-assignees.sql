@@ -11,10 +11,10 @@ CREATE TABLE card_assignees (
   CONSTRAINT card_assignees_must_have_identity CHECK (user_id IS NOT NULL OR display_name IS NOT NULL)
 );
 
-CREATE UNIQUE INDEX idx_card_assignees_linked ON card_assignees (card_id, user_id) WHERE user_id IS NOT NULL;
-CREATE UNIQUE INDEX idx_card_assignees_unlinked ON card_assignees (card_id, display_name) WHERE user_id IS NULL;
-CREATE INDEX idx_card_assignees_card_id ON card_assignees (card_id);
-CREATE INDEX idx_card_assignees_user_id ON card_assignees (user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_card_assignees_linked ON card_assignees (card_id, user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_card_assignees_unlinked ON card_assignees (card_id, display_name) WHERE user_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_card_assignees_card_id ON card_assignees (card_id);
+CREATE INDEX IF NOT EXISTS idx_card_assignees_user_id ON card_assignees (user_id) WHERE user_id IS NOT NULL;
 
 -- 3. Migrate card_members → linked assignees
 INSERT INTO card_assignees (card_id, user_id, created_at)
