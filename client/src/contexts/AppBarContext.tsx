@@ -14,6 +14,7 @@ export interface AppBarContextType {
   onLogout: () => void;
   onSearchOpen: () => void;
   onGoToProfile?: () => void;
+  onOpenDevConsole?: () => void;
 }
 
 const AppBarContext = createContext<AppBarContextType | null>(null);

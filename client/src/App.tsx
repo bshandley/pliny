@@ -13,7 +13,7 @@ import DevConsole from './components/DevConsole';
 import AppBar from './components/AppBar';
 import GlobalSearchModal from './components/GlobalSearchModal';
 
-type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile' | 'developer';
+type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
 
 function slugify(name: string): string {
   return name
@@ -56,6 +56,7 @@ function App() {
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [sso2faTicket, setSso2faTicket] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [devConsoleOpen, setDevConsoleOpen] = useState(false);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -87,6 +88,16 @@ function App() {
 
     if (!slug) return; // root → board list (default)
 
+    if (slug === 'admin/developer') {
+      if (authenticatedUser.role === 'ADMIN') {
+        setPage('users');
+        setAdminSubRoute(null);
+        setDevConsoleOpen(true);
+        window.history.replaceState(null, '', '/admin');
+      }
+      return;
+    }
+
     if (slug === 'admin' || slug.startsWith('admin/')) {
       if (authenticatedUser.role === 'ADMIN') {
         setPage('users');
@@ -103,8 +114,9 @@ function App() {
 
     if (slug === 'developer') {
       if (authenticatedUser.role === 'ADMIN') {
-        setPage('developer');
+        setDevConsoleOpen(true);
       }
+      window.history.replaceState(null, '', '/');
       return;
     }
 
@@ -227,10 +239,6 @@ function App() {
           setCurrentBoardId(null);
           const sub = slug === 'admin' ? null : slug.substring('admin/'.length);
           setAdminSubRoute(sub || null);
-        } else if (slug === 'developer') {
-          setPage('developer');
-          setCurrentBoardId(null);
-          setAdminSubRoute(null);
         }
       }
     };
@@ -450,6 +458,7 @@ function App() {
     onLogout: handleLogout,
     onSearchOpen: () => setSearchOpen(true),
     onGoToProfile: handleGoToProfile,
+    onOpenDevConsole: () => setDevConsoleOpen(true),
   }), [user, notifications, unreadCount, theme]);
 
   if (loading) {
@@ -540,8 +549,6 @@ function App() {
           user={user!}
           onBack={handleBackFromNotifications}
         />
-      ) : page === 'developer' && user?.role === 'ADMIN' ? (
-        <DevConsole onBack={handleBackToBoards} />
       ) : (
         <BoardList
           onSelectBoard={handleSelectBoard}
@@ -554,6 +561,12 @@ function App() {
         onClose={() => setSearchOpen(false)}
         onNavigate={handleNavigateToBoard}
       />
+      {user?.role === 'ADMIN' && (
+        <DevConsole
+          isOpen={devConsoleOpen}
+          onClose={() => setDevConsoleOpen(false)}
+        />
+      )}
     </AppBarContext.Provider>
   );
 }

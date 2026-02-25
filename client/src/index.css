@@ -7522,351 +7522,744 @@ button:disabled {
   background: var(--danger-subtle);
 }
 
-/* ---- Developer Console ---- */
-.dev-console {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-}
+/* ---- API Console Modal ---- */
 
-.dev-console-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-}
-
-.dev-console-filters {
-  display: flex;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.dev-console-filters select,
-.dev-console-filters input {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.dev-console-filters input {
-  flex: 1;
-  max-width: 200px;
-}
-
-.dev-console-controls {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-icon {
-  width: 36px;
-  height: 36px;
+.devconsole-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 25, 23, 0.45);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
+  z-index: 1000;
+  padding: 1.5rem;
+  animation: fadeIn 0.15s var(--ease);
+}
+
+[data-theme="dark"] .devconsole-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.devconsole-modal {
+  background: var(--card-bg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
   border: 1px solid var(--border);
+  width: 100%;
+  max-width: 1340px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 0.25s var(--ease-spring);
+}
+
+/* Header */
+.devconsole-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+  flex-shrink: 0;
+}
+
+.devconsole-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.devconsole-logo {
+  color: var(--primary);
+}
+
+.devconsole-header h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.devconsole-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg);
   border-radius: var(--radius);
+  padding: 0.2rem;
+}
+
+.devconsole-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+
+.devconsole-tab:hover {
+  color: var(--text);
+}
+
+.devconsole-tab.active {
+  background: var(--card-bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.devconsole-tab svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.devconsole-tab.active svg {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.devconsole-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+
+.devconsole-close:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* Body (webhooks tab) */
+.devconsole-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Toolbar */
+.devconsole-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.devconsole-filters {
+  display: flex;
+  gap: 0.375rem;
+  flex: 1;
+}
+
+.devconsole-filters select {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease);
+}
+
+.devconsole-filters select:hover {
+  border-color: var(--border-hover);
+}
+
+.devconsole-filter-input {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  flex: 1;
+  max-width: 220px;
+  transition: border-color 0.15s var(--ease);
+}
+
+.devconsole-filter-input:focus-within {
+  border-color: var(--primary);
+}
+
+.devconsole-filter-input svg {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.devconsole-filter-input input {
+  border: none;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+}
+
+.devconsole-filter-input input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.devconsole-controls {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.devconsole-ctrl-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
+  transition: all 0.15s var(--ease);
 }
 
-.btn-icon:hover {
-  background: var(--bg-raised);
+.devconsole-ctrl-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
 }
 
-.btn-icon.active {
+.devconsole-ctrl-btn.active {
   background: var(--primary-subtle);
   border-color: var(--primary);
   color: var(--primary);
 }
 
-.btn-toggle {
-  padding: 0.5rem 1rem;
+.devconsole-recording-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
   cursor: pointer;
   color: var(--text-secondary);
+  transition: all 0.15s var(--ease);
 }
 
-.btn-toggle.active {
-  background: var(--success);
+.devconsole-recording-btn:hover {
+  border-color: var(--border-hover);
+}
+
+.devconsole-recording-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: background 0.2s var(--ease);
+}
+
+.devconsole-recording-btn.active {
+  color: var(--success);
   border-color: var(--success);
-  color: white;
+  background: rgba(47, 133, 90, 0.06);
 }
 
-.dev-console-content {
+.devconsole-recording-btn.active .devconsole-recording-dot {
+  background: var(--success);
+  animation: devconsole-pulse 2s ease-in-out infinite;
+}
+
+@keyframes devconsole-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Content split */
+.devconsole-content {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: 0;
 }
 
-.dev-console-events {
+/* Event list */
+.devconsole-events {
   overflow-y: auto;
   border-right: 1px solid var(--border);
   background: var(--card-bg);
 }
 
-.dev-console-empty {
-  padding: 2rem;
+.devconsole-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 3rem 2rem;
+  height: 100%;
+  min-height: 200px;
   text-align: center;
-  color: var(--text-secondary);
 }
 
-.dev-event {
+.devconsole-empty svg {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  margin-bottom: 0.25rem;
+}
+
+.devconsole-empty p {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.devconsole-empty span {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+/* Event rows */
+.devconsole-event {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1rem;
+  gap: 0.625rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
+  transition: background 0.1s var(--ease);
 }
 
-.dev-event:hover {
+.devconsole-event:hover {
   background: var(--bg);
 }
 
-.dev-event.selected {
+.devconsole-event.selected {
   background: var(--primary-subtle);
 }
 
-.dev-event-method {
-  font-weight: 600;
-  width: 50px;
+.devconsole-event-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: var(--font-ui);
   flex-shrink: 0;
+  min-width: 40px;
+  text-align: center;
 }
 
-.dev-event-path {
+.devconsole-event-method[data-method="GET"] {
+  background: rgba(97, 175, 254, 0.12);
+  color: #61affe;
+}
+
+.devconsole-event-method[data-method="POST"] {
+  background: rgba(73, 204, 144, 0.12);
+  color: #49cc90;
+}
+
+.devconsole-event-method[data-method="PUT"] {
+  background: rgba(252, 161, 48, 0.12);
+  color: #fca130;
+}
+
+.devconsole-event-method[data-method="DELETE"] {
+  background: rgba(249, 62, 62, 0.12);
+  color: #f93e3e;
+}
+
+.devconsole-event-method[data-method="PATCH"] {
+  background: rgba(80, 227, 194, 0.12);
+  color: #50e3c2;
+}
+
+[data-theme="dark"] .devconsole-event-method[data-method="GET"] {
+  background: rgba(97, 175, 254, 0.15);
+  color: #7ec4ff;
+}
+
+[data-theme="dark"] .devconsole-event-method[data-method="POST"] {
+  background: rgba(73, 204, 144, 0.15);
+  color: #6edcaa;
+}
+
+[data-theme="dark"] .devconsole-event-method[data-method="PUT"] {
+  background: rgba(252, 161, 48, 0.15);
+  color: #fdba5c;
+}
+
+[data-theme="dark"] .devconsole-event-method[data-method="DELETE"] {
+  background: rgba(249, 62, 62, 0.15);
+  color: #ff7070;
+}
+
+[data-theme="dark"] .devconsole-event-method[data-method="PATCH"] {
+  background: rgba(80, 227, 194, 0.15);
+  color: #72ecd2;
+}
+
+.devconsole-event-path {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.775rem;
 }
 
-.dev-event-status {
+.devconsole-event-status {
   font-weight: 600;
-  width: 32px;
+  font-size: 0.75rem;
+  width: 30px;
   text-align: center;
+  flex-shrink: 0;
 }
 
-.dev-event-duration {
-  color: var(--text-secondary);
-  width: 50px;
-  text-align: right;
-}
+.devconsole-event-status.success { color: var(--success); }
+.devconsole-event-status.redirect { color: var(--primary); }
+.devconsole-event-status.client-error { color: #e8a435; }
+.devconsole-event-status.server-error { color: var(--danger); }
 
-.dev-event-age {
+[data-theme="dark"] .devconsole-event-status.client-error { color: #f0b84a; }
+
+.devconsole-event-duration {
   color: var(--text-tertiary);
-  width: 60px;
+  width: 48px;
   text-align: right;
   font-size: 0.75rem;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
 }
 
-.dev-event-fn {
+.devconsole-event-age {
+  color: var(--text-tertiary);
+  width: 52px;
+  text-align: right;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.devconsole-event-fn {
   background: var(--primary-subtle);
   color: var(--primary);
-  padding: 0.125rem 0.5rem;
+  padding: 0.0625rem 0.4rem;
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  max-width: 120px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.dev-console-detail {
+/* Detail pane */
+.devconsole-detail {
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1.25rem;
   background: var(--bg);
 }
 
-.dev-detail-header {
+.devconsole-detail-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.dev-detail-header h3 {
+.devconsole-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.devconsole-detail-path {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.875rem;
+  color: var(--text);
+  word-break: break-all;
+  background: none;
+  padding: 0;
+}
+
+.devconsole-detail-status-badge {
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 1.125rem;
+  flex-shrink: 0;
 }
 
-.dev-detail-status {
-  font-weight: 700;
-  font-size: 1.25rem;
-}
+.devconsole-detail-status-badge.success { color: var(--success); }
+.devconsole-detail-status-badge.redirect { color: var(--primary); }
+.devconsole-detail-status-badge.client-error { color: #e8a435; }
+.devconsole-detail-status-badge.server-error { color: var(--danger); }
 
-.dev-detail-meta {
+[data-theme="dark"] .devconsole-detail-status-badge.client-error { color: #f0b84a; }
+
+/* Meta grid */
+.devconsole-detail-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  gap: 0.25rem 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.dev-detail-section {
+.devconsole-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.devconsole-meta-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.devconsole-meta-value {
+  font-size: 0.8125rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.devconsole-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.775rem;
+}
+
+/* Sections */
+.devconsole-section {
   margin-bottom: 1rem;
 }
 
-.dev-detail-section h4 {
+.devconsole-section h4 {
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.dev-detail-fn {
+/* Function card */
+.devconsole-fn-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
 }
 
-.dev-fn-signature {
-  padding: 0.75rem 1rem;
+.devconsole-fn-sig {
+  padding: 0.625rem 0.875rem;
   background: var(--primary-subtle);
-  font-family: monospace;
-  font-size: 0.8rem;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.775rem;
   color: var(--primary);
   border-bottom: 1px solid var(--border);
 }
 
-.dev-fn-line {
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
+.devconsole-fn-loc {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.7rem;
   color: var(--text-tertiary);
   border-bottom: 1px solid var(--border);
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
 }
 
-.dev-fn-source {
-  padding: 1rem;
-  font-family: monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
+.devconsole-fn-source {
+  padding: 0.875rem;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.775rem;
+  line-height: 1.6;
   overflow-x: auto;
   margin: 0;
   white-space: pre;
+  color: var(--text);
 }
 
-.dev-detail-json,
-.dev-detail-code {
+/* JSON/Code blocks */
+.devconsole-json,
+.devconsole-code {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
-  font-family: monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  padding: 0.875rem;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.775rem;
+  line-height: 1.6;
   overflow-x: auto;
   margin: 0;
   white-space: pre;
-  max-height: 300px;
+  max-height: 260px;
   overflow-y: auto;
+  color: var(--text);
 }
 
-.dev-detail-actions {
+/* Actions */
+.devconsole-actions {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  align-items: center;
 }
 
-.dev-copy-group {
+.devconsole-copy-group {
   display: flex;
-  gap: 0;
 }
 
-.dev-copy-group select {
-  padding: 0.5rem 0.75rem;
+.devconsole-copy-group select {
+  padding: 0.375rem 0.625rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius) 0 0 var(--radius);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   background: var(--card-bg);
-  font-size: 0.85rem;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
   color: var(--text);
+  cursor: pointer;
 }
 
-.dev-copy-group button {
-  padding: 0.5rem 1rem;
+.devconsole-copy-group button {
+  padding: 0.375rem 0.75rem;
   border: 1px solid var(--border);
   border-left: none;
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--bg);
-  font-size: 0.85rem;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
   cursor: pointer;
   color: var(--text);
+  transition: all 0.15s var(--ease);
 }
 
-.dev-copy-group button:hover {
+.devconsole-copy-group button:hover {
   background: var(--bg-raised);
 }
 
+.devconsole-try-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+
+.devconsole-try-btn:hover {
+  background: var(--primary-hover);
+}
+
+/* Mobile */
 @media (max-width: 768px) {
-  .dev-console-content {
+  .devconsole-overlay {
+    padding: 0;
+  }
+
+  .devconsole-modal {
+    border-radius: 0;
+    height: 100vh;
+    max-width: 100%;
+  }
+
+  .devconsole-content {
     grid-template-columns: 1fr;
   }
 
-  .dev-console-events {
+  .devconsole-events {
     border-right: none;
     border-bottom: 1px solid var(--border);
-    max-height: 40vh;
+    max-height: 45vh;
   }
 
-  .dev-console-toolbar {
+  .devconsole-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
   }
 
-  .dev-event-age,
-  .dev-event-fn {
+  .devconsole-filters {
+    flex-wrap: wrap;
+  }
+
+  .devconsole-filter-input {
+    max-width: none;
+  }
+
+  .devconsole-event-age,
+  .devconsole-event-fn {
     display: none;
   }
-}
 
-/* Dev Console Tabs */
-.dev-console-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--card-bg);
-}
+  .devconsole-header {
+    padding: 0.75rem;
+  }
 
-.dev-tab {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
+  .devconsole-tabs {
+    display: none;
+  }
 
-.dev-tab:hover {
-  color: var(--text);
-}
+  .devconsole-header-left h2 {
+    font-size: 0.9rem;
+  }
 
-.dev-tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  .devconsole-detail {
+    padding: 0.75rem;
+  }
+
+  .devconsole-detail-meta {
+    flex-direction: column;
+    gap: 0.375rem;
+  }
 }
 
 /* Webhook Settings */

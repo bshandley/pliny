@@ -12,6 +12,7 @@ interface UserMenuProps {
 export default function UserMenu({ user, theme, onToggleTheme, onLogout }: UserMenuProps) {
   const appBarCtx = useContext(AppBarContext);
   const onGoToProfile = appBarCtx?.onGoToProfile;
+  const onOpenDevConsole = appBarCtx?.onOpenDevConsole;
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +67,14 @@ export default function UserMenu({ user, theme, onToggleTheme, onLogout }: UserM
             </svg>
             Profile
           </button>
+          {user.role === 'ADMIN' && (
+            <button onClick={() => { onOpenDevConsole?.(); setOpen(false); }} className="user-menu-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+              </svg>
+              API Console
+            </button>
+          )}
           <button onClick={() => { onLogout(); setOpen(false); }} className="user-menu-item user-menu-logout">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
