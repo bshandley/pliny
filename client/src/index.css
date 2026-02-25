@@ -13,6 +13,7 @@
 /* ---- Theme Variables ---- */
 
 :root {
+  color-scheme: light;
   --primary: #5746af;
   --primary-hover: #463896;
   --primary-subtle: rgba(87, 70, 175, 0.08);
@@ -45,6 +46,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --primary: #8b7cf7;
   --primary-hover: #a094f9;
   --primary-subtle: rgba(139, 124, 247, 0.1);
@@ -1784,6 +1786,7 @@ button:disabled {
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
+  color-scheme: inherit;
   transition: border-color 0.15s var(--ease);
 }
 
