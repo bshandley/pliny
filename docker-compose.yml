@@ -5,9 +5,8 @@ services:
       POSTGRES_DB: plank
       POSTGRES_USER: plank
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
-    # Internal network only - no external port
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - plank_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U plank -d plank"]
       interval: 5s
@@ -18,7 +17,6 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    # No external port needed - nginx proxies /api/ internally
     environment:
       NODE_ENV: production
       DB_HOST: db
@@ -51,4 +49,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  plank_pgdata:
+    external: true
