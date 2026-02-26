@@ -65,7 +65,7 @@ if (row.created_by !== req.user!.id)
 ```
 
 ## 🔗 Key URLs
-- **Gitea Repo**: http://10.0.0.102:3004/bradley/cork
+- **Gitea Repo**: http://10.0.0.102:3004/bradley/pliny
 - **Dev Frontend**: http://10.0.0.102:5175 (production deploy)
 - **API**: http://10.0.0.102:3006
 
