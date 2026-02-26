@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd /opt/stacks/plank
+cd /opt/stacks/pliny
 
 echo "🔄 Checking for updates from Gitea..."
 
@@ -9,11 +9,11 @@ echo "🔄 Checking for updates from Gitea..."
 git config credential.helper store
 
 # Fetch latest
-git fetch origin master 2>/dev/null || git fetch origin main 2>/dev/null || true
+git fetch origin main
 
 # Check for updates
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/master 2>/dev/null || git rev-parse origin/main 2>/dev/null || echo "$LOCAL")
+REMOTE=$(git rev-parse origin/main)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
     echo "✅ Already up to date"
@@ -25,7 +25,7 @@ echo "   Local:  ${LOCAL:0:8}"
 echo "   Remote: ${REMOTE:0:8}"
 
 # Pull changes
-git pull origin master 2>/dev/null || git pull origin main 2>/dev/null || git reset --hard origin/master
+git pull origin main
 
 # Get new commit hash for cache busting
 COMMIT_HASH=$(git rev-parse HEAD)
@@ -33,7 +33,7 @@ COMMIT_HASH=$(git rev-parse HEAD)
 # Rebuild with cache bust (forces fresh COPY on every deploy)
 echo "🐳 Rebuilding containers (cache bust: ${COMMIT_HASH:0:8})..."
 sudo docker compose build --build-arg CACHE_BUST="$COMMIT_HASH"
-sudo docker compose up -d
+sudo docker compose up -d --force-recreate
 
 # Wait for db to be healthy
 echo "⏳ Waiting for database..."
