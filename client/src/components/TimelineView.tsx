@@ -58,6 +58,9 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
   const [draggingScheduledCard, setDraggingScheduledCard] = useState<Card | null>(null);
   const draggingScheduledCardRef = useRef<Card | null>(null);
   const [dropIndicatorPx, setDropIndicatorPx] = useState<number | null>(null);
+  // Bug 1: track whether the cursor is currently over the unscheduled drop zone
+  // so we can switch the hint text and apply a stronger highlight.
+  const [isHoveringUnscheduled, setIsHoveringUnscheduled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const unscheduledRef = useRef<HTMLDivElement>(null);
@@ -136,9 +139,16 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
   };
 
   // #20/#1: update drop indicator while dragging a scheduled bar.
-  // Receives the projected chart-px position of the bar's LEFT EDGE (not raw mouse position).
-  const handleBarDragMove = useCallback((projectedBarLeftChartPx: number) => {
+  // Also receives clientX/Y to detect when the cursor is over the unscheduled zone (#21 / bug 1).
+  const handleBarDragMove = useCallback((projectedBarLeftChartPx: number, clientX: number, clientY: number) => {
     setDropIndicatorPx(projectedBarLeftChartPx);
+    if (unscheduledRef.current) {
+      const rect = unscheduledRef.current.getBoundingClientRect();
+      setIsHoveringUnscheduled(
+        clientX >= rect.left && clientX <= rect.right &&
+        clientY >= rect.top  && clientY <= rect.bottom
+      );
+    }
   }, []);
 
   const handleBarDragEnd = async (clientX: number, clientY: number) => {
@@ -146,7 +156,8 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
     const card = draggingScheduledCardRef.current;
     draggingScheduledCardRef.current = null;
     setDraggingScheduledCard(null);
-    setDropIndicatorPx(null); // #20: clear indicator on drop
+    setDropIndicatorPx(null);       // #20: clear indicator on drop
+    setIsHoveringUnscheduled(false); // bug 1: clear hover state
 
     if (!card || !unscheduledRef.current) return;
 
@@ -427,14 +438,21 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
       {/* Unscheduled tasks section — always rendered so unscheduledRef is available
           for drop-to-unschedule (#21). Hidden via CSS when nothing to show. */}
       <div
-        className={`timeline-unscheduled${draggingScheduledCard ? ' timeline-unscheduled--drop-target' : ''}${unscheduledCards.length === 0 && !draggingScheduledCard ? ' timeline-unscheduled--hidden' : ''}`}
+        className={[
+          'timeline-unscheduled',
+          draggingScheduledCard ? 'timeline-unscheduled--drop-target' : '',
+          isHoveringUnscheduled ? 'timeline-unscheduled--hover' : '',
+          unscheduledCards.length === 0 && !draggingScheduledCard ? 'timeline-unscheduled--hidden' : '',
+        ].filter(Boolean).join(' ')}
         ref={unscheduledRef}
       >
         <div className="timeline-unscheduled-header">
           <span className="timeline-unscheduled-label">Unscheduled</span>
           {unscheduledCards.length > 0 && <span className="swimlane-count">{unscheduledCards.length}</span>}
           {draggingScheduledCard && (
-            <span className="timeline-unscheduled-drop-hint">Drop here to unschedule</span>
+            <span className="timeline-unscheduled-drop-hint">
+              {isHoveringUnscheduled ? 'Release to unschedule' : 'Drop here to unschedule'}
+            </span>
           )}
         </div>
         <div className="timeline-unscheduled-cards">

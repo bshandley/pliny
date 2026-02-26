@@ -15,8 +15,9 @@ interface TimelineBarProps {
   onClick: () => void;
   onBarDragStart?: () => void;
   onBarDragEnd?: (clientX: number, clientY: number) => void;
-  // Receives the projected chart-px position of the bar's LEFT EDGE (#20/#1)
-  onBarDragMove?: (projectedBarLeftChartPx: number) => void;
+  // Receives the projected chart-px position of the bar's LEFT EDGE (#20/#1),
+  // plus raw clientX/Y so the parent can detect hover over the unscheduled zone (#21).
+  onBarDragMove?: (projectedBarLeftChartPx: number, clientX: number, clientY: number) => void;
 }
 
 const ZOOM_PX_PER_DAY = {
@@ -100,8 +101,9 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
       const dx = moveEvent.clientX - startX;
       if (Math.abs(dx) > 5) didInteractRef.current = true;
       setDragOffset(dx);
-      // #1: send projected left edge of bar (chart px), not raw mouse position
-      onBarDragMove?.(barLeftAtDragStart + dx);
+      // #1: send projected left edge of bar (chart px), not raw mouse position;
+      // also forward clientX/Y so parent can detect unscheduled-zone hover (#21).
+      onBarDragMove?.(barLeftAtDragStart + dx, moveEvent.clientX, moveEvent.clientY);
     };
 
     const handleUp = async (upEvent: MouseEvent) => {
@@ -167,10 +169,11 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
         if (card.start_date) {
           const newStart = addDays(new Date(card.start_date), daysDelta);
           if (card.due_date && newStart >= new Date(card.due_date)) {
-            setResizeOffset(null);
-            return;
+            // Dragged past due_date: collapse to a due-only marker (remove start_date).
+            updates.start_date = null;
+          } else {
+            updates.start_date = formatDateISO(newStart);
           }
-          updates.start_date = formatDateISO(newStart);
         } else if (card.due_date) {
           // Due-only: stretching left creates start_date
           const newStart = addDays(new Date(card.due_date), daysDelta);
@@ -192,10 +195,12 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
           // Range card: adjust due_date only
           const newEnd = addDays(new Date(card.due_date), daysDelta);
           if (card.start_date && newEnd <= new Date(card.start_date)) {
-            setResizeOffset(null);
-            return;
+            // Dragged past start_date: collapse to a due-only marker at the start position.
+            updates.due_date = formatDateISO(new Date(card.start_date));
+            updates.start_date = null;
+          } else {
+            updates.due_date = formatDateISO(newEnd);
           }
-          updates.due_date = formatDateISO(newEnd);
         } else if (card.start_date) {
           // Start-only: stretching right creates due_date
           const newEnd = addDays(new Date(card.start_date), daysDelta);
@@ -227,6 +232,9 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
 
   if (!barStyle) return null;
 
+  const isDueOnly = barStyle.type === 'due-only';
+  const isOpen = barStyle.type === 'open';
+
   let displayLeft = barStyle.left + dragOffset;
   let displayWidth = barStyle.width;
   if (resizeOffset) {
@@ -239,8 +247,22 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
   }
   displayWidth = Math.max(displayWidth, 12);
 
-  const isDueOnly = barStyle.type === 'due-only';
-  const isOpen = barStyle.type === 'open';
+  // Bug 3: During resize of a due-only marker, the CSS class forces width:12px !important
+  // which defeats the inline style. Re-anchor left/width to the actual date position so
+  // the bar visually stretches in real-time (class is stripped below when true).
+  const isResizingMarker = isDueOnly && resizeOffset !== null;
+  if (isResizingMarker && resizeOffset) {
+    const duePos = barStyle.left + 10; // actual date pixel (center of the marker dot)
+    if (resizeOffset.edge === 'left') {
+      // Bar extends left from duePos; right edge stays anchored at duePos.
+      displayLeft = duePos + resizeOffset.dx;
+      displayWidth = Math.max(-resizeOffset.dx, 4);
+    } else {
+      // Bar extends right from duePos; left edge stays anchored at duePos.
+      displayLeft = duePos;
+      displayWidth = Math.max(resizeOffset.dx, 4);
+    }
+  }
 
   // #2: human-readable tooltip
   const tooltipDates = card.start_date && card.due_date
@@ -253,7 +275,7 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
 
   return (
     <div
-      className={`timeline-bar${isDueOnly ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${isDragging ? ' timeline-bar--dragging' : ''}`}
+      className={`timeline-bar${isDueOnly && !isResizingMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${isDragging ? ' timeline-bar--dragging' : ''}`}
       style={{
         position: 'absolute',
         left: displayLeft,

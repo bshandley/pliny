@@ -3911,6 +3911,19 @@ button:disabled {
   color: var(--primary);
 }
 
+/* Bug 1: stronger highlight when cursor is actually over the drop zone */
+.timeline-unscheduled--hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--bg));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.timeline-unscheduled--hover .timeline-unscheduled-drop-hint {
+  animation: none;
+  opacity: 1;
+  font-weight: 700;
+}
+
 .timeline-unscheduled-drop-hint {
   font-size: 0.7rem;
   font-weight: 600;
