@@ -135,11 +135,18 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
     setDraggingScheduledCard(card);
   };
 
+  // #20: update drop indicator while dragging a scheduled bar
+  const handleBarDragMove = useCallback((clientX: number) => {
+    const px = clientXToChartPx(clientX);
+    if (px !== null) setDropIndicatorPx(px);
+  }, [clientXToChartPx]);
+
   const handleBarDragEnd = async (clientX: number, clientY: number) => {
     // Read from ref — safe against stale closure
     const card = draggingScheduledCardRef.current;
     draggingScheduledCardRef.current = null;
     setDraggingScheduledCard(null);
+    setDropIndicatorPx(null); // #20: clear indicator on drop
 
     if (!card || !unscheduledRef.current) return;
 
@@ -417,39 +424,38 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
         </div>
       </div>
 
-      {/* Unscheduled tasks section — also a drop target for scheduled bars */}
-      {(unscheduledCards.length > 0 || draggingScheduledCard) && (
-        <div
-          className={`timeline-unscheduled${draggingScheduledCard ? ' timeline-unscheduled--drop-target' : ''}`}
-          ref={unscheduledRef}
-        >
-          <div className="timeline-unscheduled-header">
-            <span className="timeline-unscheduled-label">Unscheduled</span>
-            {unscheduledCards.length > 0 && <span className="swimlane-count">{unscheduledCards.length}</span>}
-            {draggingScheduledCard && (
-              <span className="timeline-unscheduled-drop-hint">Drop here to unschedule</span>
-            )}
-          </div>
-          <div className="timeline-unscheduled-cards">
-            {unscheduledCards.map(({ card, column }) => (
-              <button
-                key={card.id}
-                className={`timeline-unscheduled-chip${draggingUnscheduled?.card.id === card.id ? ' timeline-unscheduled-chip--dragging' : ''}`}
-                onClick={() => onCardClick(card.id)}
-                draggable={isAdmin}
-                onDragStart={e => handleChipDragStart(e, { card, column })}
-                onDragEnd={handleChipDragEnd}
-                style={{ '--chip-color': columnColorMap.get(column.name) || BAR_COLORS[0] } as React.CSSProperties}
-                title={isAdmin ? `${card.title} — drag onto timeline to schedule` : card.title}
-              >
-                <span className="timeline-unscheduled-dot" />
-                <span className="timeline-unscheduled-chip-title">{card.title}</span>
-                <span className="timeline-unscheduled-chip-status">{column.name}</span>
-              </button>
-            ))}
-          </div>
+      {/* Unscheduled tasks section — always rendered so unscheduledRef is available
+          for drop-to-unschedule (#21). Hidden via CSS when nothing to show. */}
+      <div
+        className={`timeline-unscheduled${draggingScheduledCard ? ' timeline-unscheduled--drop-target' : ''}${unscheduledCards.length === 0 && !draggingScheduledCard ? ' timeline-unscheduled--hidden' : ''}`}
+        ref={unscheduledRef}
+      >
+        <div className="timeline-unscheduled-header">
+          <span className="timeline-unscheduled-label">Unscheduled</span>
+          {unscheduledCards.length > 0 && <span className="swimlane-count">{unscheduledCards.length}</span>}
+          {draggingScheduledCard && (
+            <span className="timeline-unscheduled-drop-hint">Drop here to unschedule</span>
+          )}
         </div>
-      )}
+        <div className="timeline-unscheduled-cards">
+          {unscheduledCards.map(({ card, column }) => (
+            <button
+              key={card.id}
+              className={`timeline-unscheduled-chip${draggingUnscheduled?.card.id === card.id ? ' timeline-unscheduled-chip--dragging' : ''}`}
+              onClick={() => onCardClick(card.id)}
+              draggable={isAdmin}
+              onDragStart={e => handleChipDragStart(e, { card, column })}
+              onDragEnd={handleChipDragEnd}
+              style={{ '--chip-color': columnColorMap.get(column.name) || BAR_COLORS[0] } as React.CSSProperties}
+              title={isAdmin ? `${card.title} — drag onto timeline to schedule` : card.title}
+            >
+              <span className="timeline-unscheduled-dot" />
+              <span className="timeline-unscheduled-chip-title">{card.title}</span>
+              <span className="timeline-unscheduled-chip-status">{column.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="timeline-body" ref={scrollRef}>
         <div className="timeline-swimlane-labels">
@@ -528,6 +534,7 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
                       onClick={() => onCardClick(card.id)}
                       onBarDragStart={() => handleBarDragStart(card)}
                       onBarDragEnd={handleBarDragEnd}
+                      onBarDragMove={handleBarDragMove}
                     />
                   ))}
                 </div>

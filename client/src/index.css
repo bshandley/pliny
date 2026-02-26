@@ -3894,6 +3894,11 @@ button:disabled {
 }
 
 /* Drop target state when dragging a scheduled bar onto unscheduled zone */
+/* #21: always rendered but visually hidden when no unscheduled cards and not dragging */
+.timeline-unscheduled--hidden {
+  display: none;
+}
+
 .timeline-unscheduled--drop-target {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 6%, var(--bg));

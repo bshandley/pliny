@@ -15,6 +15,7 @@ interface TimelineBarProps {
   onClick: () => void;
   onBarDragStart?: () => void;
   onBarDragEnd?: (clientX: number, clientY: number) => void;
+  onBarDragMove?: (clientX: number) => void; // #20: live indicator during scheduled bar drag
 }
 
 const ZOOM_PX_PER_DAY = {
@@ -33,13 +34,12 @@ function formatDateISO(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick, onBarDragStart, onBarDragEnd }: TimelineBarProps) {
+export default function TimelineBar({ card, columnName, barColor, dateToPx, pxToDate, zoom, rowIndex, isAdmin, onUpdate, onClick, onBarDragStart, onBarDragEnd, onBarDragMove }: TimelineBarProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeOffset, setResizeOffset] = useState<{ edge: 'left' | 'right'; dx: number } | null>(null);
-  // Track whether mouse moved enough to count as a drag (prevents click-after-drag)
-  const didDragRef = useRef(false);
-  const dragStartPos = useRef({ x: 0, y: 0 });
+  // #23: single ref tracks any interaction (move OR resize) to suppress spurious click-after-drag
+  const didInteractRef = useRef(false);
 
   const barStyle = useMemo(() => {
     if (!card.start_date && !card.due_date) return null;
@@ -51,8 +51,9 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
     }
 
     if (card.due_date) {
+      // #22: render due-only as a small bar (not a tiny 12px dot) so it has resize handles
       const pos = dateToPx(new Date(card.due_date));
-      return { left: pos - 6, width: 12, type: 'marker' as const };
+      return { left: pos - 10, width: 20, type: 'due-only' as const };
     }
 
     if (card.start_date) {
@@ -69,31 +70,29 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Allow drag if admin and at least one date exists
     if (!isAdmin || (!card.start_date && !card.due_date)) return;
     e.preventDefault();
     const startX = e.clientX;
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
-    didDragRef.current = false;
+    didInteractRef.current = false;
     setIsDragging(true);
 
     const origStart = card.start_date ? new Date(card.start_date) : null;
     const origEnd = card.due_date ? new Date(card.due_date) : null;
-    const isMarkerDrag = !card.start_date && card.due_date;
 
     onBarDragStart?.();
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - dragStartPos.current.x;
-      if (Math.abs(dx) > 5) didDragRef.current = true;
-      setDragOffset(moveEvent.clientX - startX);
+      const dx = moveEvent.clientX - startX;
+      if (Math.abs(dx) > 5) didInteractRef.current = true;
+      setDragOffset(dx);
+      // #20: notify parent so it can show the drop indicator
+      onBarDragMove?.(moveEvent.clientX);
     };
 
     const handleUp = async (upEvent: MouseEvent) => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
       setIsDragging(false);
-
       onBarDragEnd?.(upEvent.clientX, upEvent.clientY);
 
       const dx = upEvent.clientX - startX;
@@ -102,15 +101,15 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
 
       const updates: Record<string, string> = {};
 
-      if (isMarkerDrag && origEnd) {
-        // Due-only card: shift only due_date
+      if (!origStart && origEnd) {
+        // Due-only: shift due_date
         updates.due_date = formatDateISO(addDays(origEnd, daysDelta));
       } else if (origStart && origEnd) {
-        // Range card: shift both dates together
+        // Range: shift both
         updates.start_date = formatDateISO(addDays(origStart, daysDelta));
         updates.due_date = formatDateISO(addDays(origEnd, daysDelta));
       } else if (origStart) {
-        // Start-only card: shift start_date
+        // Start-only: shift start_date
         updates.start_date = formatDateISO(addDays(origStart, daysDelta));
       }
 
@@ -133,6 +132,8 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
     if (!isAdmin) return;
     e.preventDefault();
     e.stopPropagation();
+    // #23: mark as interacted so the bar's onClick is suppressed
+    didInteractRef.current = true;
     const startX = e.clientX;
 
     const handleMove = (moveEvent: MouseEvent) => {
@@ -147,29 +148,54 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
       if (daysDelta === 0) { setResizeOffset(null); return; }
 
       const updates: any = {};
-      if (edge === 'left' && card.start_date) {
-        const newStart = addDays(new Date(card.start_date), daysDelta);
-        // Don't let start go past due date
-        if (card.due_date && newStart >= new Date(card.due_date)) {
-          setResizeOffset(null);
-          return;
+
+      if (edge === 'left') {
+        if (card.start_date) {
+          // Adjust existing start date
+          const newStart = addDays(new Date(card.start_date), daysDelta);
+          if (card.due_date && newStart >= new Date(card.due_date)) {
+            setResizeOffset(null);
+            return;
+          }
+          updates.start_date = formatDateISO(newStart);
+        } else if (card.due_date) {
+          // #22: due-only card — stretching left creates a start_date
+          const newStart = addDays(new Date(card.due_date), daysDelta);
+          if (newStart < new Date(card.due_date)) {
+            updates.start_date = formatDateISO(newStart);
+          } else {
+            setResizeOffset(null);
+            return;
+          }
         }
-        updates.start_date = formatDateISO(newStart);
-      } else if (edge === 'right' && card.due_date) {
-        const newEnd = addDays(new Date(card.due_date), daysDelta);
-        // Don't let end go before start date
-        if (card.start_date && newEnd <= new Date(card.start_date)) {
-          setResizeOffset(null);
-          return;
+      } else if (edge === 'right') {
+        if (card.due_date) {
+          // Adjust existing due date
+          const newEnd = addDays(new Date(card.due_date), daysDelta);
+          if (card.start_date && newEnd <= new Date(card.start_date)) {
+            setResizeOffset(null);
+            return;
+          }
+          updates.due_date = formatDateISO(newEnd);
+        } else if (card.start_date) {
+          // #22: start-only card — stretching right creates a due_date
+          const newEnd = addDays(new Date(card.start_date), daysDelta);
+          if (newEnd > new Date(card.start_date)) {
+            updates.due_date = formatDateISO(newEnd);
+          } else {
+            setResizeOffset(null);
+            return;
+          }
         }
-        updates.due_date = formatDateISO(newEnd);
       }
 
-      try {
-        await api.updateCard(card.id, updates);
-        onUpdate();
-      } catch {
-        // revert handled by board reload
+      if (Object.keys(updates).length > 0) {
+        try {
+          await api.updateCard(card.id, updates);
+          onUpdate();
+        } catch {
+          // revert handled by board reload
+        }
       }
       setResizeOffset(null);
     };
@@ -193,33 +219,38 @@ export default function TimelineBar({ card, columnName, barColor, dateToPx, pxTo
   }
   displayWidth = Math.max(displayWidth, 12);
 
-  const isMarker = barStyle.type === 'marker';
+  const isDueOnly = barStyle.type === 'due-only';
   const isOpen = barStyle.type === 'open';
 
   return (
     <div
-      className={`timeline-bar${isMarker ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${isDragging ? ' timeline-bar--dragging' : ''}`}
+      className={`timeline-bar${isDueOnly ? ' timeline-marker' : ''}${isOpen ? ' timeline-open-ended' : ''}${isDragging ? ' timeline-bar--dragging' : ''}`}
       style={{
         position: 'absolute',
         left: displayLeft,
-        width: isMarker ? 12 : displayWidth,
+        width: displayWidth,
         top: rowIndex * 32 + 4,
         '--bar-color': barColor,
       } as React.CSSProperties}
       onMouseDown={handleMouseDown}
       onClick={(e) => {
         e.stopPropagation();
-        // Suppress click if the mouse moved enough to count as a drag
-        if (didDragRef.current) return;
+        // #23: suppress click if any interaction (drag or resize) occurred
+        if (didInteractRef.current) {
+          didInteractRef.current = false;
+          return;
+        }
         onClick();
       }}
       title={`${card.title}\n${columnName}\n${card.start_date || '?'} – ${card.due_date || '?'}`}
     >
-      {isAdmin && !isMarker && card.start_date && (
+      {/* #22: left handle — show for range cards (adjust start) or due-only (create start) */}
+      {isAdmin && (card.start_date || isDueOnly) && (
         <div className="bar-resize-handle bar-resize-left" onMouseDown={(e) => handleResizeStart('left', e)} />
       )}
       <span className="bar-title">{card.title}</span>
-      {isAdmin && !isMarker && card.due_date && (
+      {/* #22: right handle — show for range/open cards (adjust/create due) */}
+      {isAdmin && (card.due_date || isOpen) && (
         <div className="bar-resize-handle bar-resize-right" onMouseDown={(e) => handleResizeStart('right', e)} />
       )}
     </div>
