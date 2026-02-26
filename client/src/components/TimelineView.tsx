@@ -135,11 +135,11 @@ export default function TimelineView({ board, filterCard, isAdmin, isMobile, onC
     setDraggingScheduledCard(card);
   };
 
-  // #20: update drop indicator while dragging a scheduled bar
-  const handleBarDragMove = useCallback((clientX: number) => {
-    const px = clientXToChartPx(clientX);
-    if (px !== null) setDropIndicatorPx(px);
-  }, [clientXToChartPx]);
+  // #20/#1: update drop indicator while dragging a scheduled bar.
+  // Receives the projected chart-px position of the bar's LEFT EDGE (not raw mouse position).
+  const handleBarDragMove = useCallback((projectedBarLeftChartPx: number) => {
+    setDropIndicatorPx(projectedBarLeftChartPx);
+  }, []);
 
   const handleBarDragEnd = async (clientX: number, clientY: number) => {
     // Read from ref — safe against stale closure
