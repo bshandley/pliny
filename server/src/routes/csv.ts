@@ -178,7 +178,7 @@ router.post('/boards/:boardId/csv/import/preview', authenticate, requireAdmin, u
 
     const headers = Object.keys(records[0]);
 
-    // Auto-map headers to Plank fields
+    // Auto-map headers to Pliny fields
     const fieldAliases: Record<string, string[]> = {
       title: ['title', 'name', 'card', 'card title', 'card name', 'task', 'task name'],
       description: ['description', 'desc', 'details', 'body', 'notes'],

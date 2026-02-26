@@ -221,7 +221,7 @@ export default function OidcSettings() {
               placeholder="https://plank.example.com"
               maxLength={500}
             />
-            <span className="form-hint">The public URL where Plank is reachable (used for OIDC redirects)</span>
+            <span className="form-hint">The public URL where Pliny is reachable (used for OIDC redirects)</span>
           </div>
         </div>
 

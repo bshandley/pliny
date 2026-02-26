@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
-import PlankLogo from './PlankLogo';
+import PlinyLogo from './PlinyLogo';
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -99,8 +99,8 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
       <div className="login-container">
         <div className="login-card">
           <div className="login-logo">
-            <PlankLogo size={48} />
-            <h1>Plank</h1>
+            <PlinyLogo size={48} />
+            <h1>Pliny</h1>
           </div>
           <p className="login-subtitle">Enter the 6-digit code from your authenticator app</p>
           <form onSubmit={handleVerify2fa}>
@@ -141,8 +141,8 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
     <div className="login-container">
       <div className="login-card">
         <div className="login-logo">
-          <PlankLogo size={48} />
-          <h1>Plank</h1>
+          <PlinyLogo size={48} />
+          <h1>Pliny</h1>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">

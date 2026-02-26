@@ -1,4 +1,4 @@
-# Plank Pricing Strategy
+# Pliny Pricing Strategy
 **North Star Document**
 
 ## The Vision
@@ -38,7 +38,7 @@ Be so cheap it's stupid not to try. Be so good they stay.
 | Linear | $80 | $960 |
 | Monday | $100 | $1,200 |
 | Asana | $110 | $1,320 |
-| **Plank** | **$10** | **$120** |
+| **Pliny** | **$10** | **$120** |
 
 **We're 80-90% cheaper than everyone else.**
 
@@ -66,7 +66,7 @@ Be so cheap it's stupid not to try. Be so good they stay.
 > 
 > Why? Because we're not greedy, and you have better things to spend money on.
 > 
-> Plank is open source. You can run it yourself for free, or let us handle it for $10/month. Unlimited users. All features. No bullshit.
+> Pliny is open source. You can run it yourself for free, or let us handle it for $10/month. Unlimited users. All features. No bullshit.
 
 ### Value Proposition
 **For self-hosters:** "Own your data, run it anywhere, no vendor lock-in"  
@@ -74,7 +74,7 @@ Be so cheap it's stupid not to try. Be so good they stay.
 
 ## Differentiation
 
-### Why Plank Wins
+### Why Pliny Wins
 1. **Actually affordable** - Not "affordable per seat," actually affordable
 2. **Actually open source** - Not fake "source available" license tricks
 3. **No artificial limits** - Free tier isn't crippled to force upgrades
@@ -121,15 +121,15 @@ Be so cheap it's stupid not to try. Be so good they stay.
 
 ### Initial Launch
 - Product Hunt (aim for #1 product of the day)
-- Hacker News (Show HN: Plank - Open Source Kanban)
+- Hacker News (Show HN: Pliny - Open Source Kanban)
 - Reddit: r/selfhosted, r/opensource, r/sysadmin
 - Twitter/X: Build in public thread
 - IndieHackers: Journey posts
 
 ### Ongoing
 - SEO content (Trello alternative, self-hosted project management)
-- Comparison pages (Plank vs Trello, Plank vs Linear)
-- Case studies (how teams use Plank)
+- Comparison pages (Pliny vs Trello, Pliny vs Linear)
+- Case studies (how teams use Pliny)
 - Integration showcases
 - YouTube tutorials
 

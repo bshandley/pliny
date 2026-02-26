@@ -103,7 +103,7 @@ router.post('/verify-2fa', async (req, res) => {
     // Try TOTP validation first
     const secretBase32 = decrypt(secret_encrypted);
     const totp = new OTPAuth.TOTP({
-      issuer: 'Plank',
+      issuer: 'Pliny',
       label: '',
       secret: OTPAuth.Secret.fromBase32(secretBase32),
       algorithm: 'SHA1',

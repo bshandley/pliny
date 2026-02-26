@@ -1,4 +1,4 @@
-# Plank
+# Pliny
 
 A production-ready Kanban project management application built with React, TypeScript, Express, and PostgreSQL.
 

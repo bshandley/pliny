@@ -16,7 +16,7 @@ interface PreviewData {
   customFields: { id: string; name: string; field_type: string }[];
 }
 
-const PLANK_FIELDS = [
+const PLINY_FIELDS = [
   { value: 'skip', label: 'Skip' },
   { value: 'title', label: 'Title' },
   { value: 'description', label: 'Description' },
@@ -126,7 +126,7 @@ export default function CSVImportModal({ boardId, onClose, onImportComplete }: C
   };
 
   const fieldOptions = [
-    ...PLANK_FIELDS,
+    ...PLINY_FIELDS,
     ...(preview?.customFields || []).map(cf => ({
       value: `custom:${cf.id}`,
       label: cf.name,

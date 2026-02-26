@@ -24,9 +24,9 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Check if token is an API token (starts with plank_)
+// Check if token is an API token (starts with pliny_)
 function isApiToken(token: string): boolean {
-  return token.startsWith('plank_');
+  return token.startsWith('pliny_');
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {

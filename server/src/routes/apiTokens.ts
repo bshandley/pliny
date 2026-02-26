@@ -8,7 +8,7 @@ const router = Router();
 
 // Generate a secure random token
 function generateToken(): string {
-  return 'plank_' + crypto.randomBytes(32).toString('hex');
+  return 'pliny_' + crypto.randomBytes(32).toString('hex');
 }
 
 // Hash token for storage

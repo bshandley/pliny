@@ -51,7 +51,7 @@ router.post('/setup', authenticate, async (req: AuthRequest, res) => {
 
     // Build TOTP URI
     const totp = new OTPAuth.TOTP({
-      issuer: 'Plank',
+      issuer: 'Pliny',
       label: req.user!.username,
       secret,
       algorithm: 'SHA1',
@@ -113,7 +113,7 @@ router.post('/enable', authenticate, async (req: AuthRequest, res) => {
     // Decrypt and verify
     const secretBase32 = decrypt(result.rows[0].secret_encrypted);
     const totp = new OTPAuth.TOTP({
-      issuer: 'Plank',
+      issuer: 'Pliny',
       label: req.user!.username,
       secret: OTPAuth.Secret.fromBase32(secretBase32),
       algorithm: 'SHA1',

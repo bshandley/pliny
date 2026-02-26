@@ -1,9 +1,9 @@
-interface PlankLogoProps {
+interface PlinyLogoProps {
   size?: number;
   className?: string;
 }
 
-export default function PlankLogo({ size = 32, className }: PlankLogoProps) {
+export default function PlinyLogo({ size = 32, className }: PlinyLogoProps) {
   return (
     <svg
       width={size}

@@ -141,7 +141,7 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
 
   return (
     <div className="board-list-container">
-      <AppBar title="Plank" showLogo>
+      <AppBar title="Pliny" showLogo>
         {isAdmin && (
           <>
             <button onClick={onGoToUsers} className="btn-secondary btn-sm">

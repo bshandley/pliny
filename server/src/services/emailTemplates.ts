@@ -41,7 +41,7 @@ function baseTemplate(content: string, preferencesLink: string): string {
           <!-- Header -->
           <tr>
             <td style="padding: 0 0 20px 0; text-align: center;">
-              <span style="font-size: 14px; font-weight: 700; letter-spacing: 3px; color: #6b7280; text-transform: uppercase;">PLANK</span>
+              <span style="font-size: 14px; font-weight: 700; letter-spacing: 3px; color: #6b7280; text-transform: uppercase;">PLINY</span>
             </td>
           </tr>
           <!-- Card -->

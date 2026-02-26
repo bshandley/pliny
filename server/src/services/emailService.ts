@@ -123,12 +123,12 @@ export async function sendTestEmail(
     await transporter.sendMail({
       from: fromAddress,
       to: toEmail,
-      subject: 'Cork — Test Email',
+      subject: 'Pliny — Test Email',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #1a1a2e; margin-bottom: 16px;">SMTP Configuration Working</h2>
           <p style="color: #555; line-height: 1.5;">
-            This test email confirms that your Cork SMTP settings are configured correctly.
+            This test email confirms that your Pliny SMTP settings are configured correctly.
             Email notifications are now active.
           </p>
         </div>

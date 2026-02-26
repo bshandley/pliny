@@ -41,7 +41,7 @@ ssh bradley@10.0.0.102 'cd /opt/stacks/plank && ./deploy-from-github.sh'
 
 Ask Rye to deploy:
 ```
-"Deploy the latest Plank changes to Wharf"
+"Deploy the latest Pliny changes to Wharf"
 ```
 
 ## Development Workflow

@@ -183,7 +183,7 @@ async function checkDueDateReminders() {
           cardId: card.id,
           boardId: card.board_id,
           actorId: 'system',
-          actorUsername: 'Plank',
+          actorUsername: 'Pliny',
           detail: {
             card_title: card.title,
             board_name: card.board_name,

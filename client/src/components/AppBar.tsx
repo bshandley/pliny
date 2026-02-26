@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { useAppBar } from '../contexts/AppBarContext';
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
-import PlankLogo from './PlankLogo';
+import PlinyLogo from './PlinyLogo';
 
 interface AppBarProps {
   title: string;
@@ -36,7 +36,7 @@ export default function AppBar({ title, onBack, showLogo, children }: AppBarProp
             </svg>
           </button>
         )}
-        {showLogo && <PlankLogo size={24} />}
+        {showLogo && <PlinyLogo size={24} />}
         <h1 className="app-bar-title">{title}</h1>
       </div>
 
