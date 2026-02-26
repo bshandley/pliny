@@ -8941,6 +8941,8 @@ button:disabled {
 
 .relations-section {
   margin-top: 0.25rem;
+  position: relative;
+  z-index: 1;
 }
 .relation-group {
   margin-bottom: 0.5rem;
@@ -8984,6 +8986,11 @@ button:disabled {
 .relation-chip-related {
   border-color: var(--primary);
   background: var(--primary-subtle);
+}
+.relation-chip-board {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  font-weight: 400;
 }
 .relation-chip-remove {
   background: none;
@@ -9037,7 +9044,7 @@ button:disabled {
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
+  min-width: 320px;
   z-index: 100;
   background: var(--card-bg);
   border: 1px solid var(--border);

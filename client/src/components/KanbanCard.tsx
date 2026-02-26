@@ -1025,7 +1025,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.blocks.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-blocks">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                       {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
                     </span>
                   ))}
@@ -1038,7 +1038,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.blocked_by.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-blocked">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                       {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
                     </span>
                   ))}
@@ -1051,7 +1051,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.relates_to.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-related">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                       {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
                     </span>
                   ))}
@@ -1371,7 +1371,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.blocks.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-blocks">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                     </span>
                   ))}
                 </div>
@@ -1383,7 +1383,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.blocked_by.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-blocked">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                     </span>
                   ))}
                 </div>
@@ -1395,7 +1395,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <div className="relation-chips">
                   {relations.relates_to.map(r => (
                     <span key={r.id} className="relation-chip relation-chip-related">
-                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {r.board_name && <span className="relation-chip-board">{r.board_name} / </span>}{r.column_name && `${r.column_name} / `}{r.title}
                     </span>
                   ))}
                 </div>
