@@ -531,6 +531,28 @@ class ApiClient {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+  // Card Relations
+  async getCardRelations(cardId: string): Promise<any> {
+    return this.fetch(`/cards/${cardId}/relations`, {}, 'getCardRelations');
+  }
+
+  async addCardRelation(cardId: string, targetCardId: string, relationType: string): Promise<any> {
+    return this.fetch(`/cards/${cardId}/relations`, {
+      method: 'POST',
+      body: JSON.stringify({ target_card_id: targetCardId, relation_type: relationType }),
+    }, 'addCardRelation');
+  }
+
+  async deleteCardRelation(cardId: string, targetCardId: string): Promise<any> {
+    return this.fetch(`/cards/${cardId}/relations/${targetCardId}`, {
+      method: 'DELETE',
+    }, 'deleteCardRelation');
+  }
+
+  // JSON Export
+  async exportBoardJson(boardId: string): Promise<any> {
+    return this.fetch(`/boards/${boardId}/export`, {}, 'exportBoardJson');
+  }
 }
 
 export const api = new ApiClient();

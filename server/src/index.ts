@@ -28,6 +28,7 @@ import apiTokenRoutes from './routes/apiTokens';
 import devConsoleRoutes, { setupDevConsoleWebSocket } from './routes/devConsole';
 import v1Routes from './routes/v1';
 import webhookRoutes from './routes/webhooks';
+import relationsRoutes from './routes/relations';
 import { apiLoggerMiddleware } from './middleware/apiLogger';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
@@ -80,6 +81,9 @@ app.use('/api/dev', devConsoleRoutes);
 
 // Public API v1 (for external access via personal access tokens)
 app.use('/api/v1', v1Routes);
+
+// Card relations
+app.use('/api', relationsRoutes);
 
 // Webhooks
 app.use('/api/webhooks', webhookRoutes);

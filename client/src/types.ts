@@ -225,6 +225,20 @@ export interface WebhookDelivery {
   created_at: string;
 }
 
+export interface CardRelation {
+  id: string;
+  card_id: string;
+  title: string;
+  column_name: string;
+  board_name: string;
+}
+
+export interface CardRelations {
+  blocks: CardRelation[];
+  blocked_by: CardRelation[];
+  relates_to: CardRelation[];
+}
+
 export interface BoardTemplate {
   id: string;
   name: string;

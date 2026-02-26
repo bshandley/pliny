@@ -520,6 +520,33 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
+  const [exportingJson, setExportingJson] = useState(false);
+  const handleExportJson = async () => {
+    setShowSettingsDropdown(false);
+    setMobileMenuOpen(false);
+    setExportingJson(true);
+    try {
+      const data = await api.exportBoardJson(boardId);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (board?.name || 'board').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+      a.download = `${safeName}-export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setExportStatus('JSON export complete');
+      setTimeout(() => setExportStatus(null), 3000);
+    } catch (err: any) {
+      setExportStatus(err.message || 'JSON export failed');
+      setTimeout(() => setExportStatus(null), 5000);
+    } finally {
+      setExportingJson(false);
+    }
+  };
+
   const handleDashboardFilterNavigate = (filters: { assignee?: string; label?: string; due?: string; column?: string }) => {
     setFilterText('');
     setFilterAssignee(filters.assignee || '');
@@ -617,6 +644,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
                 <div className="board-settings-divider" />
                 <button onClick={handleExportCsv}>Export CSV</button>
+                <button onClick={handleExportJson} disabled={exportingJson}>{exportingJson ? 'Exporting...' : 'Export JSON'}</button>
                 <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
               </div>
             </div>

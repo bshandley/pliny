@@ -207,6 +207,169 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Export full board as JSON
+router.get('/:id/export', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    // Check access: admin can access all, others must be a member
+    if (user.role !== 'ADMIN') {
+      const memberCheck = await pool.query(
+        'SELECT 1 FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [id, user.id]
+      );
+      if (memberCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Board not found' });
+      }
+    }
+
+    // Board
+    const boardResult = await pool.query('SELECT id, name, created_at FROM boards WHERE id = $1', [id]);
+    if (boardResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+    const board = boardResult.rows[0];
+
+    // Labels
+    const labelsResult = await pool.query(
+      'SELECT id, name, color FROM board_labels WHERE board_id = $1 ORDER BY name',
+      [id]
+    );
+
+    // Members
+    const membersResult = await pool.query(
+      `SELECT u.id, u.username, u.role, bm.added_at
+       FROM board_members bm JOIN users u ON bm.user_id = u.id
+       WHERE bm.board_id = $1 ORDER BY u.username`,
+      [id]
+    );
+
+    // Columns
+    const columnsResult = await pool.query(
+      'SELECT id, name, position FROM columns WHERE board_id = $1 ORDER BY position',
+      [id]
+    );
+
+    // All cards (including archived)
+    const cardsResult = await pool.query(
+      `SELECT c.id, c.column_id, c.title, c.description, c.position, c.archived,
+              c.start_date, c.due_date, c.created_at, c.updated_at
+       FROM cards c JOIN columns col ON c.column_id = col.id
+       WHERE col.board_id = $1 ORDER BY c.position`,
+      [id]
+    );
+
+    const cardIds = cardsResult.rows.map((c: any) => c.id);
+
+    // Comments
+    const commentsResult = cardIds.length > 0 ? await pool.query(
+      `SELECT cc.id, cc.card_id, cc.text AS body, u.username AS author, cc.created_at
+       FROM card_comments cc JOIN users u ON cc.user_id = u.id
+       WHERE cc.card_id = ANY($1) ORDER BY cc.created_at`,
+      [cardIds]
+    ) : { rows: [] };
+
+    // Checklist items
+    const checklistResult = cardIds.length > 0 ? await pool.query(
+      `SELECT id, card_id, text, checked, position, due_date, assignee_name, priority
+       FROM card_checklist_items WHERE card_id = ANY($1) ORDER BY position`,
+      [cardIds]
+    ) : { rows: [] };
+
+    // Card labels
+    const cardLabelsResult = cardIds.length > 0 ? await pool.query(
+      `SELECT cl.card_id, bl.id, bl.name, bl.color
+       FROM card_labels cl JOIN board_labels bl ON cl.label_id = bl.id
+       WHERE cl.card_id = ANY($1)`,
+      [cardIds]
+    ) : { rows: [] };
+
+    // Card assignees
+    const assigneesResult = cardIds.length > 0 ? await pool.query(
+      `SELECT ca.card_id, ca.id, ca.user_id, ca.display_name, u.username
+       FROM card_assignees ca LEFT JOIN users u ON ca.user_id = u.id
+       WHERE ca.card_id = ANY($1)`,
+      [cardIds]
+    ) : { rows: [] };
+
+    // Custom field values
+    const cfvResult = cardIds.length > 0 ? await pool.query(
+      `SELECT v.card_id, v.field_id, v.value, f.name, f.field_type
+       FROM card_custom_field_values v JOIN board_custom_fields f ON v.field_id = f.id
+       WHERE v.card_id = ANY($1)`,
+      [cardIds]
+    ) : { rows: [] };
+
+    // Group by card_id
+    const commentsByCard: Record<string, any[]> = {};
+    commentsResult.rows.forEach((r: any) => {
+      (commentsByCard[r.card_id] ||= []).push({ id: r.id, body: r.body, author: r.author, created_at: r.created_at });
+    });
+    const checklistByCard: Record<string, any[]> = {};
+    checklistResult.rows.forEach((r: any) => {
+      (checklistByCard[r.card_id] ||= []).push(r);
+    });
+    const labelsByCard: Record<string, any[]> = {};
+    cardLabelsResult.rows.forEach((r: any) => {
+      (labelsByCard[r.card_id] ||= []).push({ id: r.id, name: r.name, color: r.color });
+    });
+    const assigneesByCard: Record<string, any[]> = {};
+    assigneesResult.rows.forEach((r: any) => {
+      (assigneesByCard[r.card_id] ||= []).push({ id: r.id, user_id: r.user_id, username: r.username, display_name: r.display_name });
+    });
+    const cfvByCard: Record<string, any[]> = {};
+    cfvResult.rows.forEach((r: any) => {
+      (cfvByCard[r.card_id] ||= []).push({ field_id: r.field_id, name: r.name, field_type: r.field_type, value: r.value });
+    });
+
+    // Build card map by column
+    const cardsByColumn: Record<string, any[]> = {};
+    cardsResult.rows.forEach((card: any) => {
+      const enriched = {
+        id: card.id,
+        title: card.title,
+        description: card.description || '',
+        position: card.position,
+        archived: card.archived,
+        start_date: card.start_date || null,
+        due_date: card.due_date || null,
+        created_at: card.created_at,
+        updated_at: card.updated_at,
+        labels: labelsByCard[card.id] || [],
+        assignees: assigneesByCard[card.id] || [],
+        checklist_items: checklistByCard[card.id] || [],
+        custom_field_values: cfvByCard[card.id] || [],
+        comments: commentsByCard[card.id] || [],
+      };
+      (cardsByColumn[card.column_id] ||= []).push(enriched);
+    });
+
+    const exportData = {
+      export_version: 1,
+      exported_at: new Date().toISOString(),
+      board: {
+        id: board.id,
+        name: board.name,
+        created_at: board.created_at,
+        labels: labelsResult.rows,
+        members: membersResult.rows,
+        columns: columnsResult.rows.map((col: any) => ({
+          id: col.id,
+          name: col.name,
+          position: col.position,
+          cards: cardsByColumn[col.id] || [],
+        })),
+      },
+    };
+
+    res.json(exportData);
+  } catch (error) {
+    console.error('Export board error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Create board
 router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {

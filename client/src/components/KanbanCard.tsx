@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment } from '../types';
+import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment, CardRelations } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
 import CustomFieldEditor from './CustomFieldEditor';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface KanbanCardProps {
   card: Card;
@@ -179,6 +180,15 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Relations state
+  const [relations, setRelations] = useState<CardRelations>({ blocks: [], blocked_by: [], relates_to: [] });
+  const [showRelations, setShowRelations] = useState(false);
+  const [relationSearch, setRelationSearch] = useState('');
+  const [relationSearchResults, setRelationSearchResults] = useState<{ id: string; title: string; column_name: string; board_name: string }[]>([]);
+  const [relationTypeSelect, setRelationTypeSelect] = useState<'blocks' | 'blocked_by' | 'relates_to'>('blocks');
+  const relationSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const _tokenPayload = api.getToken() ? JSON.parse(atob(api.getToken()!.split('.')[1])) : null;
   const userId = _tokenPayload?.id ?? null;
   const currentUsername: string = _tokenPayload?.username ?? '?';
@@ -203,10 +213,16 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       loadChecklist();
       loadActivity();
       loadAttachments();
+      loadRelations();
     } else {
       setShowCardMenu(false);
     }
   }, [isEditing]);
+
+  // Load relations on mount for the "Blocked" badge on card face
+  useEffect(() => {
+    loadRelations();
+  }, [card.id]);
 
   const loadComments = async () => {
     setLoadingComments(true);
@@ -258,6 +274,60 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
       setLoadingAttachments(false);
     }
   };
+
+  const loadRelations = async () => {
+    try {
+      const data = await api.getCardRelations(card.id);
+      setRelations(data);
+      if (data.blocks.length > 0 || data.blocked_by.length > 0 || data.relates_to.length > 0) {
+        setShowRelations(true);
+      }
+    } catch (err) {
+      console.error('Failed to load relations:', err);
+    }
+  };
+
+  const handleAddRelation = async (targetCardId: string) => {
+    try {
+      await api.addCardRelation(card.id, targetCardId, relationTypeSelect);
+      setRelationSearch('');
+      setRelationSearchResults([]);
+      await loadRelations();
+    } catch (err: any) {
+      console.error('Failed to add relation:', err);
+    }
+  };
+
+  const handleRemoveRelation = async (targetCardId: string) => {
+    try {
+      await api.deleteCardRelation(card.id, targetCardId);
+      await loadRelations();
+    } catch (err: any) {
+      console.error('Failed to remove relation:', err);
+    }
+  };
+
+  // Client-side card search for relations
+  useEffect(() => {
+    if (relationSearchTimeout.current) clearTimeout(relationSearchTimeout.current);
+    if (!relationSearch.trim()) {
+      setRelationSearchResults([]);
+      return;
+    }
+    relationSearchTimeout.current = setTimeout(() => {
+      const q = relationSearch.toLowerCase();
+      const results: { id: string; title: string; column_name: string; board_name: string }[] = [];
+      for (const col of columns) {
+        for (const c of col.cards || []) {
+          if (c.id !== card.id && c.title.toLowerCase().includes(q)) {
+            results.push({ id: c.id, title: c.title, column_name: col.name, board_name: '' });
+          }
+        }
+      }
+      setRelationSearchResults(results.slice(0, 10));
+    }, 200);
+    return () => { if (relationSearchTimeout.current) clearTimeout(relationSearchTimeout.current); };
+  }, [relationSearch, columns, card.id]);
 
   const handleFileUpload = async (file: File) => {
     setUploadProgress(0);
@@ -937,6 +1007,91 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         )}
       </div>
 
+      {/* Relations */}
+      <div className="relations-section">
+        <button type="button" className="section-toggle" onClick={() => setShowRelations(!showRelations)}>
+          <svg className={`section-chevron${showRelations ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span className="section-toggle-label">Relations</span>
+          {(relations.blocks.length + relations.blocked_by.length + relations.relates_to.length) > 0 && (
+            <span className="section-toggle-count">{relations.blocks.length + relations.blocked_by.length + relations.relates_to.length}</span>
+          )}
+        </button>
+        {showRelations && (
+          <div className="section-content">
+            {relations.blocks.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Blocks</div>
+                <div className="relation-chips">
+                  {relations.blocks.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-blocks">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relations.blocked_by.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Blocked by</div>
+                <div className="relation-chips">
+                  {relations.blocked_by.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-blocked">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relations.relates_to.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Related to</div>
+                <div className="relation-chips">
+                  {relations.relates_to.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-related">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                      {canWrite && <button type="button" className="relation-chip-remove" onClick={() => handleRemoveRelation(r.card_id)}>&times;</button>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {canWrite && (
+              <div className="relation-add">
+                <div className="relation-add-row">
+                  <select value={relationTypeSelect} onChange={(e) => setRelationTypeSelect(e.target.value as any)} className="relation-type-select">
+                    <option value="blocks">Blocks</option>
+                    <option value="blocked_by">Blocked by</option>
+                    <option value="relates_to">Relates to</option>
+                  </select>
+                  <div className="relation-search-wrapper">
+                    <input
+                      type="text"
+                      value={relationSearch}
+                      onChange={(e) => setRelationSearch(e.target.value)}
+                      placeholder="Search cards..."
+                      className="relation-search-input"
+                    />
+                    {relationSearchResults.length > 0 && (
+                      <div className="relation-search-dropdown">
+                        {relationSearchResults.map(r => (
+                          <button key={r.id} type="button" className="relation-search-item" onClick={() => handleAddRelation(r.id)}>
+                            <span className="relation-search-col">{r.column_name}</span>
+                            <span className="relation-search-title">{r.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Comments */}
       <div className="comments-section">
         <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
@@ -963,7 +1118,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                       <span className="comment-time">{timeAgo(comment.created_at)}</span>
                       <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                     </div>
-                    <div className="comment-bubble"><MentionText text={comment.text} boardMembers={boardMembers} /></div>
+                    <div className="comment-bubble"><MarkdownRenderer content={comment.text} /></div>
                   </div>
                 </div>
               ))}
@@ -1071,7 +1226,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
 
       {/* Description */}
       {card.description && (
-        <p className="card-detail-description">{card.description}</p>
+        <MarkdownRenderer content={card.description} className="card-detail-description" />
       )}
 
       {/* Dates */}
@@ -1198,6 +1353,58 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         )}
       </div>
 
+      {/* Relations (read-only view) */}
+      <div className="relations-section">
+        <button type="button" className="section-toggle" onClick={() => setShowRelations(!showRelations)}>
+          <svg className={`section-chevron${showRelations ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span className="section-toggle-label">Relations</span>
+          {(relations.blocks.length + relations.blocked_by.length + relations.relates_to.length) > 0 && (
+            <span className="section-toggle-count">{relations.blocks.length + relations.blocked_by.length + relations.relates_to.length}</span>
+          )}
+        </button>
+        {showRelations && (
+          <div className="section-content">
+            {relations.blocks.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Blocks</div>
+                <div className="relation-chips">
+                  {relations.blocks.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-blocks">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relations.blocked_by.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Blocked by</div>
+                <div className="relation-chips">
+                  {relations.blocked_by.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-blocked">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {relations.relates_to.length > 0 && (
+              <div className="relation-group">
+                <div className="relation-group-label">Related to</div>
+                <div className="relation-chips">
+                  {relations.relates_to.map(r => (
+                    <span key={r.id} className="relation-chip relation-chip-related">
+                      {r.board_name ? `${r.board_name} / ` : ''}{r.column_name && `${r.column_name} / `}{r.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Comments */}
       <div className="comments-section">
         <button type="button" className="section-toggle" onClick={() => setShowComments(!showComments)}>
@@ -1226,7 +1433,7 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                         <button type="button" onClick={() => handleDeleteComment(comment.id)} className="comment-delete" aria-label="Delete comment">×</button>
                       )}
                     </div>
-                    <div className="comment-bubble"><MentionText text={comment.text} boardMembers={boardMembers} /></div>
+                    <div className="comment-bubble"><MarkdownRenderer content={comment.text} /></div>
                   </div>
                 </div>
               ))}
@@ -1456,11 +1663,11 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         )}
       </div>
       {card.description && (
-        <p className="card-description">{card.description}</p>
+        <MarkdownRenderer content={card.description} className="card-description" />
       )}
       {(() => {
         const showOnCardFields = customFields.filter(f => f.show_on_card && card.custom_field_values?.[f.id]?.value);
-        const hasFooter = card.assignees?.length || card.due_date || card.checklist || showOnCardFields.length > 0;
+        const hasFooter = card.assignees?.length || card.due_date || card.checklist || showOnCardFields.length > 0 || relations.blocked_by.length > 0;
         if (!hasFooter) return null;
         return (
           <div className="card-footer">
@@ -1493,6 +1700,9 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
                 <span className="checklist-overdue-badge">
                   {card.checklist!.overdue} overdue
                 </span>
+              )}
+              {relations.blocked_by.length > 0 && (
+                <span className="blocked-badge">Blocked ({relations.blocked_by.length})</span>
               )}
             </div>
           </div>
