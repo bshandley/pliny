@@ -70,6 +70,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [filterDue, setFilterDue] = useState('');
   const [filterColumn, setFilterColumn] = useState('');
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
+  const [hideSubtasks, setHideSubtasks] = useState(false);
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
@@ -262,6 +263,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const filterCard = (card: Card): boolean => {
     if (!showArchived && card.archived) return false;
     if (showArchived && !card.archived) return false;
+    if (hideSubtasks && card.parent_id) return false;
     if (filterColumn && card.column_id !== filterColumn) return false;
     if (filterText && !card.title.toLowerCase().includes(filterText.toLowerCase())) return false;
     if (filterAssignee === '__unassigned__') {
@@ -1018,6 +1020,14 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           }
           return null;
         })}
+        <label className="filter-checkbox-label">
+          <input
+            type="checkbox"
+            checked={hideSubtasks}
+            onChange={(e) => setHideSubtasks(e.target.checked)}
+          />
+          Hide subtasks
+        </label>
         {hasFilters && (
           <button onClick={() => { setFilterText(''); setFilterAssignee(''); setFilterLabel(''); setFilterDue(''); setFilterColumn(''); setCustomFieldFilters({}); }} className="btn-secondary btn-sm">
             Clear

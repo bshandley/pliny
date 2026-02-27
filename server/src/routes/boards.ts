@@ -70,7 +70,13 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     );
 
     const cardsResult = await pool.query(
-      `SELECT c.* FROM cards c
+      `SELECT c.*,
+              (SELECT COUNT(*) FROM cards sub WHERE sub.parent_id = c.id)::int as subtask_count,
+              (SELECT COUNT(*) FROM cards sub
+               JOIN columns subcol ON sub.column_id = subcol.id
+               WHERE sub.parent_id = c.id
+               AND subcol.position = (SELECT MAX(position) FROM columns WHERE board_id = $1))::int as subtask_done_count
+       FROM cards c
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1
        ORDER BY c.position`,
@@ -259,7 +265,7 @@ router.get('/:id/export', authenticate, async (req: AuthRequest, res) => {
     // All cards (including archived)
     const cardsResult = await pool.query(
       `SELECT c.id, c.column_id, c.title, c.description, c.position, c.archived,
-              c.start_date, c.due_date, c.created_at, c.updated_at
+              c.start_date, c.due_date, c.created_at, c.updated_at, c.parent_id
        FROM cards c JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1 ORDER BY c.position`,
       [id]
@@ -339,6 +345,7 @@ router.get('/:id/export', authenticate, async (req: AuthRequest, res) => {
         archived: card.archived,
         start_date: card.start_date || null,
         due_date: card.due_date || null,
+        parent_id: card.parent_id || null,
         created_at: card.created_at,
         updated_at: card.updated_at,
         labels: labelsByCard[card.id] || [],

@@ -1293,6 +1293,22 @@ button:disabled {
   border-color: var(--primary) !important;
 }
 
+.filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-checkbox-label input {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
 /* ---- Columns ---- */
 
 .columns-container {
@@ -2282,6 +2298,171 @@ button:disabled {
   background: rgba(52, 211, 153, 0.12);
   border-color: rgba(52, 211, 153, 0.3);
   color: #6ee7b7;
+}
+
+/* ---- Subtasks ---- */
+
+/* Subtask badge on card face */
+.subtask-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.subtask-done {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+[data-theme="dark"] .subtask-done {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+}
+
+/* Parent indicator chip on card face (for subtasks) */
+.card-parent-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.parent-chip-arrow {
+  font-size: 0.625rem;
+  color: var(--text-tertiary);
+}
+
+.parent-chip-text {
+  font-weight: 500;
+}
+
+/* Parent indicator in card detail */
+.parent-card-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  margin-bottom: 0.75rem;
+}
+
+.parent-indicator-label {
+  color: var(--text-secondary);
+}
+
+.parent-indicator-title {
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Subtasks section in card detail */
+.subtasks-section {
+  padding-top: 0.25rem;
+  margin-bottom: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  position: relative;
+}
+
+.subtasks-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.25rem;
+  right: 0.25rem;
+  height: 1px;
+  background: var(--border);
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtask-item:last-child {
+  border-bottom: none;
+}
+
+.subtask-checkbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.subtask-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtask-column-pill {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--bg-raised);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.subtask-assignees {
+  display: flex;
+  gap: -0.25rem;
+}
+
+.subtask-assignee-avatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: white;
+  margin-left: -0.25rem;
+}
+
+.subtask-assignee-avatar:first-child {
+  margin-left: 0;
+}
+
+.subtask-add {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.subtask-input {
+  flex: 1;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  font-size: 0.8125rem;
+}
+
+.subtask-input:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 /* ---- Comments ---- */

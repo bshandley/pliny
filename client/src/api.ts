@@ -179,6 +179,21 @@ class ApiClient {
     return this.fetch(`/cards/${id}`, { method: 'DELETE' }, 'deleteCard');
   }
 
+  async getCard(id: string): Promise<Card> {
+    return this.fetch(`/cards/${id}`, {}, 'getCard');
+  }
+
+  async getSubtasks(cardId: string): Promise<any[]> {
+    return this.fetch(`/cards/${cardId}/subtasks`, {}, 'getSubtasks');
+  }
+
+  async createSubtask(cardId: string, title: string, columnId: string): Promise<Card> {
+    return this.fetch(`/cards/${cardId}/subtasks`, {
+      method: 'POST',
+      body: JSON.stringify({ title, column_id: columnId }),
+    }, 'createSubtask');
+  }
+
   // Labels
   async getBoardLabels(boardId: string): Promise<Label[]> {
     return this.fetch(`/boards/${boardId}/labels`, {}, 'getBoardLabels');

@@ -114,6 +114,17 @@ export interface CustomFieldValue {
   name: string;
 }
 
+export interface SubtaskSummary {
+  id: string;
+  title: string;
+  column_id: string;
+  column_name: string;
+  archived: boolean;
+  due_date?: string | null;
+  assignees: CardAssignee[];
+  checklist?: { total: number; checked: number } | null;
+}
+
 export interface Card {
   id: string;
   column_id: string;
@@ -131,6 +142,12 @@ export interface Card {
   position: number;
   created_at: string;
   updated_at: string;
+  // Subtask fields
+  parent_id?: string | null;
+  parent?: { id: string; title: string; column_name: string } | null;
+  subtasks?: SubtaskSummary[];
+  subtask_count?: number;
+  subtask_done_count?: number;
 }
 
 export interface Attachment {

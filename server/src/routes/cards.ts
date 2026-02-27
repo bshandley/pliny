@@ -8,10 +8,158 @@ import { triggerWebhook } from '../services/webhookService';
 
 const router = Router();
 
+// Get card detail with subtasks and parent info
+router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const cardResult = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);
+    if (cardResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+    const card = cardResult.rows[0];
+
+    // Fetch parent card info if this is a subtask
+    let parent = null;
+    if (card.parent_id) {
+      const parentResult = await pool.query(
+        `SELECT c.id, c.title, col.name as column_name
+         FROM cards c JOIN columns col ON c.column_id = col.id
+         WHERE c.id = $1`,
+        [card.parent_id]
+      );
+      if (parentResult.rows.length > 0) {
+        parent = parentResult.rows[0];
+      }
+    }
+
+    // Fetch subtasks
+    const subtasksResult = await pool.query(
+      `SELECT c.id, c.title, c.column_id, col.name as column_name, c.archived, c.due_date,
+              (SELECT json_agg(json_build_object('id', ca.id, 'user_id', ca.user_id, 'username', u.username, 'display_name', ca.display_name))
+               FROM card_assignees ca LEFT JOIN users u ON ca.user_id = u.id WHERE ca.card_id = c.id) as assignees,
+              (SELECT json_build_object('total', COUNT(*)::int, 'checked', COUNT(*) FILTER (WHERE checked)::int)
+               FROM card_checklist_items WHERE card_id = c.id) as checklist
+       FROM cards c
+       JOIN columns col ON c.column_id = col.id
+       WHERE c.parent_id = $1
+       ORDER BY c.position`,
+      [id]
+    );
+
+    res.json({
+      ...card,
+      parent,
+      subtasks: subtasksResult.rows.map(s => ({
+        ...s,
+        assignees: s.assignees || [],
+        checklist: s.checklist?.total > 0 ? s.checklist : null
+      }))
+    });
+  } catch (error) {
+    console.error('Get card error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get subtasks for a card
+router.get('/:id/subtasks', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT c.id, c.title, c.column_id, col.name as column_name, c.archived, c.due_date, c.position,
+              (SELECT json_agg(json_build_object('id', ca.id, 'user_id', ca.user_id, 'username', u.username, 'display_name', ca.display_name))
+               FROM card_assignees ca LEFT JOIN users u ON ca.user_id = u.id WHERE ca.card_id = c.id) as assignees,
+              (SELECT json_build_object('total', COUNT(*)::int, 'checked', COUNT(*) FILTER (WHERE checked)::int)
+               FROM card_checklist_items WHERE card_id = c.id) as checklist
+       FROM cards c
+       JOIN columns col ON c.column_id = col.id
+       WHERE c.parent_id = $1
+       ORDER BY c.position`,
+      [id]
+    );
+
+    res.json(result.rows.map(s => ({
+      ...s,
+      assignees: s.assignees || [],
+      checklist: s.checklist?.total > 0 ? s.checklist : null
+    })));
+  } catch (error) {
+    console.error('Get subtasks error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create subtask
+router.post('/:id/subtasks', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { title, column_id } = req.body;
+
+    if (!title || title.trim() === '') {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (title.length > 255) {
+      return res.status(400).json({ error: 'Title must be 255 characters or fewer' });
+    }
+
+    // Verify parent card exists and is not itself a subtask
+    const parentResult = await pool.query(
+      'SELECT c.id, c.parent_id, col.board_id FROM cards c JOIN columns col ON c.column_id = col.id WHERE c.id = $1',
+      [id]
+    );
+    if (parentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Parent card not found' });
+    }
+    if (parentResult.rows[0].parent_id) {
+      return res.status(400).json({ error: 'Cannot create sub-subtasks (only 1 level deep allowed)' });
+    }
+
+    const parentBoardId = parentResult.rows[0].board_id;
+
+    // Verify column is in the same board
+    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [column_id]);
+    if (colResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Column not found' });
+    }
+    if (colResult.rows[0].board_id !== parentBoardId) {
+      return res.status(400).json({ error: 'Subtask must be in the same board as parent' });
+    }
+
+    // Get max position in target column
+    const posResult = await pool.query(
+      'SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM cards WHERE column_id = $1',
+      [column_id]
+    );
+    const position = posResult.rows[0].next_pos;
+
+    const result = await pool.query(
+      'INSERT INTO cards (column_id, title, position, parent_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [column_id, title.trim(), position, id]
+    );
+
+    logActivity(result.rows[0].id, req.user!.id, 'created');
+
+    // Trigger webhook
+    triggerWebhook('card.created', {
+      card: result.rows[0],
+      board_id: parentBoardId,
+      parent_card_id: id,
+      user: { id: req.user!.id, username: req.user!.username },
+    }, parentBoardId);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Create subtask error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Create card
 router.post('/', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
-    const { column_id, title, description, position, due_date } = req.body;
+    const { column_id, title, description, position, due_date, parent_id } = req.body;
 
     if (title && title.length > 255) {
       return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
@@ -20,16 +168,36 @@ router.post('/', authenticate, requireBoardRole('EDITOR'), async (req: AuthReque
       return res.status(400).json({ error: 'Card description must be 10000 characters or fewer' });
     }
 
+    // Get board_id for column
+    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [column_id]);
+    if (colResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Column not found' });
+    }
+    const boardId = colResult.rows[0].board_id;
+
+    // Validate parent_id if provided
+    if (parent_id) {
+      const parentResult = await pool.query(
+        'SELECT c.parent_id, col.board_id FROM cards c JOIN columns col ON c.column_id = col.id WHERE c.id = $1',
+        [parent_id]
+      );
+      if (parentResult.rows.length === 0) {
+        return res.status(400).json({ error: 'Parent card not found' });
+      }
+      if (parentResult.rows[0].parent_id) {
+        return res.status(400).json({ error: 'Cannot create sub-subtasks (only 1 level deep allowed)' });
+      }
+      if (parentResult.rows[0].board_id !== boardId) {
+        return res.status(400).json({ error: 'Parent and child cards must be in the same board' });
+      }
+    }
+
     const result = await pool.query(
-      'INSERT INTO cards (column_id, title, description, position, due_date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [column_id, title, description, position, due_date || null]
+      'INSERT INTO cards (column_id, title, description, position, due_date, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [column_id, title, description, position, due_date || null, parent_id || null]
     );
 
     logActivity(result.rows[0].id, req.user!.id, 'created');
-
-    // Get board_id for webhook
-    const colResult = await pool.query('SELECT board_id FROM columns WHERE id = $1', [column_id]);
-    const boardId = colResult.rows[0]?.board_id;
 
     // Trigger webhook
     triggerWebhook('card.created', {
@@ -49,7 +217,7 @@ router.post('/', authenticate, requireBoardRole('EDITOR'), async (req: AuthReque
 router.put('/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { column_id, title, description, assignees, position, due_date, start_date } = req.body;
+    const { column_id, title, description, assignees, position, due_date, start_date, parent_id } = req.body;
 
     if (title !== undefined && title.length > 255) {
       return res.status(400).json({ error: 'Card title must be 255 characters or fewer' });
@@ -62,6 +230,43 @@ router.put('/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthReq
     const oldCard = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);
     if (oldCard.rows.length === 0) return res.status(404).json({ error: 'Card not found' });
     const old = oldCard.rows[0];
+
+    // Validate parent_id if provided
+    if (parent_id !== undefined) {
+      if (parent_id === null) {
+        // Clearing parent_id is allowed
+      } else {
+        // Cannot set self as parent
+        if (parent_id === id) {
+          return res.status(400).json({ error: 'A card cannot be its own parent' });
+        }
+        // Cannot set parent if this card already has subtasks (would create sub-subtasks)
+        const subtaskCheck = await pool.query('SELECT id FROM cards WHERE parent_id = $1 LIMIT 1', [id]);
+        if (subtaskCheck.rows.length > 0) {
+          return res.status(400).json({ error: 'Cannot set parent on a card that has subtasks' });
+        }
+        // Get this card's board_id
+        const cardBoardResult = await pool.query(
+          'SELECT col.board_id FROM columns col WHERE col.id = $1',
+          [column_id || old.column_id]
+        );
+        const cardBoardId = cardBoardResult.rows[0]?.board_id;
+        // Validate parent card exists and is not itself a subtask
+        const parentResult = await pool.query(
+          'SELECT c.parent_id, col.board_id FROM cards c JOIN columns col ON c.column_id = col.id WHERE c.id = $1',
+          [parent_id]
+        );
+        if (parentResult.rows.length === 0) {
+          return res.status(400).json({ error: 'Parent card not found' });
+        }
+        if (parentResult.rows[0].parent_id) {
+          return res.status(400).json({ error: 'Cannot create sub-subtasks (only 1 level deep allowed)' });
+        }
+        if (parentResult.rows[0].board_id !== cardBoardId) {
+          return res.status(400).json({ error: 'Parent and child cards must be in the same board' });
+        }
+      }
+    }
 
     // Fetch old assignees before they get deleted
     let oldAssignees: { user_id: string | null; display_name: string | null }[] = [];
@@ -109,6 +314,10 @@ router.put('/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthReq
     if (req.body.archived !== undefined) {
       updates.push(`archived = $${paramCount++}`);
       values.push(req.body.archived);
+    }
+    if (parent_id !== undefined) {
+      updates.push(`parent_id = $${paramCount++}`);
+      values.push(parent_id); // Can be null to clear parent
     }
     if (req.body.labels !== undefined) {
       // Labels handled after the main update

@@ -42,13 +42,19 @@ router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'
 
     // Fetch non-archived cards ordered by column position, then card position
     const cardsResult = await pool.query(
-      `SELECT c.id, c.title, c.description, c.column_id, c.position, c.due_date, c.start_date, c.created_at
+      `SELECT c.id, c.title, c.description, c.column_id, c.position, c.due_date, c.start_date, c.created_at, c.parent_id
        FROM cards c
        INNER JOIN columns col ON c.column_id = col.id
        WHERE col.board_id = $1 AND c.archived = false
        ORDER BY col.position, c.position`,
       [boardId]
     );
+
+    // Build parent title map for subtask export
+    const parentTitleMap = new Map<string, string>();
+    cardsResult.rows.forEach((card: any) => {
+      parentTitleMap.set(card.id, card.title);
+    });
 
     // Fetch assignees for all cards
     const assigneesResult = await pool.query(
@@ -109,7 +115,7 @@ router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'
     }
 
     // Build CSV header
-    const baseHeaders = ['Title', 'Description', 'Column', 'Position', 'Assignees', 'Labels', 'Due Date', 'Start Date', 'Created At'];
+    const baseHeaders = ['Title', 'Description', 'Column', 'Position', 'Assignees', 'Labels', 'Due Date', 'Start Date', 'Created At', 'Parent Card'];
     const headers = [...baseHeaders, ...customFields.map((f: any) => f.name)];
 
     // Build CSV rows
@@ -124,6 +130,7 @@ router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'
         card.due_date ? new Date(card.due_date).toISOString().split('T')[0] : '',
         card.start_date ? new Date(card.start_date).toISOString().split('T')[0] : '',
         card.created_at ? new Date(card.created_at).toISOString() : '',
+        card.parent_id ? parentTitleMap.get(card.parent_id) || '' : '',
       ];
 
       const cfValues = cfValuesByCard.get(card.id);
@@ -188,6 +195,7 @@ router.post('/boards/:boardId/csv/import/preview', authenticate, requireBoardRol
       due_date: ['due date', 'due_date', 'duedate', 'deadline', 'due'],
       start_date: ['start date', 'start_date', 'startdate', 'start'],
       position: ['position', 'order', 'sort', 'index'],
+      parent_card: ['parent card', 'parent_card', 'parent', 'parent card title', 'parent_card_title'],
     };
 
     // Fetch board custom fields for mapping
@@ -309,6 +317,10 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRol
     const errors: { row: number; field: string; message: string }[] = [];
     let created = 0;
 
+    // Maps for two-pass parent_id resolution
+    const titleToId = new Map<string, string>();
+    const pendingParents: { cardId: string; parentTitle: string; rowNum: number }[] = [];
+
     try {
       await client.query('BEGIN');
 
@@ -325,6 +337,7 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRol
         let dueDate: string | null = null;
         let startDate: string | null = null;
         let position: number | null = null;
+        let parentCardTitle = '';
         const customFieldValues: { fieldId: string; value: string }[] = [];
 
         for (const [header, field] of Object.entries(mapping)) {
@@ -338,6 +351,7 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRol
             case 'column': columnName = value; break;
             case 'assignees': assigneesStr = value; break;
             case 'labels': labelsStr = value; break;
+            case 'parent_card': parentCardTitle = value; break;
             case 'due_date': {
               const d = new Date(value);
               if (isNaN(d.getTime())) {
@@ -408,6 +422,14 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRol
         );
         const cardId = cardResult.rows[0].id;
 
+        // Track title -> id for parent resolution
+        titleToId.set(title, cardId);
+
+        // Track parent card relationship for second pass
+        if (parentCardTitle) {
+          pendingParents.push({ cardId, parentTitle: parentCardTitle, rowNum });
+        }
+
         // Handle assignees (comma-separated)
         if (assigneesStr) {
           const assigneeNames = assigneesStr.split(',').map(n => n.trim()).filter(Boolean);
@@ -468,6 +490,22 @@ router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRol
         }
 
         created++;
+      }
+
+      // Pass 2: Set parent_id for cards with parent_card_title
+      for (const { cardId, parentTitle, rowNum } of pendingParents) {
+        const parentId = titleToId.get(parentTitle);
+        if (parentId) {
+          // Verify parent is not itself a subtask (no sub-subtasks)
+          const parentCheck = await client.query('SELECT parent_id FROM cards WHERE id = $1', [parentId]);
+          if (parentCheck.rows.length > 0 && parentCheck.rows[0].parent_id) {
+            errors.push({ row: rowNum, field: 'parent_card', message: `Parent "${parentTitle}" is itself a subtask; sub-subtasks not allowed` });
+          } else {
+            await client.query('UPDATE cards SET parent_id = $1 WHERE id = $2', [parentId, cardId]);
+          }
+        } else {
+          errors.push({ row: rowNum, field: 'parent_card', message: `Parent card "${parentTitle}" not found` });
+        }
       }
 
       await client.query('COMMIT');

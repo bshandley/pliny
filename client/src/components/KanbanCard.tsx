@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment, CardRelations } from '../types';
+import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment, CardRelations, SubtaskSummary } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
@@ -193,6 +193,13 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
   const [relationTypeSelect, setRelationTypeSelect] = useState<'blocks' | 'blocked_by' | 'relates_to'>('blocks');
   const relationSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState<SubtaskSummary[]>([]);
+  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [parentCard, setParentCard] = useState<{ id: string; title: string; column_name: string } | null>(null);
+
   const _tokenPayload = api.getToken() ? JSON.parse(atob(api.getToken()!.split('.')[1])) : null;
   const userId = _tokenPayload?.id ?? null;
   const currentUsername: string = _tokenPayload?.username ?? '?';
@@ -218,6 +225,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
       loadActivity();
       loadAttachments();
       loadRelations();
+      loadSubtasks();
     } else {
       setShowCardMenu(false);
     }
@@ -288,6 +296,51 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
       }
     } catch (err) {
       console.error('Failed to load relations:', err);
+    }
+  };
+
+  const loadSubtasks = async () => {
+    setLoadingSubtasks(true);
+    try {
+      const data = await api.getCard(card.id);
+      setSubtasks(data.subtasks || []);
+      setParentCard(data.parent || null);
+      if ((data.subtasks && data.subtasks.length > 0) || data.parent) {
+        setShowSubtasks(true);
+      }
+    } catch (err) {
+      console.error('Failed to load subtasks:', err);
+    } finally {
+      setLoadingSubtasks(false);
+    }
+  };
+
+  const handleCreateSubtask = async () => {
+    if (!newSubtaskTitle.trim() || !columns.length) return;
+    try {
+      await api.createSubtask(card.id, newSubtaskTitle.trim(), columns[0].id);
+      setNewSubtaskTitle('');
+      await loadSubtasks();
+      onUpdate({});
+    } catch (err: any) {
+      console.error('Failed to create subtask:', err);
+      alert(err.message || 'Failed to create subtask');
+    }
+  };
+
+  const handleSubtaskCheckboxClick = async (subtask: SubtaskSummary) => {
+    // Move subtask to the last (rightmost) column to mark as "done"
+    // Or if already in last column, move to first column to "uncheck"
+    if (!columns.length) return;
+    const lastColumnId = columns[columns.length - 1].id;
+    const firstColumnId = columns[0].id;
+    const targetColumnId = subtask.column_id === lastColumnId ? firstColumnId : lastColumnId;
+    try {
+      await api.updateCard(subtask.id, { column_id: targetColumnId });
+      await loadSubtasks();
+      onUpdate({});
+    } catch (err) {
+      console.error('Failed to update subtask:', err);
     }
   };
 
@@ -819,6 +872,14 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
         <button type="button" onClick={handleSaveDescription} className="btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 0, marginBottom: '0.5rem' }}>Save description</button>
       )}
 
+      {/* Parent card indicator */}
+      {parentCard && (
+        <div className="parent-card-indicator">
+          <span className="parent-indicator-label">↑ Part of:</span>
+          <span className="parent-indicator-title">{parentCard.title}</span>
+        </div>
+      )}
+
       <div className="date-range-picker">
         <div className="due-date-picker">
           <label htmlFor={`start-date-${card.id}`}>Start date</label>
@@ -855,6 +916,73 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Subtasks - only show if this card is not itself a subtask */}
+      {!card.parent_id && (
+        <div className="subtasks-section">
+          <button type="button" className="section-toggle" onClick={() => setShowSubtasks(!showSubtasks)}>
+            <svg className={`section-chevron${showSubtasks ? ' open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg className="section-type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 14l2 2 4-4"/></svg>
+            <span className="section-toggle-label">Subtasks</span>
+            {subtasks.length > 0 && (
+              <span className="checklist-progress-text">
+                {subtasks.filter(s => s.column_id === columns[columns.length - 1]?.id).length}/{subtasks.length}
+              </span>
+            )}
+          </button>
+          {showSubtasks && (
+            <div className="section-content">
+              {loadingSubtasks ? (
+                <div className="loading-inline"><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div></div>
+              ) : (
+                <>
+                  {subtasks.length === 0 && <p className="empty-comments">No subtasks yet.</p>}
+                  {subtasks.map(subtask => {
+                    const isInLastColumn = columns.length > 0 && subtask.column_id === columns[columns.length - 1].id;
+                    const dueBadge = subtask.due_date ? getDueBadge(subtask.due_date) : null;
+                    return (
+                      <div key={subtask.id} className="subtask-item">
+                        <input
+                          type="checkbox"
+                          checked={isInLastColumn}
+                          onChange={() => handleSubtaskCheckboxClick(subtask)}
+                          className="subtask-checkbox"
+                        />
+                        <span className={`subtask-title${isInLastColumn ? ' checked-text' : ''}`}>{subtask.title}</span>
+                        <span className="subtask-column-pill">{subtask.column_name}</span>
+                        {subtask.assignees && subtask.assignees.length > 0 && (
+                          <span className="subtask-assignees">
+                            {subtask.assignees.slice(0, 2).map((a, i) => (
+                              <span key={a.id || i} className="subtask-assignee-avatar" style={{ background: avatarColor(a.username || a.display_name || '?') }}>
+                                {avatarInitial(a.username || a.display_name || '?')}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {dueBadge && <span className={dueBadge.className}>{dueBadge.label}</span>}
+                      </div>
+                    );
+                  })}
+                  {canWrite && (
+                    <div className="subtask-add">
+                      <input
+                        type="text"
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        placeholder="Add subtask..."
+                        className="subtask-input"
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateSubtask(); } }}
+                        maxLength={255}
+                      />
+                      <button type="button" onClick={handleCreateSubtask} className="btn-primary btn-sm" disabled={!newSubtaskTitle.trim()}>+</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1639,6 +1767,13 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
           ))}
         </div>
       )}
+      {/* Parent indicator for subtasks */}
+      {card.parent_id && (
+        <div className="card-parent-chip">
+          <span className="parent-chip-arrow">↑</span>
+          <span className="parent-chip-text">Subtask</span>
+        </div>
+      )}
       <div className="card-header">
         <h4>{card.title}</h4>
         {canWrite && (
@@ -1685,7 +1820,8 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
       )}
       {(() => {
         const showOnCardFields = customFields.filter(f => f.show_on_card && card.custom_field_values?.[f.id]?.value);
-        const hasFooter = card.assignees?.length || card.due_date || card.checklist || showOnCardFields.length > 0 || relations.blocked_by.length > 0;
+        const hasSubtasks = (card.subtask_count ?? 0) > 0;
+        const hasFooter = card.assignees?.length || card.due_date || card.checklist || showOnCardFields.length > 0 || relations.blocked_by.length > 0 || hasSubtasks;
         if (!hasFooter) return null;
         return (
           <div className="card-footer">
@@ -1709,6 +1845,11 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
                 const badge = getDueBadge(card.due_date);
                 return badge ? <span className={badge.className}>{badge.label}</span> : null;
               })()}
+              {hasSubtasks && (
+                <span className={`subtask-badge ${card.subtask_done_count === card.subtask_count ? 'subtask-done' : ''}`}>
+                  ◇ {card.subtask_done_count}/{card.subtask_count}
+                </span>
+              )}
               {card.checklist && card.checklist.total > 0 && (
                 <span className={`checklist-badge ${card.checklist.checked === card.checklist.total ? 'checklist-done' : ''}`}>
                   {card.checklist.checked}/{card.checklist.total}
