@@ -3,6 +3,7 @@ import { api } from '../api';
 import { Board, User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import AppBar from './AppBar';
+import TrelloImportModal from './TrelloImportModal';
 
 interface BoardListProps {
   onSelectBoard: (boardId: string, boardName: string) => void;
@@ -24,7 +25,10 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
   const [savingBoard, setSavingBoard] = useState<Board | null>(null);
   const [saveTemplateName, setSaveTemplateName] = useState('');
   const [saveTemplateDesc, setSaveTemplateDesc] = useState('');
+  const [showTrelloImport, setShowTrelloImport] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
 
   const confirm = useConfirm();
   const isAdmin = user?.role === 'ADMIN';
@@ -44,6 +48,18 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [openMenuId]);
+
+  // Close import menu on outside click
+  useEffect(() => {
+    if (!showImportMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setShowImportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showImportMenu]);
 
   const loadBoards = async () => {
     try {
@@ -147,6 +163,24 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
             <button onClick={onGoToUsers} className="btn-secondary btn-sm">
               Admin
             </button>
+            <div className="import-dropdown" ref={importMenuRef}>
+              <button
+                onClick={() => setShowImportMenu(!showImportMenu)}
+                className="btn-secondary btn-sm"
+              >
+                Import
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {showImportMenu && (
+                <div className="import-dropdown-menu">
+                  <button onClick={() => { setShowImportMenu(false); setShowTrelloImport(true); }}>
+                    Import from Trello
+                  </button>
+                </div>
+              )}
+            </div>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
               + New Board
             </button>
@@ -353,6 +387,15 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
             </form>
           </div>
         </div>
+      )}
+
+      {/* Trello Import Modal */}
+      {showTrelloImport && (
+        <TrelloImportModal
+          onClose={() => setShowTrelloImport(false)}
+          onImportComplete={loadBoards}
+          onSelectBoard={onSelectBoard}
+        />
       )}
     </div>
   );
