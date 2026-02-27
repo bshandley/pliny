@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import crypto from 'crypto';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { redeliverWebhook, WebhookEvent } from '../services/webhookService';
 
@@ -43,8 +43,8 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
   }
 });
 
-// List board webhooks
-router.get('/board/:boardId', authenticate, async (req: AuthRequest, res: Response) => {
+// List board webhooks (board admin only)
+router.get('/board/:boardId', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res: Response) => {
   const { boardId } = req.params;
 
   try {
@@ -75,9 +75,22 @@ router.get('/board/:boardId', authenticate, async (req: AuthRequest, res: Respon
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   const { url, events, description, board_id } = req.body;
 
-  // Global webhooks require admin
+  // Global webhooks require global admin
   if (!board_id && req.user!.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Admin permission required for global webhooks' });
+  }
+
+  // Board-scoped webhooks require board ADMIN role
+  if (board_id) {
+    const membership = await pool.query(
+      'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+      [board_id, req.user!.id]
+    );
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    const isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    if (!isGlobalAdmin && !isBoardAdmin) {
+      return res.status(403).json({ error: 'Board admin permission required' });
+    }
   }
 
   if (!url || typeof url !== 'string') {
@@ -131,7 +144,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   const { url, events, description, enabled } = req.body;
 
   try {
-    // Check ownership/admin
+    // Check ownership/admin/board admin
     const check = await pool.query(
       'SELECT * FROM webhooks WHERE id = $1',
       [id]
@@ -142,7 +155,17 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
+    const isOwner = webhook.created_by === req.user!.id;
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    let isBoardAdmin = false;
+    if (webhook.board_id) {
+      const membership = await pool.query(
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [webhook.board_id, req.user!.id]
+      );
+      isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    }
+    if (!isOwner && !isGlobalAdmin && !isBoardAdmin) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -209,7 +232,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   try {
-    // Check ownership/admin
+    // Check ownership/admin/board admin
     const check = await pool.query(
       'SELECT * FROM webhooks WHERE id = $1',
       [id]
@@ -220,7 +243,17 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
+    const isOwner = webhook.created_by === req.user!.id;
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    let isBoardAdmin = false;
+    if (webhook.board_id) {
+      const membership = await pool.query(
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [webhook.board_id, req.user!.id]
+      );
+      isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    }
+    if (!isOwner && !isGlobalAdmin && !isBoardAdmin) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -271,7 +304,17 @@ router.post('/deliveries/:id/redeliver', authenticate, async (req: AuthRequest, 
     }
 
     const delivery = check.rows[0];
-    if (delivery.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
+    const isOwner = delivery.created_by === req.user!.id;
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    let isBoardAdmin = false;
+    if (delivery.board_id) {
+      const membership = await pool.query(
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [delivery.board_id, req.user!.id]
+      );
+      isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    }
+    if (!isOwner && !isGlobalAdmin && !isBoardAdmin) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -298,7 +341,17 @@ router.post('/:id/regenerate-secret', authenticate, async (req: AuthRequest, res
     }
 
     const webhook = check.rows[0];
-    if (webhook.created_by !== req.user!.id && req.user!.role !== 'ADMIN') {
+    const isOwner = webhook.created_by === req.user!.id;
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    let isBoardAdmin = false;
+    if (webhook.board_id) {
+      const membership = await pool.query(
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [webhook.board_id, req.user!.id]
+      );
+      isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    }
+    if (!isOwner && !isGlobalAdmin && !isBoardAdmin) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 

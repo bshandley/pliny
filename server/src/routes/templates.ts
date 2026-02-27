@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireCollaborator } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { TemplateData } from '../templates/builtins';
 
@@ -154,8 +154,8 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
-// POST /:id/use — Create a new board from a template (admin only)
-router.post('/:id/use', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+// POST /:id/use — Create a new board from a template (collaborator or admin)
+router.post('/:id/use', authenticate, requireCollaborator, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -189,6 +189,12 @@ router.post('/:id/use', authenticate, requireAdmin, async (req: AuthRequest, res
         [name.trim(), description || null, req.user!.id]
       );
       const board = boardResult.rows[0];
+
+      // Add creator as board ADMIN
+      await client.query(
+        'INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, $3)',
+        [board.id, req.user!.id, 'ADMIN']
+      );
 
       // Create labels
       for (const label of (data.labels || [])) {

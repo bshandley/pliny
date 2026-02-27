@@ -4,7 +4,7 @@ import { parse } from 'csv-parse/sync';
 import multer from 'multer';
 import crypto from 'crypto';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -22,7 +22,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // GET /api/boards/:boardId/csv/export
-router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
 
@@ -150,7 +150,7 @@ router.get('/boards/:boardId/csv/export', authenticate, requireAdmin, async (req
 });
 
 // POST /api/boards/:boardId/csv/import/preview
-router.post('/boards/:boardId/csv/import/preview', authenticate, requireAdmin, upload.single('file'), async (req: AuthRequest, res) => {
+router.post('/boards/:boardId/csv/import/preview', authenticate, requireBoardRole('ADMIN'), upload.single('file'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
 
@@ -251,7 +251,7 @@ router.post('/boards/:boardId/csv/import/preview', authenticate, requireAdmin, u
 });
 
 // POST /api/boards/:boardId/csv/import/confirm
-router.post('/boards/:boardId/csv/import/confirm', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/boards/:boardId/csv/import/confirm', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
     const { importId, mapping } = req.body as { importId: string; mapping: Record<string, string> };

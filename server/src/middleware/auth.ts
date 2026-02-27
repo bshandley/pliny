@@ -105,6 +105,13 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
+export const requireCollaborator = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!['COLLABORATOR', 'ADMIN'].includes(req.user?.role ?? '')) {
+    return res.status(403).json({ error: 'Collaborator or Admin permission required' });
+  }
+  next();
+};
+
 export type BoardRole = 'READ' | 'COLLABORATOR' | 'ADMIN';
 const ROLE_RANK: Record<BoardRole, number> = { READ: 0, COLLABORATOR: 1, ADMIN: 2 };
 

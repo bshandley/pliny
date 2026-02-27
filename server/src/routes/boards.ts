@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
+import { authenticate, requireCollaborator, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { triggerWebhook } from '../services/webhookService';
 
@@ -376,7 +376,7 @@ router.get('/:id/export', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Create board
-router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireCollaborator, async (req: AuthRequest, res) => {
   try {
     const { name, description } = req.body;
 
