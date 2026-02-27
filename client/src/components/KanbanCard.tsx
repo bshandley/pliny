@@ -6,6 +6,7 @@ import { useConfirm } from '../contexts/ConfirmContext';
 import MentionText from './MentionText';
 import CustomFieldEditor from './CustomFieldEditor';
 import MarkdownRenderer from './MarkdownRenderer';
+import MarkdownEditor from './MarkdownEditor';
 
 interface KanbanCardProps {
   card: Card;
@@ -804,10 +805,11 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
         </div>
       )}
 
-      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="card-edit-description" rows={3} maxLength={10000}
-        onKeyDown={(e) => {
-          if (!isMobile && e.key === 'Escape') { e.preventDefault(); handleClose(); }
-        }}
+      <MarkdownEditor
+        value={editDescription}
+        onChange={setEditDescription}
+        placeholder="Description (optional)"
+        maxLength={10000}
       />
       {editDescription !== (card.description || '') && (
         <button type="button" onClick={handleSaveDescription} className="btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 0, marginBottom: '0.5rem' }}>Save description</button>

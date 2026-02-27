@@ -2,11 +2,11 @@
 
 ## Goal
 
-Replace the plain `<textarea>` card description editor with a split-pane markdown editor that shows a live preview alongside the editing area, plus a toolbar for common formatting.
+Replace the plain `<textarea>` card description editor with a tabbed markdown editor (Write/Preview toggle) with live preview and a formatting toolbar.
 
 ## Decisions
 
-- **Layout**: Split-pane on desktop (textarea left, preview right). Toggle tabs (Write/Preview) on mobile.
+- **Layout**: Toggle tabs (Write/Preview) on all screen sizes. Card modal is too narrow for side-by-side split-pane.
 - **Approach**: Custom `<MarkdownEditor>` component. No new dependencies — reuses existing `marked` + `dompurify` via `MarkdownRenderer`.
 - **Toolbar buttons**: Bold, Italic, Heading, Inline Code, Code Block, Bullet List, Link.
 
@@ -15,8 +15,8 @@ Replace the plain `<textarea>` card description editor with a split-pane markdow
 **Props**: `value`, `onChange`, `placeholder`, `maxLength` — controlled input, drop-in replacement for the textarea.
 
 **Internal structure**:
-- Toolbar row (icon buttons)
-- Editor area: split-pane (desktop) or tabbed Write/Preview (mobile)
+- Header row with Write/Preview tab buttons (`btn-secondary btn-sm`) + toolbar icons (visible in Write mode only)
+- Body: textarea (Write tab) or rendered markdown preview (Preview tab)
 
 ### Toolbar Behavior
 
@@ -34,10 +34,9 @@ Cursor repositioned after insertion for natural typing flow.
 
 ### Styling
 
-- Toolbar: `btn-secondary btn-sm` style buttons in a horizontal row, border-bottom separator.
-- Split-pane: CSS grid `1fr 1fr`, subtle vertical divider. Preview uses `.prose` + `var(--bg-secondary)` background.
-- Mobile: `isMobile` detection triggers tab mode. Tab bar matches toolbar styling.
-- Textarea keeps existing `card-edit-description` styling.
+- Header: tab buttons use `btn-secondary btn-sm`, active tab gets `--primary` background. Toolbar icons in monospace font, right-aligned.
+- Preview pane: `var(--bg-raised)` background, `.prose` styling from `MarkdownRenderer`.
+- Textarea keeps existing `card-edit-description` styling, no border/shadow inside the editor container.
 
 ### Integration
 
@@ -57,7 +56,7 @@ Replace textarea in `KanbanCard.tsx` (~line 807) with:
 
 - `client/src/components/MarkdownEditor.tsx` — new component
 - `client/src/components/KanbanCard.tsx` — replace textarea with `<MarkdownEditor>`
-- `client/src/index.css` — add editor styles (toolbar, split-pane, mobile tabs)
+- `client/src/index.css` — add editor styles (toolbar, tabs, preview)
 
 ## No New Dependencies
 
