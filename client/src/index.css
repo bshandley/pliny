@@ -1354,7 +1354,7 @@ button:disabled {
 .card-select-checkbox {
   position: absolute;
   top: 6px;
-  left: 6px;
+  right: 6px;
   z-index: 2;
   opacity: 0;
   transition: opacity 0.15s ease;
