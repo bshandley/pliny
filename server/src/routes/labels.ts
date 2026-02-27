@@ -96,7 +96,7 @@ router.delete('/labels/:id', authenticate, requireBoardRole('ADMIN'), async (req
 });
 
 // Add label to card
-router.post('/cards/:cardId/labels', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/labels', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const { label_id } = req.body;
@@ -112,7 +112,7 @@ router.post('/cards/:cardId/labels', authenticate, requireBoardRole('COLLABORATO
 });
 
 // Remove label from card
-router.delete('/cards/:cardId/labels/:labelId', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.delete('/cards/:cardId/labels/:labelId', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId, labelId } = req.params;
     await pool.query(

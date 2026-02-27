@@ -6,7 +6,7 @@ import { AuthRequest } from '../types';
 const router = Router();
 
 // GET /boards/:boardId/analytics?days=30
-router.get('/boards/:boardId/analytics', authenticate, requireBoardRole('READ'), async (req: AuthRequest, res: Response) => {
+router.get('/boards/:boardId/analytics', authenticate, requireBoardRole('VIEWER'), async (req: AuthRequest, res: Response) => {
   const { boardId } = req.params;
   const days = parseInt(req.query.days as string) || 30;
 

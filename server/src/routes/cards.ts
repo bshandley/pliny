@@ -9,7 +9,7 @@ import { triggerWebhook } from '../services/webhookService';
 const router = Router();
 
 // Create card
-router.post('/', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { column_id, title, description, position, due_date } = req.body;
 
@@ -46,7 +46,7 @@ router.post('/', authenticate, requireBoardRole('COLLABORATOR'), async (req: Aut
 });
 
 // Update card
-router.put('/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { column_id, title, description, assignees, position, due_date, start_date } = req.body;
@@ -348,7 +348,7 @@ router.put('/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: A
 });
 
 // Delete card
-router.delete('/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 

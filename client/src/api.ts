@@ -66,7 +66,7 @@ class ApiClient {
     return this.fetch('/auth/me', {}, 'me');
   }
 
-  async register(username: string, password: string, role: 'READ' | 'COLLABORATOR' | 'ADMIN') {
+  async register(username: string, password: string, role: 'GUEST' | 'MEMBER' | 'ADMIN') {
     return this.fetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password, role }),
@@ -78,7 +78,7 @@ class ApiClient {
     return this.fetch('/users', {}, 'getUsers');
   }
 
-  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' }): Promise<User> {
+  async updateUser(id: string, updates: { username?: string; password?: string; role?: 'GUEST' | 'MEMBER' | 'ADMIN' }): Promise<User> {
     return this.fetch(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
@@ -121,7 +121,7 @@ class ApiClient {
     return this.fetch(`/boards/${boardId}/members`, {}, 'getBoardMembers');
   }
 
-  async addBoardMember(boardId: string, userId: string, role: string = 'COLLABORATOR'): Promise<void> {
+  async addBoardMember(boardId: string, userId: string, role: string = 'EDITOR'): Promise<void> {
     return this.fetch(`/boards/${boardId}/members`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, role }),

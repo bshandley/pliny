@@ -7,7 +7,7 @@ import { useConfirm } from '../contexts/ConfirmContext';
 interface BoardMembersProps {
   boardId: string;
   onClose: () => void;
-  currentUserRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  currentUserRole: 'VIEWER' | 'EDITOR' | 'ADMIN';
 }
 
 const AVATAR_COLORS = ['#5746af','#2f855a','#c53030','#d69e2e','#3182ce','#805ad5','#d53f8c','#319795','#dd6b20','#667eea'];
@@ -24,8 +24,8 @@ function avatarInitial(name: string): string {
 
 const ROLE_META: Record<string, { label: string; cls: string; desc: string }> = {
   ADMIN: { label: 'Admin', cls: 'bm-role--admin', desc: 'Full access' },
-  COLLABORATOR: { label: 'Collaborator', cls: 'bm-role--collab', desc: 'Can edit cards' },
-  READ: { label: 'Read', cls: 'bm-role--read', desc: 'View only' },
+  EDITOR: { label: 'Editor', cls: 'bm-role--collab', desc: 'Can edit cards' },
+  VIEWER: { label: 'Viewer', cls: 'bm-role--read', desc: 'View only' },
 };
 
 function RolePicker({ value, onChange }: { value: string; onChange: (role: string) => void }) {
@@ -108,7 +108,7 @@ export default function BoardMembers({ boardId, onClose, currentUserRole }: Boar
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<string>('COLLABORATOR');
+  const [selectedRole, setSelectedRole] = useState<string>('EDITOR');
 
   useEffect(() => {
     loadData();
@@ -134,7 +134,7 @@ export default function BoardMembers({ boardId, onClose, currentUserRole }: Boar
     try {
       await api.addBoardMember(boardId, selectedUserId, selectedRole);
       setSelectedUserId('');
-      setSelectedRole('COLLABORATOR');
+      setSelectedRole('EDITOR');
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to add member');
@@ -211,8 +211,8 @@ export default function BoardMembers({ boardId, onClose, currentUserRole }: Boar
                     className="bm-select bm-select-role"
                   >
                     <option value="ADMIN">Admin</option>
-                    <option value="COLLABORATOR">Collaborator</option>
-                    <option value="READ">Read</option>
+                    <option value="EDITOR">Editor</option>
+                    <option value="VIEWER">Viewer</option>
                   </select>
                   <button
                     onClick={handleAddMember}

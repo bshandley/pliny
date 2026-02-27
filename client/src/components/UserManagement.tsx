@@ -14,7 +14,7 @@ export default function UserManagement({ currentUser, subRoute, onNavigate }: Us
   const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ username: '', password: '', role: 'READ' as 'READ' | 'COLLABORATOR' | 'ADMIN' });
+  const [formData, setFormData] = useState({ username: '', password: '', role: 'GUEST' as 'GUEST' | 'MEMBER' | 'ADMIN' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export default function UserManagement({ currentUser, subRoute, onNavigate }: Us
 
   useEffect(() => {
     if (subRoute === 'new') {
-      setFormData({ username: '', password: '', role: 'READ' });
+      setFormData({ username: '', password: '', role: 'GUEST' });
       setError('');
     } else if (editingUser) {
       setFormData({ username: editingUser.username, password: '', role: editingUser.role });
@@ -78,7 +78,7 @@ export default function UserManagement({ currentUser, subRoute, onNavigate }: Us
     if (!editingUser) return;
     setError('');
     try {
-      const updates: { username?: string; password?: string; role?: 'READ' | 'COLLABORATOR' | 'ADMIN' } = {};
+      const updates: { username?: string; password?: string; role?: 'GUEST' | 'MEMBER' | 'ADMIN' } = {};
       if (formData.username && formData.username !== editingUser.username) updates.username = formData.username;
       if (formData.password) updates.password = formData.password;
       if (formData.role !== editingUser.role) updates.role = formData.role;
@@ -153,11 +153,11 @@ export default function UserManagement({ currentUser, subRoute, onNavigate }: Us
           <select
             id={`${mode}-role`}
             value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'READ' | 'COLLABORATOR' | 'ADMIN' })}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'GUEST' | 'MEMBER' | 'ADMIN' })}
             disabled={mode === 'edit' && editingUser?.id === currentUser.id}
           >
-            <option value="READ">READ - View only</option>
-            <option value="COLLABORATOR">COLLABORATOR - Can comment</option>
+            <option value="GUEST">GUEST - View only</option>
+            <option value="MEMBER">MEMBER - Can create boards</option>
             <option value="ADMIN">ADMIN - Full access</option>
           </select>
           {mode === 'edit' && editingUser?.id === currentUser.id && (

@@ -83,7 +83,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const decoded = jwt.verify(token, JWT_SECRET) as {
       id: string;
       username: string;
-      role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+      role: 'GUEST' | 'MEMBER' | 'ADMIN';
     };
 
     // Reject 2FA tickets used as session tokens
@@ -105,15 +105,15 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
-export const requireCollaborator = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (!['COLLABORATOR', 'ADMIN'].includes(req.user?.role ?? '')) {
-    return res.status(403).json({ error: 'Collaborator or Admin permission required' });
+export const requireMember = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!['MEMBER', 'ADMIN'].includes(req.user?.role ?? '')) {
+    return res.status(403).json({ error: 'Member or Admin permission required' });
   }
   next();
 };
 
-export type BoardRole = 'READ' | 'COLLABORATOR' | 'ADMIN';
-const ROLE_RANK: Record<BoardRole, number> = { READ: 0, COLLABORATOR: 1, ADMIN: 2 };
+export type BoardRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
+const ROLE_RANK: Record<BoardRole, number> = { VIEWER: 0, EDITOR: 1, ADMIN: 2 };
 
 async function resolveBoardId(req: AuthRequest): Promise<string | null> {
   // Direct board routes: /boards/:id/... or /boards/:boardId/...
@@ -254,7 +254,7 @@ export function requireBoardRole(minimumRole: BoardRole) {
   };
 }
 
-export const generateToken = (user: { id: string; username: string; role: 'READ' | 'COLLABORATOR' | 'ADMIN' }) => {
+export const generateToken = (user: { id: string; username: string; role: 'GUEST' | 'MEMBER' | 'ADMIN' }) => {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 };
 

@@ -47,7 +47,7 @@ router.post('/cards/:cardId/attachments', authenticate, upload.single('file'), a
     if (!access) {
       return res.status(404).json({ error: 'Card not found' });
     }
-    if (access.boardRole === 'READ') {
+    if (access.boardRole === 'VIEWER') {
       return res.status(403).json({ error: 'Insufficient board permissions' });
     }
 
@@ -170,7 +170,7 @@ router.delete('/attachments/:id', authenticate, async (req: AuthRequest, res) =>
     const attachment = result.rows[0];
 
     const access = await getBoardIdForCard(attachment.card_id.toString(), user.id, user.role);
-    if (!access || access.boardRole === 'READ') {
+    if (!access || access.boardRole === 'VIEWER') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 

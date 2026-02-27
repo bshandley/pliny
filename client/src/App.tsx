@@ -507,7 +507,7 @@ function App() {
         <KanbanBoard
           boardId={currentBoardId}
           onBack={handleBackToBoards}
-          userRole={user?.role || 'READ'}
+          userRole={user?.role || 'GUEST'}
           viewMode={boardViewMode}
           onViewChange={handleViewChange}
           initialCardId={initialCardId}

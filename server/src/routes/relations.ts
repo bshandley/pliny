@@ -61,7 +61,7 @@ router.get('/cards/:id/relations', authenticate, async (req: AuthRequest, res) =
 });
 
 // POST /api/cards/:cardId/relations
-router.post('/cards/:cardId/relations', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/relations', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.cardId;
     const { target_card_id, relation_type } = req.body;
@@ -124,7 +124,7 @@ router.post('/cards/:cardId/relations', authenticate, requireBoardRole('COLLABOR
 });
 
 // DELETE /api/cards/:cardId/relations/:targetId
-router.delete('/cards/:cardId/relations/:targetId', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.delete('/cards/:cardId/relations/:targetId', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const id = req.params.cardId;
     const { targetId } = req.params;

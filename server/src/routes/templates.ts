@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin, requireCollaborator } from '../middleware/auth';
+import { authenticate, requireAdmin, requireMember } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { TemplateData } from '../templates/builtins';
 
@@ -155,7 +155,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 });
 
 // POST /:id/use — Create a new board from a template (collaborator or admin)
-router.post('/:id/use', authenticate, requireCollaborator, async (req: AuthRequest, res) => {
+router.post('/:id/use', authenticate, requireMember, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;

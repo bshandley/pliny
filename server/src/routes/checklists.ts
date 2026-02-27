@@ -22,7 +22,7 @@ router.get('/cards/:cardId/checklist', authenticate, async (req: AuthRequest, re
 });
 
 // Add checklist item
-router.post('/cards/:cardId/checklist', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/checklist', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const { text, assignee_name, due_date, priority } = req.body;
@@ -53,7 +53,7 @@ router.post('/cards/:cardId/checklist', authenticate, requireBoardRole('COLLABOR
 });
 
 // Toggle checklist item
-router.put('/checklist/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.put('/checklist/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { checked, text, assignee_name, due_date, priority } = req.body;
@@ -141,7 +141,7 @@ router.put('/checklist/:id', authenticate, requireBoardRole('COLLABORATOR'), asy
 });
 
 // Delete checklist item
-router.delete('/checklist/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.delete('/checklist/:id', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(

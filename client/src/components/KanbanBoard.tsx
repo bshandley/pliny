@@ -20,7 +20,7 @@ import BulkActionToolbar from './BulkActionToolbar';
 interface KanbanBoardProps {
   boardId: string;
   onBack: () => void;
-  userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  userRole: 'GUEST' | 'MEMBER' | 'ADMIN';
   viewMode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard';
   onViewChange: (mode: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard') => void;
   initialCardId?: string | null;
@@ -56,7 +56,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [publicLinkLoading, setPublicLinkLoading] = useState(false);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
-  const [boardRole, setBoardRole] = useState<'READ' | 'COLLABORATOR' | 'ADMIN'>(userRole);
+  const [boardRole, setBoardRole] = useState<'VIEWER' | 'EDITOR' | 'ADMIN'>(userRole === 'ADMIN' ? 'ADMIN' : 'VIEWER');
   const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
   const lastSelectedCardIdRef = useRef<string | null>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
@@ -74,7 +74,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const confirm = useConfirm();
   const isMobile = useIsMobile();
   const isAdmin = boardRole === 'ADMIN';
-  const canEdit = boardRole === 'COLLABORATOR' || boardRole === 'ADMIN';
+  const canEdit = boardRole === 'EDITOR' || boardRole === 'ADMIN';
   const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
   const hasFilters = filterText || filterAssignee || filterLabel || filterDue || filterColumn || hasCustomFieldFilters;
 
@@ -1145,7 +1145,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             isEditing={editingCardId === card.id}
                                             isSelected={selectedCardIds.has(card.id)}
                                             selectionActive={selectedCardIds.size > 0}
-                                            onToggleSelect={boardRole !== 'READ' ? toggleCardSelection : undefined}
+                                            onToggleSelect={boardRole !== 'VIEWER' ? toggleCardSelection : undefined}
                                             onEditStart={() => openCard(card.id)}
                                             onEditEnd={closeCard}
                                             onDelete={() => handleDeleteCard(card.id)}
@@ -1261,7 +1261,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       {exportStatus && (
         <div className="csv-toast">{exportStatus}</div>
       )}
-      {selectedCardIds.size > 0 && boardRole !== 'READ' && (
+      {selectedCardIds.size > 0 && boardRole !== 'VIEWER' && (
         <BulkActionToolbar
           selectedCount={selectedCardIds.size}
           totalVisible={totalVisibleCards}

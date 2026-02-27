@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireCollaborator, requireBoardRole } from '../middleware/auth';
+import { authenticate, requireMember, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { triggerWebhook } from '../services/webhookService';
 
@@ -41,7 +41,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     const user = req.user!;
 
     // Determine user's board role
-    let currentUserRole: string = 'READ';
+    let currentUserRole: string = 'VIEWER';
     if (user.role === 'ADMIN') {
       currentUserRole = 'ADMIN';
     } else {
@@ -376,7 +376,7 @@ router.get('/:id/export', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Create board
-router.post('/', authenticate, requireCollaborator, async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireMember, async (req: AuthRequest, res) => {
   try {
     const { name, description } = req.body;
 
@@ -509,14 +509,14 @@ router.post('/:id/members', authenticate, requireBoardRole('ADMIN'), async (req:
   try {
     const { id } = req.params;
     const { user_id, role } = req.body;
-    const memberRole = role || 'COLLABORATOR';
+    const memberRole = role || 'EDITOR';
 
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
     }
 
-    if (!['ADMIN', 'COLLABORATOR', 'READ'].includes(memberRole)) {
-      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, COLLABORATOR, or READ' });
+    if (!['ADMIN', 'EDITOR', 'VIEWER'].includes(memberRole)) {
+      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, EDITOR, or VIEWER' });
     }
 
     // Verify board exists
@@ -632,8 +632,8 @@ router.put('/:id/members/:userId/role', authenticate, requireBoardRole('ADMIN'),
     const { id, userId } = req.params;
     const { role } = req.body;
 
-    if (!role || !['ADMIN', 'COLLABORATOR', 'READ'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, COLLABORATOR, or READ' });
+    if (!role || !['ADMIN', 'EDITOR', 'VIEWER'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, EDITOR, or VIEWER' });
     }
 
     // Check if demoting the last ADMIN

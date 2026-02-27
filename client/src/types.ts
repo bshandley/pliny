@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   username: string;
-  role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  role: 'GUEST' | 'MEMBER' | 'ADMIN';
   email?: string;
   display_name?: string;
   avatar_url?: string;
@@ -19,14 +19,14 @@ export interface Board {
   updated_at: string;
   columns?: Column[];
   custom_fields?: CustomField[];
-  currentUserRole?: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  currentUserRole?: 'VIEWER' | 'EDITOR' | 'ADMIN';
 }
 
 export interface BoardMember {
   id: string;
   username: string;
-  global_role: 'READ' | 'COLLABORATOR' | 'ADMIN';
-  board_role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  global_role: 'GUEST' | 'MEMBER' | 'ADMIN';
+  board_role: 'VIEWER' | 'EDITOR' | 'ADMIN';
   added_at: string;
 }
 

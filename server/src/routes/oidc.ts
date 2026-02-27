@@ -215,7 +215,7 @@ router.get('/callback', async (req: Request, res: Response) => {
 
     let userId: string;
     let username: string;
-    let role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+    let role: 'GUEST' | 'MEMBER' | 'ADMIN';
 
     // Extract profile fields from claims using configurable mapping
     const email = (claims as any)[claimMapping.email] || null;
@@ -259,7 +259,7 @@ router.get('/callback', async (req: Request, res: Response) => {
         }
 
         username = candidateUsername;
-        role = 'READ';
+        role = 'GUEST';
 
         const newUser = await dbClient.query(
           'INSERT INTO users (username, password_hash, role, email, display_name, avatar_url) VALUES ($1, NULL, $2, $3, $4, $5) RETURNING id',

@@ -1,7 +1,7 @@
 -- Add role column to board_members
 ALTER TABLE board_members
-  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'COLLABORATOR'
-  CHECK (role IN ('ADMIN', 'COLLABORATOR', 'READ'));
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'EDITOR'
+  CHECK (role IN ('ADMIN', 'COLLABORATOR', 'READ', 'EDITOR', 'VIEWER'));
 
 -- Ensure board creators are in board_members with ADMIN role
 INSERT INTO board_members (board_id, user_id, role)

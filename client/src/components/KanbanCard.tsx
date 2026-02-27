@@ -10,7 +10,7 @@ import MarkdownEditor from './MarkdownEditor';
 
 interface KanbanCardProps {
   card: Card;
-  userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  userRole: 'VIEWER' | 'EDITOR' | 'ADMIN';
   isEditing: boolean;
   isSelected?: boolean;
   selectionActive?: boolean;
@@ -138,8 +138,8 @@ function avatarInitial(name: string): string {
 }
 
 export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
-  const canWrite = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
-  const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
+  const canWrite = userRole === 'ADMIN' || userRole === 'EDITOR';
+  const canComment = userRole === 'ADMIN' || userRole === 'EDITOR';
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');

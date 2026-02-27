@@ -131,7 +131,7 @@ router.get('/cards/:cardId/custom-fields', authenticate, async (req: AuthRequest
 });
 
 // PUT /cards/:cardId/custom-fields — bulk set field values
-router.put('/cards/:cardId/custom-fields', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
+router.put('/cards/:cardId/custom-fields', authenticate, requireBoardRole('EDITOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const fields = req.body; // { fieldId: value, fieldId: value, ... }
