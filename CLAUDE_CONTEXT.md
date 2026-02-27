@@ -35,7 +35,24 @@ They MUST be idempotent — safe to run against an already-migrated database.
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('READ', 'ADMIN'));
 
 -- RIGHT: include all current valid values
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('READ', 'COLLABORATOR', 'ADMIN'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('GUEST', 'MEMBER', 'ADMIN'));
+```
+
+**⚠️ CRITICAL: Drop constraint BEFORE updating data**
+When renaming values in a constrained column, you MUST drop the constraint first,
+then update the data, then add the new constraint. If you update data first, the
+old constraint (from a previous migration that already ran) will reject the new values.
+
+```sql
+-- WRONG: UPDATE fails because old constraint rejects 'MEMBER'
+UPDATE users SET role = 'MEMBER' WHERE role = 'COLLABORATOR';  -- ERROR!
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('GUEST', 'MEMBER', 'ADMIN'));
+
+-- RIGHT: Drop first, then update, then constrain
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+UPDATE users SET role = 'MEMBER' WHERE role = 'COLLABORATOR';
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('GUEST', 'MEMBER', 'ADMIN'));
 ```
 
 ### ⚠️ CRITICAL: All Primary Keys are UUID — NOT INTEGER
