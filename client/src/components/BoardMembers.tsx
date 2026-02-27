@@ -6,14 +6,16 @@ import { useConfirm } from '../contexts/ConfirmContext';
 interface BoardMembersProps {
   boardId: string;
   onClose: () => void;
+  currentUserRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
 }
 
-export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
+export default function BoardMembers({ boardId, onClose, currentUserRole }: BoardMembersProps) {
   const confirm = useConfirm();
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('COLLABORATOR');
 
   useEffect(() => {
     loadData();
@@ -36,10 +38,10 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
 
   const handleAddMember = async () => {
     if (!selectedUserId) return;
-
     try {
-      await api.addBoardMember(boardId, selectedUserId);
+      await api.addBoardMember(boardId, selectedUserId, selectedRole);
       setSelectedUserId('');
+      setSelectedRole('COLLABORATOR');
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to add member');
@@ -48,7 +50,6 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
 
   const handleRemoveMember = async (userId: string, username: string) => {
     if (!await confirm(`Remove "${username}" from this board?`, { confirmLabel: 'Remove' })) return;
-
     try {
       await api.removeBoardMember(boardId, userId);
       loadData();
@@ -57,9 +58,18 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
     }
   };
 
-  // Users not yet members (only show READ users since ADMINs already have access)
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    try {
+      await api.changeBoardMemberRole(boardId, userId, newRole);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to change role');
+    }
+  };
+
+  // Users not yet members
   const availableUsers = allUsers.filter(
-    (u) => u.role === 'READ' && !members.some((m) => m.id === u.id)
+    (u) => !members.some((m) => m.id === u.id)
   );
 
   return (
@@ -67,7 +77,7 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
         <h2>Board Members</h2>
         <p className="modal-subtitle">
-          Manage which READ users can access this board. ADMIN users always have access.
+          {currentUserRole === 'ADMIN' ? 'Board members and their roles. You can add members and change roles.' : 'Board members and their roles. Contact a board admin to change roles.'}
         </p>
 
         {loading ? (
@@ -75,7 +85,7 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
         ) : (
           <>
             {/* Add member section */}
-            {availableUsers.length > 0 && (
+            {currentUserRole === 'ADMIN' && availableUsers.length > 0 && (
               <div className="add-member-section">
                 <select
                   value={selectedUserId}
@@ -88,6 +98,15 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
                       {user.username}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="role-select"
+                >
+                  <option value="ADMIN">Admin</option>
+                  <option value="COLLABORATOR">Collaborator</option>
+                  <option value="READ">Read</option>
                 </select>
                 <button
                   onClick={handleAddMember}
@@ -102,22 +121,36 @@ export default function BoardMembers({ boardId, onClose }: BoardMembersProps) {
             {/* Members list */}
             <div className="members-list">
               {members.length === 0 ? (
-                <p className="empty-members">No READ users assigned to this board yet.</p>
+                <p className="empty-members">No members assigned to this board yet.</p>
               ) : (
                 members.map((member) => (
                   <div key={member.id} className="member-row">
                     <div className="member-info">
                       <span className="member-name">{member.username}</span>
-                      <span className={`role-badge role-${member.role.toLowerCase()}`}>
-                        {member.role}
-                      </span>
+                      {currentUserRole === 'ADMIN' ? (
+                        <select
+                          value={member.board_role}
+                          onChange={(e) => handleChangeRole(member.id, e.target.value)}
+                          className="role-select-inline"
+                        >
+                          <option value="ADMIN">Admin</option>
+                          <option value="COLLABORATOR">Collaborator</option>
+                          <option value="READ">Read</option>
+                        </select>
+                      ) : (
+                        <span className={`role-badge role-${member.board_role.toLowerCase()}`}>
+                          {member.board_role}
+                        </span>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleRemoveMember(member.id, member.username)}
-                      className="btn-sm btn-danger"
-                    >
-                      Remove
-                    </button>
+                    {currentUserRole === 'ADMIN' && (
+                      <button
+                        onClick={() => handleRemoveMember(member.id, member.username)}
+                        className="btn-sm btn-danger"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))
               )}
