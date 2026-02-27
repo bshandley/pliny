@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { api } from './api';
 import { User, Notification } from './types';
 import AppBarContext from './contexts/AppBarContext';
+import { useKeyboardShortcuts, Shortcut } from './hooks/useKeyboardShortcuts';
 import Login from './components/Login';
 import ForgotPasswordForm from './components/ForgotPasswordForm';
 import ResetPasswordForm from './components/ResetPasswordForm';
@@ -14,6 +15,7 @@ import ProfileSettings from './components/ProfileSettings';
 import DevConsole from './components/DevConsole';
 import AppBar from './components/AppBar';
 import GlobalSearchModal from './components/GlobalSearchModal';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import PublicBoard from './components/PublicBoard';
 
 type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
@@ -67,6 +69,7 @@ function App() {
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [sso2faTicket, setSso2faTicket] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [authPage, setAuthPage] = useState<'login' | 'forgot-password' | 'reset-password'>(() => {
     const slug = getPathSlug();
@@ -295,17 +298,6 @@ function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const toggleTheme = async (e?: React.MouseEvent) => {
     // Fallback for browsers without View Transitions API or reduced motion
     if (
@@ -419,6 +411,43 @@ function App() {
     window.history.pushState({ page: 'board', boardId: currentBoardId, viewMode }, '', path);
   };
 
+  // Global keyboard shortcuts
+  const globalShortcuts: Shortcut[] = useMemo(() => [
+    { key: 'k', meta: true, description: 'Open global search', group: 'Global' as const, action: () => setSearchOpen(true) },
+    { key: '?', description: 'Toggle keyboard shortcuts help', group: 'Global' as const, action: () => setShortcutsOpen(prev => !prev) },
+    { key: 'Escape', description: 'Close open modal / clear selection', group: 'Global' as const, action: () => {
+      if (shortcutsOpen) { setShortcutsOpen(false); return; }
+      if (searchOpen) { setSearchOpen(false); return; }
+    }},
+    { key: 'g b', description: 'Go to Boards list', group: 'Navigation' as const, action: () => navigateTo('boards') },
+    { key: 'g c', description: 'Go to Calendar view', group: 'Navigation' as const, action: () => {
+      if (page === 'board' && currentBoardId) handleViewChange('calendar');
+    }},
+    { key: 'g s', description: 'Go to Settings', group: 'Navigation' as const, action: () => {
+      if (user?.role === 'ADMIN') navigateTo('users');
+    }},
+  ], [searchOpen, shortcutsOpen, user, navigateTo, page, currentBoardId, handleViewChange]);
+
+  useKeyboardShortcuts(globalShortcuts);
+
+  // Full shortcut list for the help overlay (includes board + card shortcuts for display)
+  const allShortcutsForHelp: Shortcut[] = useMemo(() => [
+    ...globalShortcuts,
+    { key: 'n', description: 'New card in first column', group: 'Board' as const, action: () => {} },
+    { key: 'c', description: 'New column', group: 'Board' as const, action: () => {} },
+    { key: 'f', description: 'Focus filter', group: 'Board' as const, action: () => {} },
+    { key: 'h', description: 'Toggle hide subtasks', group: 'Board' as const, action: () => {} },
+    { key: 'a', meta: true, description: 'Select all visible cards', group: 'Board' as const, action: () => {} },
+    { key: 'Delete', description: 'Archive selected cards', group: 'Board' as const, action: () => {} },
+    { key: 'e', description: 'Edit title', group: 'Card' as const, action: () => {} },
+    { key: 'l', description: 'Labels', group: 'Card' as const, action: () => {} },
+    { key: 'a', description: 'Assignees', group: 'Card' as const, action: () => {} },
+    { key: 'd', description: 'Due date', group: 'Card' as const, action: () => {} },
+    { key: 'Enter', meta: true, description: 'Save description', group: 'Card' as const, action: () => {} },
+    { key: '[', description: 'Move to previous column', group: 'Card' as const, action: () => {} },
+    { key: ']', description: 'Move to next column', group: 'Card' as const, action: () => {} },
+  ], [globalShortcuts]);
+
   const handleMarkNotificationRead = async (id: string) => {
     try {
       await api.markNotificationRead(id);
@@ -476,6 +505,7 @@ function App() {
     onSearchOpen: () => setSearchOpen(true),
     onGoToProfile: handleGoToProfile,
     onOpenDevConsole: () => setDevConsoleOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
   }), [user, notifications, unreadCount, theme]);
 
   if (loading) {
@@ -612,6 +642,11 @@ function App() {
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}
         onNavigate={handleNavigateToBoard}
+      />
+      <KeyboardShortcutsModal
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+        shortcuts={allShortcutsForHelp}
       />
       {user?.role === 'ADMIN' && (
         <DevConsole

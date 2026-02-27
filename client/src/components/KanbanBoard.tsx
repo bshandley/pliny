@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
 import { Board, Card, Label, BoardMember } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useAppBar } from '../contexts/AppBarContext';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useKeyboardShortcuts, Shortcut } from '../hooks/useKeyboardShortcuts';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
 import BoardLabels from './BoardLabels';
@@ -62,6 +64,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   const newCardFormRef = useRef<HTMLFormElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
 
   // Filters
   const [filterText, setFilterText] = useState('');
@@ -74,6 +77,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
+  const appBarCtx = useAppBar();
   const isAdmin = boardRole === 'ADMIN';
   const canEdit = boardRole === 'EDITOR' || boardRole === 'ADMIN';
   const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
@@ -108,15 +112,6 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     clearSelection();
   }, [viewMode]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedCardIds.size > 0) {
-        clearSelection();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCardIds.size, clearSelection]);
 
   // Prune selected card IDs that no longer exist in the visible card set
   // (e.g. after another user deletes/archives a card via websocket)
@@ -785,6 +780,50 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     onViewChange('board');
   };
 
+  // Board keyboard shortcuts
+  const boardShortcuts: Shortcut[] = useMemo(() => [
+    {
+      key: 'n', description: 'New card in first column', group: 'Board' as const,
+      disabled: !canEdit || viewMode !== 'board' || !!editingCardId,
+      action: () => {
+        const firstCol = board?.columns?.[0];
+        if (firstCol) setShowNewCard(firstCol.id);
+      },
+    },
+    {
+      key: 'c', description: 'New column', group: 'Board' as const,
+      disabled: !isAdmin || viewMode !== 'board' || !!editingCardId,
+      action: () => setShowNewColumn(true),
+    },
+    {
+      key: 'f', description: 'Focus filter', group: 'Board' as const,
+      disabled: !!editingCardId,
+      action: () => filterInputRef.current?.focus(),
+    },
+    {
+      key: 'h', description: 'Toggle hide subtasks', group: 'Board' as const,
+      disabled: !!editingCardId,
+      action: () => setHideSubtasks(prev => !prev),
+    },
+    {
+      key: 'a', meta: true, description: 'Select all visible cards', group: 'Board' as const,
+      disabled: viewMode !== 'board' || !!editingCardId,
+      action: selectAllVisible,
+    },
+    {
+      key: 'Escape', description: 'Clear bulk selection', group: 'Board' as const,
+      disabled: selectedCardIds.size === 0 || !!editingCardId,
+      action: clearSelection,
+    },
+    {
+      key: 'Delete', description: 'Archive selected cards', group: 'Board' as const,
+      disabled: selectedCardIds.size === 0 || boardRole === 'VIEWER' || !!editingCardId,
+      action: () => handleBulkArchive(),
+    },
+  ], [canEdit, isAdmin, viewMode, editingCardId, board, selectedCardIds.size, boardRole, selectAllVisible, clearSelection]);
+
+  useKeyboardShortcuts(boardShortcuts);
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!board) return <div>Board not found</div>;
 
@@ -841,6 +880,12 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             </svg>
           </button>
         </div>
+        <button
+          className="shortcuts-help-btn desktop-only"
+          onClick={() => appBarCtx?.onOpenShortcuts?.()}
+          title="Keyboard shortcuts (?)"
+          aria-label="Keyboard shortcuts"
+        >?</button>
         <button
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
           className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
@@ -908,6 +953,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       {/* Filter bar */}
       <div className={`filter-bar${mobileFiltersOpen ? ' mobile-open' : ''}`}>
         <input
+          ref={filterInputRef}
           type="text"
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}

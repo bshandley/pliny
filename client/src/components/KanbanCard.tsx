@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardAssignee, Column, Label, Comment, ChecklistItem, ActivityEntry, BoardMember, CustomField, CustomFieldValue, Attachment, CardRelations, SubtaskSummary } from '../types';
 import { api } from '../api';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useKeyboardShortcuts, Shortcut } from '../hooks/useKeyboardShortcuts';
 import MentionText from './MentionText';
 import CustomFieldEditor from './CustomFieldEditor';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -209,6 +210,49 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
   const [cardMenuPos, setCardMenuPos] = useState<{ top: number; left: number } | null>(null);
   const cardMenuRef = useRef<HTMLDivElement>(null);
   const cardMenuBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Refs for keyboard shortcut focus targets
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const labelSectionRef = useRef<HTMLDivElement>(null);
+  const dueDateInputRef = useRef<HTMLInputElement>(null);
+
+  // Card detail keyboard shortcuts
+  const cardShortcuts: Shortcut[] = useMemo(() => {
+    if (!isEditing || !canWrite) return [];
+    return [
+      { key: 'Escape', description: 'Close card detail', group: 'Card' as const, action: () => onEditEnd() },
+      { key: 'e', description: 'Edit title', group: 'Card' as const, action: () => titleInputRef.current?.focus() },
+      { key: 'l', description: 'Labels', group: 'Card' as const, action: () => labelSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) },
+      { key: 'a', description: 'Assignees', group: 'Card' as const, action: () => inputRef.current?.focus() },
+      { key: 'd', description: 'Due date', group: 'Card' as const, action: () => dueDateInputRef.current?.showPicker?.() || dueDateInputRef.current?.focus() },
+      {
+        key: 'Enter', meta: true, description: 'Save description', group: 'Card' as const,
+        action: () => {
+          if (editDescription !== (card.description || '')) {
+            onUpdate({ description: editDescription });
+          }
+        },
+      },
+      {
+        key: '[', description: 'Move to previous column', group: 'Card' as const,
+        action: () => {
+          if (!onMoveToColumn || columns.length === 0) return;
+          const currentColIdx = columns.findIndex(c => c.cards?.some(cc => cc.id === card.id));
+          if (currentColIdx > 0) onMoveToColumn(card.id, columns[currentColIdx - 1].id);
+        },
+      },
+      {
+        key: ']', description: 'Move to next column', group: 'Card' as const,
+        action: () => {
+          if (!onMoveToColumn || columns.length === 0) return;
+          const currentColIdx = columns.findIndex(c => c.cards?.some(cc => cc.id === card.id));
+          if (currentColIdx >= 0 && currentColIdx < columns.length - 1) onMoveToColumn(card.id, columns[currentColIdx + 1].id);
+        },
+      },
+    ];
+  }, [isEditing, canWrite, card, columns, editDescription, onEditEnd, onMoveToColumn, onUpdate]);
+
+  useKeyboardShortcuts(cardShortcuts);
 
   useEffect(() => {
     setEditTitle(card.title);
@@ -748,6 +792,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
   const renderEditFields = () => (
     <>
       <input
+        ref={titleInputRef}
         type="text"
         value={editTitle}
         onChange={(e) => setEditTitle(e.target.value)}
@@ -768,7 +813,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
 
       {/* Labels */}
       {boardLabels.length > 0 && (
-        <div className="label-picker">
+        <div className="label-picker" ref={labelSectionRef}>
           {boardLabels.map(label => (
             <button
               key={label.id}
@@ -893,7 +938,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
         <div className="due-date-picker">
           <label htmlFor={`due-date-${card.id}`}>Due date</label>
           <div className="due-date-input-row">
-            <input type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => { setEditDueDate(e.target.value); onUpdate({ due_date: e.target.value || null }); }} className="due-date-input" />
+            <input ref={dueDateInputRef} type="date" id={`due-date-${card.id}`} value={editDueDate} onChange={(e) => { setEditDueDate(e.target.value); onUpdate({ due_date: e.target.value || null }); }} className="due-date-input" />
             {editDueDate && (
               <button type="button" onClick={() => { setEditDueDate(''); onUpdate({ due_date: null }); }} className="btn-icon btn-sm due-date-clear" aria-label="Clear due date">×</button>
             )}

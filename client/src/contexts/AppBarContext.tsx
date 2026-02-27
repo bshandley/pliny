@@ -15,6 +15,7 @@ export interface AppBarContextType {
   onSearchOpen: () => void;
   onGoToProfile?: () => void;
   onOpenDevConsole?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 const AppBarContext = createContext<AppBarContextType | null>(null);
