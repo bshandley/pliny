@@ -3034,24 +3034,23 @@ button:disabled {
 /* Remove button */
 
 .bm-remove {
-  width: 30px;
-  height: 30px;
+  padding: 0.25rem 0.625rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-raised);
-  color: var(--text);
+  border: none;
+  background: none;
+  color: var(--danger);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 500;
   transition: all 0.15s var(--ease);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .bm-remove:hover {
   background: var(--danger-subtle);
-  border-color: var(--danger);
-  color: var(--danger);
+  text-decoration: underline;
 }
 
 /* Empty state */
