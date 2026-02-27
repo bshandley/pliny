@@ -3,6 +3,8 @@
 ## 🎯 Your Job
 Write code. Push to Gitea. Done.
 
+**Do NOT ask clarifying questions. Do NOT create plans and wait for approval. Do NOT ask which execution approach to use. Just implement and push.**
+
 ## 🚫 NOT Your Job
 - Deployment to Wharf
 - Docker operations
