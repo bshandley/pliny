@@ -56,6 +56,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [publicLinkLoading, setPublicLinkLoading] = useState(false);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+  const [boardRole, setBoardRole] = useState<'READ' | 'COLLABORATOR' | 'ADMIN'>(userRole);
   const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
   const lastSelectedCardIdRef = useRef<string | null>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
@@ -72,7 +73,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
-  const isAdmin = userRole === 'ADMIN';
+  const isAdmin = boardRole === 'ADMIN';
+  const canEdit = boardRole === 'COLLABORATOR' || boardRole === 'ADMIN';
   const hasCustomFieldFilters = Object.values(customFieldFilters).some(v => v !== '');
   const hasFilters = filterText || filterAssignee || filterLabel || filterDue || filterColumn || hasCustomFieldFilters;
 
@@ -221,6 +223,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         return;
       }
       setBoard(data);
+      if (data.currentUserRole) {
+        setBoardRole(data.currentUserRole);
+      }
       if (data.public_token) {
         setPublicUrl(`${window.location.origin}/public/${data.public_token}`);
       } else {
@@ -298,7 +303,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   };
 
   const handleDragEnd = async (result: DropResult) => {
-    if (!isAdmin || !board) return;
+    if (!board) return;
     const { destination, source, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
@@ -849,52 +854,48 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
         </button>
         <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
-          {isAdmin && (
-            <div className="board-settings">
-              <button
-                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                className="board-settings-trigger btn-secondary btn-sm"
-              >
-                Board ▾
-              </button>
-              <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
-                <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
-                <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
-                  {showArchived ? 'Show Active' : 'Archived'}
-                </button>
-                <div className="board-settings-divider" />
-                <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
-                <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
-                <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
-                <div className="board-settings-divider" />
-                <button onClick={handleExportCsv}>Export CSV</button>
-                <button onClick={handleExportJson} disabled={exportingJson}>{exportingJson ? 'Exporting...' : 'Export JSON'}</button>
-                <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
-                <div className="board-settings-divider" />
-                <div className="board-settings-section">
-                  <button onClick={handleTogglePublicLink} disabled={publicLinkLoading}>
-                    {publicLinkLoading ? 'Updating...' : publicUrl ? 'Disable Public Link' : 'Share Publicly'}
-                  </button>
-                  {publicUrl && (
-                    <div className="public-link-row" onClick={(e) => e.stopPropagation()}>
-                      <input type="text" value={publicUrl} readOnly className="public-link-input" />
-                      <button onClick={handleCopyPublicUrl} className="public-link-copy">
-                        {publicLinkCopied ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          {!isAdmin && (
+          <div className="board-settings">
             <button
-              onClick={() => { setShowArchived(!showArchived); setMobileMenuOpen(false); }}
-              className={`btn-secondary btn-sm ${showArchived ? 'active-filter' : ''}`}
+              onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+              className="board-settings-trigger btn-secondary btn-sm"
             >
-              {showArchived ? 'Show Active' : 'Archived'}
+              Board ▾
             </button>
-          )}
+            <div className={`board-settings-menu${showSettingsDropdown ? ' open' : ''}`}>
+              {isAdmin && (
+                <button onClick={() => { setShowNewColumn(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>+ Add Column</button>
+              )}
+              <button onClick={() => { setShowArchived(!showArchived); setShowSettingsDropdown(false); setMobileMenuOpen(false); }} className={showArchived ? 'active' : ''}>
+                {showArchived ? 'Show Active' : 'Archived'}
+              </button>
+              <div className="board-settings-divider" />
+              <button onClick={() => { setShowMembers(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Members</button>
+              {isAdmin && (
+                <>
+                  <button onClick={() => { setShowLabels(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Labels</button>
+                  <button onClick={() => { setShowFieldManager(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Custom Fields</button>
+                  <div className="board-settings-divider" />
+                  <button onClick={handleExportCsv}>Export CSV</button>
+                  <button onClick={handleExportJson} disabled={exportingJson}>{exportingJson ? 'Exporting...' : 'Export JSON'}</button>
+                  <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
+                  <div className="board-settings-divider" />
+                  <div className="board-settings-section">
+                    <button onClick={handleTogglePublicLink} disabled={publicLinkLoading}>
+                      {publicLinkLoading ? 'Updating...' : publicUrl ? 'Disable Public Link' : 'Share Publicly'}
+                    </button>
+                    {publicUrl && (
+                      <div className="public-link-row" onClick={(e) => e.stopPropagation()}>
+                        <input type="text" value={publicUrl} readOnly className="public-link-input" />
+                        <button onClick={handleCopyPublicUrl} className="public-link-copy">
+                          {publicLinkCopied ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </AppBar>
 
@@ -1031,7 +1032,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
               board={board}
               onCardClick={handleCalendarCardClick}
               filterCard={filterCard}
-              isAdmin={isAdmin}
+              isAdmin={canEdit}
               isMobile={isMobile}
               onOpenInBoard={handleOpenInBoard}
               onChangeDate={handleCalendarChangeDate}
@@ -1042,7 +1043,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <TableView
             board={board}
             filterCard={filterCard}
-            isAdmin={isAdmin}
+            isAdmin={canEdit}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => handleOpenInBoard(cardId)}
             boardMembers={boardMembers}
@@ -1051,7 +1052,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <TimelineView
             board={board}
             filterCard={filterCard}
-            isAdmin={isAdmin}
+            isAdmin={canEdit}
             isMobile={isMobile}
             onCardUpdate={() => { loadBoard(); socket?.emit('board-updated', boardId); }}
             onCardClick={(cardId) => { handleOpenInBoard(cardId); }}
@@ -1118,11 +1119,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                             </div>
                           </div>
 
-                          <Droppable droppableId={column.id} type="CARD" isDropDisabled={!isAdmin || showArchived}>
+                          <Droppable droppableId={column.id} type="CARD" isDropDisabled={!canEdit || showArchived}>
                             {(provided) => (
                               <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
                                 {visibleCards.map((card, cardIndex) => (
-                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!isAdmin || showArchived || isMobile}>
+                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived || isMobile}>
                                     {(provided) => (
                                       <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                                         {showArchived ? (
@@ -1130,7 +1131,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             <div className="card-header">
                                               <h4>{card.title}</h4>
                                             </div>
-                                            {isAdmin && (
+                                            {canEdit && (
                                               <div className="archive-actions">
                                                 <button onClick={() => handleRestoreCard(card.id)} className="btn-primary btn-sm">Restore</button>
                                                 <button onClick={() => handleDeleteCard(card.id)} className="btn-danger btn-sm">Delete</button>
@@ -1140,11 +1141,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                         ) : (
                                           <KanbanCard
                                             card={card}
-                                            userRole={userRole}
+                                            userRole={boardRole}
                                             isEditing={editingCardId === card.id}
                                             isSelected={selectedCardIds.has(card.id)}
                                             selectionActive={selectedCardIds.size > 0}
-                                            onToggleSelect={userRole !== 'READ' ? toggleCardSelection : undefined}
+                                            onToggleSelect={boardRole !== 'READ' ? toggleCardSelection : undefined}
                                             onEditStart={() => openCard(card.id)}
                                             onEditEnd={closeCard}
                                             onDelete={() => handleDeleteCard(card.id)}
@@ -1168,7 +1169,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                             )}
                           </Droppable>
 
-                          {isAdmin && !showArchived && (
+                          {canEdit && !showArchived && (
                             showNewCard === column.id ? (
                               <form onSubmit={(e) => handleCreateCard(e, column.id)} className="new-card-form" ref={newCardFormRef}>
                                 <input type="text" value={newCardTitle} onChange={(e) => setNewCardTitle(e.target.value)} placeholder="Card title..." autoFocus required maxLength={255} />
@@ -1199,7 +1200,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         return (
           <KanbanCard
             card={editCard}
-            userRole={userRole}
+            userRole={boardRole}
             isEditing={true}
             onEditStart={() => {}}
             onEditEnd={closeCard}
@@ -1235,7 +1236,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         </div>
       )}
 
-      {showMembers && <BoardMembers boardId={boardId} onClose={() => setShowMembers(false)} />}
+      {showMembers && <BoardMembers boardId={boardId} onClose={() => setShowMembers(false)} currentUserRole={boardRole} />}
       {showLabels && (
         <BoardLabels
           boardId={boardId}
@@ -1260,7 +1261,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       {exportStatus && (
         <div className="csv-toast">{exportStatus}</div>
       )}
-      {selectedCardIds.size > 0 && userRole !== 'READ' && (
+      {selectedCardIds.size > 0 && boardRole !== 'READ' && (
         <BulkActionToolbar
           selectedCount={selectedCardIds.size}
           totalVisible={totalVisibleCards}
