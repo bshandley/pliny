@@ -136,6 +136,15 @@ async function resolveBoardId(req: AuthRequest): Promise<string | null> {
   // Column POST: board_id in body
   if (req.body?.board_id) return req.body.board_id;
 
+  // Custom fields with :fieldId param
+  if (req.params.fieldId) {
+    const result = await pool.query(
+      'SELECT board_id FROM board_custom_fields WHERE id = $1',
+      [req.params.fieldId]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
   // For bare :id params, use baseUrl to determine entity type
   if (req.params.id) {
     const base = req.baseUrl + req.path;

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireBoardRole } from '../middleware/auth';
+import { AuthRequest } from '../types';
 
 const router = Router();
 
 // GET /boards/:boardId/analytics?days=30
-router.get('/boards/:boardId/analytics', authenticate, async (req: Request, res: Response) => {
+router.get('/boards/:boardId/analytics', authenticate, requireBoardRole('READ'), async (req: AuthRequest, res: Response) => {
   const { boardId } = req.params;
   const days = parseInt(req.query.days as string) || 30;
 
