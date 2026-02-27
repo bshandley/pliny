@@ -6065,6 +6065,55 @@ button:disabled {
   color: var(--primary);
 }
 
+/* Forgot password link in login form */
+.forgot-password-link {
+  display: block;
+  width: 100%;
+  text-align: right;
+  margin-top: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.forgot-password-link:hover {
+  color: var(--primary);
+}
+
+/* Forgot/Reset password pages */
+.forgot-password-success,
+.reset-password-success,
+.reset-password-error {
+  text-align: center;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.forgot-password-success p,
+.reset-password-success p,
+.reset-password-error p {
+  margin-bottom: 1rem;
+}
+
+.forgot-password-note {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* Success message */
+.success {
+  background: rgba(47, 133, 90, 0.1);
+  color: var(--success);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
 /* Profile settings */
 .profile-settings-content {
   max-width: 600px;

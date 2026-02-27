@@ -22,6 +22,22 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Profile editing state
+  const [displayName, setDisplayName] = useState(user.display_name || '');
+  const [email, setEmail] = useState(user.email || '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
   // Setup flow
   const [setupMode, setSetupMode] = useState(false);
   const [qrCode, setQrCode] = useState('');
@@ -75,6 +91,60 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
       .catch(() => {})
       .finally(() => setTokensLoading(false));
   }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileError('');
+    setProfileSuccess('');
+
+    try {
+      await api.updateProfile({
+        display_name: displayName || undefined,
+        email: email || undefined,
+      });
+      setProfileSuccess('Profile updated successfully');
+      setTimeout(() => setProfileSuccess(''), 3000);
+    } catch (err: any) {
+      setProfileError(err.message || 'Failed to update profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters');
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    try {
+      await api.updateProfile({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordSuccess('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => setPasswordSuccess(''), 3000);
+    } catch (err: any) {
+      setPasswordError(err.message || 'Failed to change password');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   const handleToggleNotifPref = (key: string) => {
     const currentValue = notifPrefs[key] ?? NOTIFICATION_TOGGLES.find(t => t.key === key)?.defaultOn ?? false;
@@ -220,22 +290,10 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
               <img src={user.avatar_url} alt={user.display_name || user.username} className="profile-avatar-img" />
             </div>
           )}
-          {user.display_name && (
-            <div className="profile-field">
-              <label>Name</label>
-              <span>{user.display_name}</span>
-            </div>
-          )}
           <div className="profile-field">
             <label>Username</label>
             <span>{user.username}</span>
           </div>
-          {user.email && (
-            <div className="profile-field">
-              <label>Email</label>
-              <span>{user.email}</span>
-            </div>
-          )}
           <div className="profile-field">
             <label>Role</label>
             <span className={`role-badge role-${user.role.toLowerCase()}`}>{user.role}</span>
@@ -246,6 +304,95 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
               <span>{new Date(user.created_at).toLocaleDateString()}</span>
             </div>
           )}
+        </section>
+
+        <section className="profile-section">
+          <h2>Profile</h2>
+          <form onSubmit={handleSaveProfile}>
+            <div className="form-group">
+              <label htmlFor="display-name">Display name</label>
+              <input
+                type="text"
+                id="display-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={user.username}
+                maxLength={100}
+              />
+              <span className="form-hint">This is how your name appears to others</span>
+            </div>
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+              <span className="form-hint">Used for password reset and notifications</span>
+            </div>
+            {profileError && <div className="error">{profileError}</div>}
+            {profileSuccess && <div className="success">{profileSuccess}</div>}
+            <div className="profile-actions">
+              <button type="submit" disabled={profileSaving}>
+                {profileSaving ? 'Saving...' : 'Save profile'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="profile-section">
+          <h2>Change Password</h2>
+          <form onSubmit={handleChangePassword}>
+            <div className="form-group">
+              <label htmlFor="current-password">Current password</label>
+              <div className="password-input-wrapper">
+                <input
+                  type={showPasswords ? 'text' : 'password'}
+                  id="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button type="button" className="password-toggle" onClick={() => setShowPasswords(v => !v)} tabIndex={-1} aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}>
+                  {showPasswords ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="new-password">New password</label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                id="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirm-new-password">Confirm new password</label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                id="confirm-new-password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            {passwordError && <div className="error">{passwordError}</div>}
+            {passwordSuccess && <div className="success">{passwordSuccess}</div>}
+            <div className="profile-actions">
+              <button type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}>
+                {passwordSaving ? 'Changing...' : 'Change password'}
+              </button>
+            </div>
+          </form>
         </section>
 
         <section className="profile-section">

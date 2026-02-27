@@ -73,6 +73,31 @@ class ApiClient {
     }, 'register');
   }
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.fetch('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }, 'forgotPassword');
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    return this.fetch('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }, 'resetPassword');
+  }
+
+  async getProfile(): Promise<any> {
+    return this.fetch('/profile', {}, 'getProfile');
+  }
+
+  async updateProfile(data: { display_name?: string; email?: string; current_password?: string; new_password?: string }): Promise<any> {
+    return this.fetch('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }, 'updateProfile');
+  }
+
   // Users
   async getUsers(): Promise<User[]> {
     return this.fetch('/users', {}, 'getUsers');

@@ -8,9 +8,10 @@ interface LoginProps {
   ssoError?: string | null;
   sso2faTicket?: string | null;
   onSso2faComplete?: () => void;
+  onForgotPassword?: () => void;
 }
 
-export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onSso2faComplete }: LoginProps) {
+export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onSso2faComplete, onForgotPassword }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -175,6 +176,11 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
                 )}
               </button>
             </div>
+            {onForgotPassword && (
+              <button type="button" className="btn-link forgot-password-link" onClick={onForgotPassword}>
+                Forgot password?
+              </button>
+            )}
           </div>
           {error && <div className="error">{error}</div>}
           <button type="submit" disabled={loading}>

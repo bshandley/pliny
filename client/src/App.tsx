@@ -5,6 +5,8 @@ import { api } from './api';
 import { User, Notification } from './types';
 import AppBarContext from './contexts/AppBarContext';
 import Login from './components/Login';
+import ForgotPasswordForm from './components/ForgotPasswordForm';
+import ResetPasswordForm from './components/ResetPasswordForm';
 import BoardList from './components/BoardList';
 import KanbanBoard from './components/KanbanBoard';
 import AdminPage from './components/AdminPage';
@@ -66,6 +68,12 @@ function App() {
   const [sso2faTicket, setSso2faTicket] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
+  const [authPage, setAuthPage] = useState<'login' | 'forgot-password' | 'reset-password'>(() => {
+    const slug = getPathSlug();
+    if (slug === 'forgot-password') return 'forgot-password';
+    if (slug === 'reset-password') return 'reset-password';
+    return 'login';
+  });
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -480,9 +488,44 @@ function App() {
   }
 
   if (!user && !api.getToken()) {
+    const handleGoToForgotPassword = () => {
+      setAuthPage('forgot-password');
+      window.history.pushState(null, '', '/forgot-password');
+    };
+
+    const handleGoToLogin = () => {
+      setAuthPage('login');
+      window.history.pushState(null, '', '/');
+    };
+
+    const handleGoToResetPassword = () => {
+      setAuthPage('reset-password');
+      window.history.pushState(null, '', '/forgot-password');
+    };
+
+    const renderAuthPage = () => {
+      switch (authPage) {
+        case 'forgot-password':
+          return <ForgotPasswordForm onBack={handleGoToLogin} />;
+        case 'reset-password':
+          return <ResetPasswordForm onNavigateToLogin={handleGoToLogin} onNavigateToForgotPassword={handleGoToForgotPassword} />;
+        default:
+          return (
+            <Login
+              onLogin={handleLogin}
+              onSsoLogin={handleSsoLogin}
+              ssoError={ssoError}
+              sso2faTicket={sso2faTicket}
+              onSso2faComplete={() => setSso2faTicket(null)}
+              onForgotPassword={handleGoToForgotPassword}
+            />
+          );
+      }
+    };
+
     return (
       <>
-        <Login onLogin={handleLogin} onSsoLogin={handleSsoLogin} ssoError={ssoError} sso2faTicket={sso2faTicket} onSso2faComplete={() => setSso2faTicket(null)} />
+        {renderAuthPage()}
         <button
           className="login-theme-toggle"
           onClick={(e) => { toggleTheme(e); }}

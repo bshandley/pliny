@@ -31,6 +31,8 @@ import webhookRoutes from './routes/webhooks';
 import relationsRoutes from './routes/relations';
 import publicBoardRoutes from './routes/publicBoard';
 import trelloRoutes from './routes/trello';
+import passwordResetRoutes from './routes/passwordReset';
+import profileRoutes from './routes/profile';
 import { apiLoggerMiddleware } from './middleware/apiLogger';
 import { apiLimiter, uploadLimiter } from './middleware/rateLimiter';
 import cookieParser from 'cookie-parser';
@@ -60,6 +62,8 @@ app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', passwordResetRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
 app.use('/api/cards', cardRoutes);

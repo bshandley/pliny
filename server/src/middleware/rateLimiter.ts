@@ -27,6 +27,15 @@ export const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Forgot password — prevent abuse
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: { error: 'Too many reset requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // General API — loose ceiling, just blocks hammering
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
