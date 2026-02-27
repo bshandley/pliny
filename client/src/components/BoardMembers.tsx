@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { User, BoardMember } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
@@ -29,29 +30,52 @@ const ROLE_META: Record<string, { label: string; cls: string; desc: string }> = 
 
 function RolePicker({ value, onChange }: { value: string; onChange: (role: string) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (
+        !(btnRef.current?.contains(t)) &&
+        !(menuRef.current?.contains(t))
+      ) setOpen(false);
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpen((v) => !v);
+  };
+
   const meta = ROLE_META[value] || ROLE_META.READ;
 
   return (
-    <div className="bm-role-picker" ref={ref}>
-      <button className={`bm-role-badge bm-role-badge--interactive ${meta.cls}`} onClick={() => setOpen(!open)} type="button">
+    <div className="bm-role-picker">
+      <button
+        ref={btnRef}
+        className={`bm-role-badge bm-role-badge--interactive ${meta.cls}`}
+        onClick={handleToggle}
+        type="button"
+      >
         {meta.label}
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ opacity: 0.6 }}>
           <path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      {open && (
-        <div className="bm-role-menu">
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          className="bm-role-menu"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+        >
           {Object.entries(ROLE_META).map(([key, m]) => (
             <button
               key={key}
@@ -71,7 +95,8 @@ function RolePicker({ value, onChange }: { value: string; onChange: (role: strin
               )}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

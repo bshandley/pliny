@@ -2955,11 +2955,7 @@ button:disabled {
 }
 
 .bm-role-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 1000;
-  background-color: var(--card-bg);
+  z-index: 9999;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -2967,7 +2963,6 @@ button:disabled {
   padding: 4px;
   min-width: 180px;
   animation: bmFadeSlide 0.12s var(--ease-spring);
-  isolation: isolate;
 }
 
 .bm-role-option {
