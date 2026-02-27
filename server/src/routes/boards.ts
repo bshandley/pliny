@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { triggerWebhook } from '../services/webhookService';
 
@@ -40,15 +40,19 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
     const user = req.user!;
 
-    // Check access: admin can access all, READ must be a member
-    if (user.role !== 'ADMIN') {
+    // Determine user's board role
+    let currentUserRole: string = 'READ';
+    if (user.role === 'ADMIN') {
+      currentUserRole = 'ADMIN';
+    } else {
       const memberCheck = await pool.query(
-        'SELECT 1 FROM board_members WHERE board_id = $1 AND user_id = $2',
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
         [id, user.id]
       );
       if (memberCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Board not found' });
       }
+      currentUserRole = memberCheck.rows[0].role;
     }
 
     const boardResult = await pool.query(
@@ -195,6 +199,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 
     res.json({
       ...board,
+      currentUserRole,
       custom_fields: customFieldsResult.rows,
       columns: columns.map(col => ({
         ...col,
@@ -387,6 +392,12 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
       [name, description, req.user!.id]
     );
 
+    // Add creator as board ADMIN
+    await pool.query(
+      'INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, $3)',
+      [result.rows[0].id, req.user!.id, 'ADMIN']
+    );
+
     // Trigger webhook for board.created
     triggerWebhook('board.created', {
       board: result.rows[0],
@@ -401,7 +412,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 });
 
 // Update board
-router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, description, archived } = req.body;
@@ -452,7 +463,7 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 });
 
 // Delete board
-router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -478,12 +489,12 @@ router.get('/:id/members', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT u.id, u.username, u.role, bm.added_at
+      `SELECT u.id, u.username, u.role as global_role, bm.role as board_role, bm.added_at
        FROM board_members bm
        INNER JOIN users u ON bm.user_id = u.id
        WHERE bm.board_id = $1
        UNION
-       SELECT u.id, u.username, u.role, u.created_at as added_at
+       SELECT u.id, u.username, u.role as global_role, 'ADMIN' as board_role, u.created_at as added_at
        FROM users u
        WHERE u.role = 'ADMIN'
          AND u.id NOT IN (SELECT user_id FROM board_members WHERE board_id = $1)
@@ -499,13 +510,18 @@ router.get('/:id/members', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Add board member (admin only)
-router.post('/:id/members', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/:id/members', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { user_id } = req.body;
+    const { user_id, role } = req.body;
+    const memberRole = role || 'COLLABORATOR';
 
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
+    }
+
+    if (!['ADMIN', 'COLLABORATOR', 'READ'].includes(memberRole)) {
+      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, COLLABORATOR, or READ' });
     }
 
     // Verify board exists
@@ -521,8 +537,8 @@ router.post('/:id/members', authenticate, requireAdmin, async (req: AuthRequest,
     }
 
     await pool.query(
-      'INSERT INTO board_members (board_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [id, user_id]
+      'INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [id, user_id, memberRole]
     );
 
     res.status(201).json({ message: 'Member added' });
@@ -533,7 +549,7 @@ router.post('/:id/members', authenticate, requireAdmin, async (req: AuthRequest,
 });
 
 // Generate public link for board (admin only)
-router.post('/:id/public-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/:id/public-link', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -557,7 +573,7 @@ router.post('/:id/public-link', authenticate, requireAdmin, async (req: AuthRequ
 });
 
 // Revoke public link for board (admin only)
-router.delete('/:id/public-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/:id/public-link', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -579,22 +595,80 @@ router.delete('/:id/public-link', authenticate, requireAdmin, async (req: AuthRe
 });
 
 // Remove board member (admin only)
-router.delete('/:id/members/:userId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/:id/members/:userId', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id, userId } = req.params;
 
-    const result = await pool.query(
-      'DELETE FROM board_members WHERE board_id = $1 AND user_id = $2 RETURNING *',
+    // Check if removing the last ADMIN
+    const targetMember = await pool.query(
+      'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
       [id, userId]
     );
-
-    if (result.rows.length === 0) {
+    if (targetMember.rows.length === 0) {
       return res.status(404).json({ error: 'Member not found' });
     }
+    if (targetMember.rows[0].role === 'ADMIN') {
+      const adminCount = await pool.query(
+        'SELECT COUNT(*) FROM board_members WHERE board_id = $1 AND role = $2',
+        [id, 'ADMIN']
+      );
+      if (parseInt(adminCount.rows[0].count) <= 1) {
+        return res.status(400).json({
+          error: 'Cannot remove the last board admin. Transfer admin to another member first.'
+        });
+      }
+    }
+
+    await pool.query(
+      'DELETE FROM board_members WHERE board_id = $1 AND user_id = $2',
+      [id, userId]
+    );
 
     res.json({ message: 'Member removed' });
   } catch (error) {
     console.error('Remove board member error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Change board member role (board admin only)
+router.put('/:id/members/:userId/role', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
+  try {
+    const { id, userId } = req.params;
+    const { role } = req.body;
+
+    if (!role || !['ADMIN', 'COLLABORATOR', 'READ'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be ADMIN, COLLABORATOR, or READ' });
+    }
+
+    // Check if demoting the last ADMIN
+    const currentRole = await pool.query(
+      'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    if (currentRole.rows.length === 0) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (currentRole.rows[0].role === 'ADMIN' && role !== 'ADMIN') {
+      const adminCount = await pool.query(
+        'SELECT COUNT(*) FROM board_members WHERE board_id = $1 AND role = $2',
+        [id, 'ADMIN']
+      );
+      if (parseInt(adminCount.rows[0].count) <= 1) {
+        return res.status(400).json({
+          error: 'Cannot demote the last board admin. Promote another member first.'
+        });
+      }
+    }
+
+    await pool.query(
+      'UPDATE board_members SET role = $1 WHERE board_id = $2 AND user_id = $3',
+      [role, id, userId]
+    );
+
+    res.json({ message: 'Role updated' });
+  } catch (error) {
+    console.error('Change member role error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
