@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -60,10 +60,10 @@ router.get('/cards/:id/relations', authenticate, async (req: AuthRequest, res) =
   }
 });
 
-// POST /api/cards/:id/relations
-router.post('/cards/:id/relations', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+// POST /api/cards/:cardId/relations
+router.post('/cards/:cardId/relations', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.cardId;
     const { target_card_id, relation_type } = req.body;
 
     if (!target_card_id || !relation_type) {
@@ -123,10 +123,11 @@ router.post('/cards/:id/relations', authenticate, requireAdmin, async (req: Auth
   }
 });
 
-// DELETE /api/cards/:id/relations/:targetId
-router.delete('/cards/:id/relations/:targetId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+// DELETE /api/cards/:cardId/relations/:targetId
+router.delete('/cards/:cardId/relations/:targetId', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
-    const { id, targetId } = req.params;
+    const id = req.params.cardId;
+    const { targetId } = req.params;
 
     const result = await pool.query(
       `DELETE FROM card_relations

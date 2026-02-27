@@ -138,7 +138,7 @@ function avatarInitial(name: string): string {
 }
 
 export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
-  const canWrite = userRole === 'ADMIN';
+  const canWrite = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
   const [editTitle, setEditTitle] = useState(card.title);
@@ -308,6 +308,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
       await loadRelations();
     } catch (err: any) {
       console.error('Failed to remove relation:', err);
+      alert(err.message || 'Failed to remove relation');
     }
   };
 
