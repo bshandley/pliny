@@ -261,8 +261,8 @@ export default function BoardMembers({ boardId, onClose, currentUserRole }: Boar
                         title="Remove member"
                         type="button"
                       >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round"/>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M6.5 1a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zM3.5 3a.5.5 0 0 0 0 1H4v9a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4h.5a.5.5 0 0 0 0-1h-7zM5 4h6v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4zm2 2.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0v-5zm2 0a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0v-5z"/>
                         </svg>
                       </button>
                     )}

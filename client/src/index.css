@@ -3034,12 +3034,12 @@ button:disabled {
 /* Remove button */
 
 .bm-remove {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg-raised);
-  color: var(--text-secondary);
+  color: var(--text);
   cursor: pointer;
   display: flex;
   align-items: center;
