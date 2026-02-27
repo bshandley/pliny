@@ -114,6 +114,23 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedCardIds.size, clearSelection]);
 
+  // Prune selected card IDs that no longer exist in the visible card set
+  // (e.g. after another user deletes/archives a card via websocket)
+  useEffect(() => {
+    if (!board || selectedCardIds.size === 0) return;
+    const visibleIds = new Set<string>();
+    for (const col of (board.columns || [])) {
+      for (const card of (col.cards || []).filter(filterCard)) {
+        visibleIds.add(card.id);
+      }
+    }
+    setSelectedCardIds(prev => {
+      const pruned = new Set([...prev].filter(id => visibleIds.has(id)));
+      if (pruned.size === prev.size) return prev;
+      return pruned;
+    });
+  }, [board]);
+
   const openCard = (cardId: string) => {
     clearSelection();
     setEditingCardId(cardId);
@@ -542,6 +559,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     setSelectedCardIds(prev => {
       const next = new Set(prev);
       if (shiftKey && lastSelectedCardIdRef.current && board) {
+        // Shift+click range select operates within a single column.
+        // Cross-column shift+click falls through to single toggle.
         for (const col of (board.columns || [])) {
           const cards = (col.cards || []).filter(filterCard);
           const lastIdx = cards.findIndex(c => c.id === lastSelectedCardIdRef.current);
