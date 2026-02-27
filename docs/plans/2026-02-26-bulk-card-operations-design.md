@@ -2,7 +2,7 @@
 
 ## Goal
 
-Let users select multiple cards across columns and perform batch operations on them. Initial operations: **move to column** and **assign member**.
+Let users select multiple cards across columns and perform batch operations on them. Operations: **move to column**, **archive/delete** (with confirmation), **assign labels**, and **assign members**.
 
 ## Approach
 
@@ -26,6 +26,9 @@ Client-side orchestration using existing `api.updateCard()` calls with `Promise.
   - Checkbox (toggle select all visible / deselect all) + "N selected" text
   - "Move to..." button — dropdown listing all board columns
   - "Assign..." button — dropdown listing board members
+  - "Label..." button — dropdown listing board labels
+  - "Archive" button — archives selected cards (with confirmation)
+  - "Delete" button — permanently deletes selected cards (with confirmation)
   - "×" close button — clears selection
 - Matches existing UI styling (colors, border radius, shadows)
 - `Escape` key dismisses selection
@@ -48,6 +51,27 @@ Client-side orchestration using existing `api.updateCard()` calls with `Promise.
 3. `loadBoard()` + socket emit after completion
 4. Clear selection
 
+### Assign Label
+
+1. User selects cards, clicks "Label...", picks a label
+2. For each card: fetch current labels, add new label if not present, call `api.updateCard()`
+3. `loadBoard()` + socket emit after completion
+4. Clear selection
+
+### Archive
+
+1. User selects cards, clicks "Archive"
+2. Confirmation dialog: "Archive N cards?"
+3. `Promise.all()` calls `api.updateCard(cardId, { archived: true })` for each card
+4. `loadBoard()` + socket emit, clear selection
+
+### Delete
+
+1. User selects cards, clicks "Delete"
+2. Confirmation dialog: "Permanently delete N cards? This cannot be undone."
+3. `Promise.all()` calls `api.deleteCard(cardId)` for each card
+4. `loadBoard()` + socket emit, clear selection
+
 ## Error Handling
 
 Partial failure is acceptable (same as drag-and-drop). If any call fails, show error message "N of M cards updated" and refetch board state.
@@ -60,7 +84,5 @@ Partial failure is acceptable (same as drag-and-drop). If any call fails, show e
 
 ## Out of Scope
 
-- Bulk label assignment (future)
-- Bulk archive/delete (future)
 - Multi-card drag-and-drop
 - Batch API endpoints (optimize later if needed)
