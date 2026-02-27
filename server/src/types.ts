@@ -80,4 +80,5 @@ export interface AuthRequest extends Request {
     username: string;
     role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   };
+  boardRole?: 'READ' | 'COLLABORATOR' | 'ADMIN';
 }

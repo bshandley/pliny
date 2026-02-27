@@ -105,6 +105,82 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
+export type BoardRole = 'READ' | 'COLLABORATOR' | 'ADMIN';
+const ROLE_RANK: Record<BoardRole, number> = { READ: 0, COLLABORATOR: 1, ADMIN: 2 };
+
+async function resolveBoardId(req: AuthRequest): Promise<string | null> {
+  // Direct board routes: /boards/:id/... or /boards/:boardId/...
+  if (req.params.id && req.baseUrl.includes('/boards')) return req.params.id;
+  if (req.params.boardId) return req.params.boardId;
+
+  // Card routes: look up via card -> column -> board
+  const cardId = req.params.cardId || req.params.id;
+  if (cardId) {
+    const result = await pool.query(
+      `SELECT col.board_id FROM cards c
+       JOIN columns col ON c.column_id = col.id
+       WHERE c.id = $1`,
+      [cardId]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // Column POST: board_id in body
+  if (req.body?.board_id) return req.body.board_id;
+
+  // Column PUT/DELETE: look up via column
+  if (req.params.id) {
+    const result = await pool.query(
+      'SELECT board_id FROM columns WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // Card POST: column_id in body -> board
+  if (req.body?.column_id) {
+    const result = await pool.query(
+      'SELECT board_id FROM columns WHERE id = $1',
+      [req.body.column_id]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  return null;
+}
+
+export function requireBoardRole(minimumRole: BoardRole) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    // Global ADMIN always has full access
+    if (req.user?.role === 'ADMIN') {
+      req.boardRole = 'ADMIN';
+      return next();
+    }
+
+    const boardId = await resolveBoardId(req);
+    if (!boardId) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    const result = await pool.query(
+      'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+      [boardId, req.user!.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: 'Not a board member' });
+    }
+
+    const userBoardRole = result.rows[0].role as BoardRole;
+    if (ROLE_RANK[userBoardRole] < ROLE_RANK[minimumRole]) {
+      return res.status(403).json({ error: 'Insufficient board permissions' });
+    }
+
+    req.boardRole = userBoardRole;
+    next();
+  };
+}
+
 export const generateToken = (user: { id: string; username: string; role: 'READ' | 'COLLABORATOR' | 'ADMIN' }) => {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 };
