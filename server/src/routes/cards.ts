@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { logActivity } from './activity';
 import { notifyCardMembers, createNotification } from '../services/notificationHelper';
@@ -9,7 +9,7 @@ import { triggerWebhook } from '../services/webhookService';
 const router = Router();
 
 // Create card
-router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { column_id, title, description, position, due_date } = req.body;
 
@@ -46,7 +46,7 @@ router.post('/', authenticate, requireAdmin, async (req: AuthRequest, res) => {
 });
 
 // Update card
-router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { column_id, title, description, assignees, position, due_date, start_date } = req.body;
@@ -348,7 +348,7 @@ router.put('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => 
 });
 
 // Delete card
-router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 

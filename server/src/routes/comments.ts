@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { createNotification, notifyCardMembers } from '../services/notificationHelper';
 import { triggerWebhook } from '../services/webhookService';
@@ -27,7 +27,7 @@ router.get('/cards/:cardId/comments', authenticate, async (req: AuthRequest, res
 });
 
 // Add comment (any authenticated user can comment)
-router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/comments', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const { text } = req.body;
@@ -127,14 +127,15 @@ router.post('/cards/:cardId/comments', authenticate, async (req: AuthRequest, re
 });
 
 // Delete comment (only comment author or admin)
-router.delete('/comments/:id', authenticate, async (req: AuthRequest, res) => {
+router.delete('/comments/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const comment = await pool.query('SELECT * FROM card_comments WHERE id = $1', [id]);
     if (comment.rows.length === 0) {
       return res.status(404).json({ error: 'Comment not found' });
     }
-    if (comment.rows[0].user_id !== req.user!.id && req.user!.role !== 'ADMIN') {
+    // COLLABORATOR can only delete own comments; board/global ADMIN can delete any
+    if (comment.rows[0].user_id !== req.user!.id && req.boardRole !== 'ADMIN') {
       return res.status(403).json({ error: 'Not authorized' });
     }
     await pool.query('DELETE FROM card_comments WHERE id = $1', [id]);

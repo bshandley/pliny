@@ -113,26 +113,13 @@ async function resolveBoardId(req: AuthRequest): Promise<string | null> {
   if (req.params.id && req.baseUrl.includes('/boards')) return req.params.id;
   if (req.params.boardId) return req.params.boardId;
 
-  // Card routes: look up via card -> column -> board
-  const cardId = req.params.cardId || req.params.id;
-  if (cardId) {
+  // Card-scoped routes (comments, checklists, labels with :cardId)
+  if (req.params.cardId) {
     const result = await pool.query(
       `SELECT col.board_id FROM cards c
        JOIN columns col ON c.column_id = col.id
        WHERE c.id = $1`,
-      [cardId]
-    );
-    if (result.rows.length > 0) return result.rows[0].board_id;
-  }
-
-  // Column POST: board_id in body
-  if (req.body?.board_id) return req.body.board_id;
-
-  // Column PUT/DELETE: look up via column
-  if (req.params.id) {
-    const result = await pool.query(
-      'SELECT board_id FROM columns WHERE id = $1',
-      [req.params.id]
+      [req.params.cardId]
     );
     if (result.rows.length > 0) return result.rows[0].board_id;
   }
@@ -144,6 +131,76 @@ async function resolveBoardId(req: AuthRequest): Promise<string | null> {
       [req.body.column_id]
     );
     if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // Column POST: board_id in body
+  if (req.body?.board_id) return req.body.board_id;
+
+  // For bare :id params, use baseUrl to determine entity type
+  if (req.params.id) {
+    const base = req.baseUrl + req.path;
+
+    // Comment routes: /comments/:id -> card -> column -> board
+    if (base.includes('/comments/')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM card_comments cc
+         JOIN cards c ON cc.card_id = c.id
+         JOIN columns col ON c.column_id = col.id
+         WHERE cc.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Checklist routes: /checklist/:id -> card -> column -> board
+    if (base.includes('/checklist/')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM card_checklist_items ci
+         JOIN cards c ON ci.card_id = c.id
+         JOIN columns col ON c.column_id = col.id
+         WHERE ci.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Label routes: /labels/:id -> board_labels
+    if (base.includes('/labels/')) {
+      const result = await pool.query(
+        'SELECT board_id FROM board_labels WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Card routes: card :id -> column -> board
+    if (req.baseUrl.includes('/cards')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM cards c
+         JOIN columns col ON c.column_id = col.id
+         WHERE c.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Column routes: column :id -> board
+    if (req.baseUrl.includes('/columns')) {
+      const result = await pool.query(
+        'SELECT board_id FROM columns WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Custom field routes: /custom-fields/:id -> board
+    if (base.includes('/custom-fields/')) {
+      const result = await pool.query(
+        'SELECT board_id FROM board_custom_fields WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
   }
 
   return null;

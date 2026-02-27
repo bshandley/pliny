@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { createNotification } from '../services/notificationHelper';
 
@@ -22,7 +22,7 @@ router.get('/cards/:cardId/checklist', authenticate, async (req: AuthRequest, re
 });
 
 // Add checklist item
-router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/checklist', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const { text, assignee_name, due_date, priority } = req.body;
@@ -53,7 +53,7 @@ router.post('/cards/:cardId/checklist', authenticate, requireAdmin, async (req: 
 });
 
 // Toggle checklist item
-router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/checklist/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { checked, text, assignee_name, due_date, priority } = req.body;
@@ -141,7 +141,7 @@ router.put('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest
 });
 
 // Delete checklist item
-router.delete('/checklist/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/checklist/:id', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
