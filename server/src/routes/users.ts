@@ -98,6 +98,23 @@ router.delete('/:id', authenticate, requireAdmin, async (req: AuthRequest, res) 
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
+    // Check if deleting this user would orphan any boards (leave them with no ADMIN)
+    const orphanCheck = await pool.query(
+      `SELECT bm.board_id, b.name
+       FROM board_members bm
+       JOIN boards b ON bm.board_id = b.id
+       WHERE bm.user_id = $1 AND bm.role = 'ADMIN'
+         AND (SELECT COUNT(*) FROM board_members bm2
+              WHERE bm2.board_id = bm.board_id AND bm2.role = 'ADMIN') = 1`,
+      [id]
+    );
+    if (orphanCheck.rows.length > 0) {
+      const boardNames = orphanCheck.rows.map((r: any) => r.name).join(', ');
+      return res.status(400).json({
+        error: `Cannot delete user: they are the sole admin on board(s): ${boardNames}. Reassign admin role first.`
+      });
+    }
+
     const result = await pool.query(
       'DELETE FROM users WHERE id = $1 RETURNING id, username',
       [id]
