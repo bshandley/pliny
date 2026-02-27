@@ -118,12 +118,15 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
                 autoComplete="one-time-code"
                 maxLength={8}
                 required
+                aria-describedby={error ? 'totp-error' : 'totp-hint'}
               />
-              <span className="form-hint">Or enter a backup code</span>
+              <span className="form-hint" id="totp-hint">Or enter a backup code</span>
             </div>
-            {error && <div className="error">{error}</div>}
+            {error && <div className="error" id="totp-error" role="alert">{error}</div>}
             <button type="submit" disabled={loading || totpCode.length < 6}>
-              {loading ? 'Verifying...' : 'Verify'}
+              {loading ? (
+                <span className="btn-spinner"><span className="spinner-sm" />Verifying…</span>
+              ) : 'Verify'}
             </button>
             <button
               type="button"
@@ -152,9 +155,10 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
               type="text"
               id="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => { setUsername(e.target.value); setError(''); }}
               required
               autoComplete="username"
+              aria-describedby={error ? 'login-error' : undefined}
             />
           </div>
           <div className="form-group">
@@ -164,9 +168,10 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
                 required
                 autoComplete="current-password"
+                aria-describedby={error ? 'login-error' : undefined}
               />
               <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)} tabIndex={-1} aria-label={showPassword ? 'Hide password' : 'Show password'}>
                 {showPassword ? (
@@ -182,9 +187,11 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
               </button>
             )}
           </div>
-          {error && <div className="error">{error}</div>}
+          {error && <div className="error" id="login-error" role="alert">{error}</div>}
           <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? (
+              <span className="btn-spinner"><span className="spinner-sm" />Logging in…</span>
+            ) : 'Login'}
           </button>
         </form>
 

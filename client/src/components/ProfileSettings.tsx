@@ -285,11 +285,15 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
       <div className="profile-settings-content">
         <section className="profile-section">
           <h2>Account</h2>
-          {user.avatar_url && (
-            <div className="profile-avatar">
+          <div className="profile-avatar">
+            {user.avatar_url ? (
               <img src={user.avatar_url} alt={user.display_name || user.username} className="profile-avatar-img" />
-            </div>
-          )}
+            ) : (
+              <div className="profile-avatar-initials" aria-hidden="true">
+                {(user.display_name || user.username || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+              </div>
+            )}
+          </div>
           <div className="profile-field">
             <label>Username</label>
             <span>{user.username}</span>
@@ -315,7 +319,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 type="text"
                 id="display-name"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => { setDisplayName(e.target.value); setProfileError(''); }}
                 placeholder={user.username}
                 maxLength={100}
               />
@@ -327,16 +331,23 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setProfileError(''); }}
                 placeholder="you@example.com"
               />
               <span className="form-hint">Used for password reset and notifications</span>
             </div>
-            {profileError && <div className="error">{profileError}</div>}
-            {profileSuccess && <div className="success">{profileSuccess}</div>}
+            {profileError && <div className="error" id="profile-error" role="alert">{profileError}</div>}
+            {profileSuccess && (
+              <div className="success" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                {profileSuccess}
+              </div>
+            )}
             <div className="profile-actions">
-              <button type="submit" disabled={profileSaving}>
-                {profileSaving ? 'Saving...' : 'Save profile'}
+              <button type="submit" disabled={profileSaving} aria-describedby={profileError ? 'profile-error' : undefined}>
+                {profileSaving ? (
+                  <span className="btn-spinner"><span className="spinner-sm" />Saving…</span>
+                ) : 'Save profile'}
               </button>
             </div>
           </form>
@@ -352,8 +363,9 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                   type={showPasswords ? 'text' : 'password'}
                   id="current-password"
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(''); }}
                   autoComplete="current-password"
+                  aria-describedby={passwordError ? 'password-error' : undefined}
                 />
                 <button type="button" className="password-toggle" onClick={() => setShowPasswords(v => !v)} tabIndex={-1} aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}>
                   {showPasswords ? (
@@ -370,7 +382,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 type={showPasswords ? 'text' : 'password'}
                 id="new-password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => { setNewPassword(e.target.value); setPasswordError(''); }}
                 autoComplete="new-password"
                 minLength={8}
               />
@@ -381,15 +393,22 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 type={showPasswords ? 'text' : 'password'}
                 id="confirm-new-password"
                 value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                onChange={(e) => { setConfirmNewPassword(e.target.value); setPasswordError(''); }}
                 autoComplete="new-password"
               />
             </div>
-            {passwordError && <div className="error">{passwordError}</div>}
-            {passwordSuccess && <div className="success">{passwordSuccess}</div>}
+            {passwordError && <div className="error" id="password-error" role="alert">{passwordError}</div>}
+            {passwordSuccess && (
+              <div className="success" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                {passwordSuccess}
+              </div>
+            )}
             <div className="profile-actions">
               <button type="submit" disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}>
-                {passwordSaving ? 'Changing...' : 'Change password'}
+                {passwordSaving ? (
+                  <span className="btn-spinner"><span className="spinner-sm" />Changing…</span>
+                ) : 'Change password'}
               </button>
             </div>
           </form>
@@ -441,7 +460,9 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                 {setupError && <div className="error">{setupError}</div>}
                 <div className="profile-actions">
                   <button type="submit" disabled={setupLoading || verifyCode.length < 6}>
-                    {setupLoading ? 'Verifying...' : 'Enable 2FA'}
+                    {setupLoading ? (
+                      <span className="btn-spinner"><span className="spinner-sm" />Verifying…</span>
+                    ) : 'Enable 2FA'}
                   </button>
                   <button type="button" className="btn-secondary" onClick={() => { setSetupMode(false); setSetupError(''); }}>
                     Cancel
@@ -477,7 +498,9 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
                   {disableError && <div className="error">{disableError}</div>}
                   <div className="profile-actions">
                     <button type="submit" className="btn-danger" disabled={disableLoading}>
-                      {disableLoading ? 'Disabling...' : 'Disable 2FA'}
+                      {disableLoading ? (
+                        <span className="btn-spinner"><span className="spinner-sm" />Disabling…</span>
+                      ) : 'Disable 2FA'}
                     </button>
                     <button type="button" className="btn-secondary" onClick={() => { setDisableMode(false); setDisablePassword(''); setDisableError(''); }}>
                       Cancel
