@@ -32,6 +32,7 @@ import relationsRoutes from './routes/relations';
 import publicBoardRoutes from './routes/publicBoard';
 import trelloRoutes from './routes/trello';
 import { apiLoggerMiddleware } from './middleware/apiLogger';
+import { apiLimiter, uploadLimiter } from './middleware/rateLimiter';
 import cookieParser from 'cookie-parser';
 import { runMigrations } from './migrations/run';
 import { seedBuiltinTemplates } from './templates/seed';
@@ -55,6 +56,7 @@ app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(apiLoggerMiddleware);
+app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -75,8 +77,8 @@ app.use('/api', customFieldRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/app-settings', appSettingsRoutes);
-app.use('/api', csvRoutes);
-app.use('/api/trello', trelloRoutes);
+app.use('/api', uploadLimiter, csvRoutes);
+app.use('/api/trello', uploadLimiter, trelloRoutes);
 app.use('/api', searchRoutes);
 app.use('/api', attachmentRoutes);
 app.use('/api/tokens', apiTokenRoutes);

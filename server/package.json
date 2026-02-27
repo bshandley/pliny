@@ -24,7 +24,8 @@
     "pg": "^8.12.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.4",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "express-rate-limit": "^7.5.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

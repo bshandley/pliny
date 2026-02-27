@@ -1,4 +1,4 @@
-# Cork Development Context (for Claude Code)
+# Pliny Development Context (for Claude Code)
 
 ## 🎯 Your Job
 Write code. Push to Gitea. Done.
@@ -9,7 +9,7 @@ Write code. Push to Gitea. Done.
 - Server management
 
 ## ⚡ The Pipeline (Fully Automated)
-1. **You code** → `~/cork` on openclaw VM
+1. **You code** → `~/pliny` on openclaw VM
 2. **You push** → `git push` to local Gitea (http://10.0.0.102:3004)
 3. **Auto-deploy** → Wharf detects within 5 min, pulls, migrates, rebuilds
 4. **Live** → http://10.0.0.102:5175

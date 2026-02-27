@@ -3,13 +3,14 @@ import bcrypt from 'bcryptjs';
 import * as OTPAuth from 'otpauth';
 import pool from '../db';
 import { authenticate, requireAdmin, generateToken, signTicket, verifyTicket } from '../middleware/auth';
+import { authLimiter, registerLimiter } from '../middleware/rateLimiter';
 import { AuthRequest } from '../types';
 import { decrypt } from '../utils/crypto';
 
 const router = Router();
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -68,7 +69,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Verify 2FA code (after login returns requires_2fa)
-router.post('/verify-2fa', async (req, res) => {
+router.post('/verify-2fa', authLimiter, async (req, res) => {
   try {
     const { ticket, code } = req.body;
 
@@ -198,7 +199,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Register (ADMIN users can create new users)
-router.post('/register', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/register', registerLimiter, authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { username, password, role } = req.body;
 
