@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { io, Socket } from 'socket.io-client';
 import { api } from '../api';
@@ -55,6 +55,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [publicLinkLoading, setPublicLinkLoading] = useState(false);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+  const lastSelectedCardIdRef = useRef<string | null>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   const newCardFormRef = useRef<HTMLFormElement>(null);
@@ -90,11 +92,32 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   }, [isMobile, editingCardId]);
 
+  const clearSelection = useCallback(() => {
+    setSelectedCardIds(new Set());
+    lastSelectedCardIdRef.current = null;
+  }, []);
+
   // Clear any open card when the view changes (e.g. browser back from board → calendar
   // after opening a card via handleOpenInBoard — prevents stale overlay, issue #8).
   useEffect(() => {
     setEditingCardId(null);
+    clearSelection();
   }, [viewMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedCardIds.size > 0) {
+        clearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCardIds.size, clearSelection]);
+
+  const openCard = (cardId: string) => {
+    clearSelection();
+    setEditingCardId(cardId);
+  };
 
   const closeCard = () => {
     if (isMobile && cardHistoryPushed.current) {
@@ -514,6 +537,45 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       await loadBoard();
     }
   };
+
+  const toggleCardSelection = useCallback((cardId: string, shiftKey: boolean) => {
+    setSelectedCardIds(prev => {
+      const next = new Set(prev);
+      if (shiftKey && lastSelectedCardIdRef.current && board) {
+        for (const col of (board.columns || [])) {
+          const cards = (col.cards || []).filter(filterCard);
+          const lastIdx = cards.findIndex(c => c.id === lastSelectedCardIdRef.current);
+          const curIdx = cards.findIndex(c => c.id === cardId);
+          if (lastIdx !== -1 && curIdx !== -1) {
+            const [start, end] = lastIdx < curIdx ? [lastIdx, curIdx] : [curIdx, lastIdx];
+            for (let i = start; i <= end; i++) {
+              next.add(cards[i].id);
+            }
+            break;
+          }
+        }
+      } else {
+        if (next.has(cardId)) {
+          next.delete(cardId);
+        } else {
+          next.add(cardId);
+        }
+      }
+      lastSelectedCardIdRef.current = cardId;
+      return next;
+    });
+  }, [board, filterCard]);
+
+  const selectAllVisible = useCallback(() => {
+    if (!board) return;
+    const allVisible = new Set<string>();
+    for (const col of (board.columns || [])) {
+      for (const card of (col.cards || []).filter(filterCard)) {
+        allVisible.add(card.id);
+      }
+    }
+    setSelectedCardIds(allVisible);
+  }, [board, filterCard]);
 
   const handleExportCsv = async () => {
     setShowSettingsDropdown(false);
@@ -951,7 +1013,10 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             card={card}
                                             userRole={userRole}
                                             isEditing={editingCardId === card.id}
-                                            onEditStart={() => setEditingCardId(card.id)}
+                                            isSelected={selectedCardIds.has(card.id)}
+                                            selectionActive={selectedCardIds.size > 0}
+                                            onToggleSelect={userRole !== 'READ' ? toggleCardSelection : undefined}
+                                            onEditStart={() => openCard(card.id)}
                                             onEditEnd={closeCard}
                                             onDelete={() => handleDeleteCard(card.id)}
                                             onArchive={() => handleArchiveCard(card.id)}

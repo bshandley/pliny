@@ -12,6 +12,9 @@ interface KanbanCardProps {
   card: Card;
   userRole: 'READ' | 'COLLABORATOR' | 'ADMIN';
   isEditing: boolean;
+  isSelected?: boolean;
+  selectionActive?: boolean;
+  onToggleSelect?: (cardId: string, shiftKey: boolean) => void;
   onEditStart: () => void;
   onEditEnd: () => void;
   onDelete: () => void;
@@ -134,7 +137,7 @@ function avatarInitial(name: string): string {
   return (name || '?').charAt(0).toUpperCase();
 }
 
-export default function KanbanCard({ card, userRole, isEditing, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN';
   const canComment = userRole === 'ADMIN' || userRole === 'COLLABORATOR';
   const confirm = useConfirm();
@@ -1617,10 +1620,21 @@ export default function KanbanCard({ card, userRole, isEditing, onEditStart, onE
 
   return (
     <div
-      className={`kanban-card ${card.archived ? 'archived' : ''}`}
+      className={`kanban-card ${card.archived ? 'archived' : ''} ${isSelected ? 'card-selected' : ''}`}
       onClick={() => onEditStart()}
       style={{ cursor: 'pointer' }}
     >
+      {onToggleSelect && (
+        <div
+          className={`card-select-checkbox ${selectionActive ? 'always-visible' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(card.id, e.shiftKey);
+          }}
+        >
+          <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} />
+        </div>
+      )}
       {/* Label color bars */}
       {card.labels && card.labels.length > 0 && (
         <div className="card-labels">
