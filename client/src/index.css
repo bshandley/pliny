@@ -1351,37 +1351,6 @@ button:disabled {
 }
 
 /* Card selection */
-.card-select-checkbox {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  background: var(--card-bg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-
-.card-select-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--primary);
-  margin: 0;
-}
-
-.kanban-card:hover .card-select-checkbox,
-.card-select-checkbox.always-visible {
-  opacity: 1;
-}
-
 .kanban-card.card-selected {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
@@ -5029,11 +4998,7 @@ button:disabled {
     cursor: default;
   }
 
-  .card-select-checkbox {
-    opacity: 1;
-  }
-
-  .bulk-action-toolbar {
+    .bulk-action-toolbar {
     bottom: 0.75rem;
     left: 0.75rem;
     right: 0.75rem;

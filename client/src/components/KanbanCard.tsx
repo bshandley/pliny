@@ -1621,20 +1621,15 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
   return (
     <div
       className={`kanban-card ${card.archived ? 'archived' : ''} ${isSelected ? 'card-selected' : ''}`}
-      onClick={() => onEditStart()}
+      onClick={(e) => {
+        if (selectionActive && onToggleSelect) {
+          onToggleSelect(card.id, e.shiftKey);
+        } else {
+          onEditStart();
+        }
+      }}
       style={{ cursor: 'pointer' }}
     >
-      {onToggleSelect && (
-        <div
-          className={`card-select-checkbox ${selectionActive ? 'always-visible' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect(card.id, e.shiftKey);
-          }}
-        >
-          <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} />
-        </div>
-      )}
       {/* Label color bars */}
       {card.labels && card.labels.length > 0 && (
         <div className="card-labels">
@@ -1669,6 +1664,12 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
                 style={{ top: cardMenuPos.top, left: cardMenuPos.left }}
                 onClick={(e) => e.stopPropagation()}
               >
+                {onToggleSelect && (
+                  <>
+                    <button onClick={() => { setShowCardMenu(false); onToggleSelect(card.id, false); }}>Select</button>
+                    <div className="kebab-divider" />
+                  </>
+                )}
                 <button onClick={() => { setShowCardMenu(false); onArchive(); }}>Archive</button>
                 <div className="kebab-divider" />
                 <button className="kebab-danger" onClick={() => { setShowCardMenu(false); onDelete(); }}>Delete</button>
