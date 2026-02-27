@@ -15,6 +15,7 @@ import TimelineView from './TimelineView';
 import CustomFieldManager from './CustomFieldManager';
 import DashboardView from './DashboardView';
 import CSVImportModal from './CSVImportModal';
+import BulkActionToolbar from './BulkActionToolbar';
 
 interface KanbanBoardProps {
   boardId: string;
@@ -596,6 +597,112 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     setSelectedCardIds(allVisible);
   }, [board, filterCard]);
 
+  const handleBulkMoveToColumn = async (targetColumnId: string) => {
+    if (selectedCardIds.size === 0 || !board) return;
+    const targetColumn = board.columns?.find(c => c.id === targetColumnId);
+    let nextPosition = targetColumn?.cards?.length || 0;
+    try {
+      await Promise.all(
+        Array.from(selectedCardIds).map((cardId, i) =>
+          api.updateCard(cardId, { column_id: targetColumnId, position: nextPosition + i })
+        )
+      );
+      clearSelection();
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert(`Some cards failed to move: ${error.message}`);
+      await loadBoard();
+      clearSelection();
+    }
+  };
+
+  const handleBulkAssignMember = async (member: BoardMember) => {
+    if (selectedCardIds.size === 0 || !board) return;
+    const allCards = board.columns?.flatMap(c => c.cards || []) || [];
+    try {
+      await Promise.all(
+        Array.from(selectedCardIds).map(cardId => {
+          const card = allCards.find(c => c.id === cardId);
+          if (!card) return Promise.resolve();
+          const existing = card.assignees || [];
+          if (existing.some(a => a.username === member.username)) return Promise.resolve();
+          return api.updateCard(cardId, {
+            assignees: [...existing, { id: '', user_id: member.id, username: member.username }],
+          } as any);
+        })
+      );
+      clearSelection();
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert(`Some cards failed to update: ${error.message}`);
+      await loadBoard();
+      clearSelection();
+    }
+  };
+
+  const handleBulkAssignLabel = async (labelId: string) => {
+    if (selectedCardIds.size === 0 || !board) return;
+    const allCards = board.columns?.flatMap(c => c.cards || []) || [];
+    try {
+      await Promise.all(
+        Array.from(selectedCardIds).map(cardId => {
+          const card = allCards.find(c => c.id === cardId);
+          if (!card) return Promise.resolve();
+          const existingLabelIds = (card.labels || []).map(l => l.id);
+          if (existingLabelIds.includes(labelId)) return Promise.resolve();
+          return api.updateCard(cardId, {
+            labels: [...existingLabelIds, labelId],
+          } as any);
+        })
+      );
+      clearSelection();
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert(`Some cards failed to update: ${error.message}`);
+      await loadBoard();
+      clearSelection();
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedCardIds.size === 0) return;
+    if (!await confirm(`Archive ${selectedCardIds.size} card${selectedCardIds.size > 1 ? 's' : ''}?`, { confirmLabel: 'Archive' })) return;
+    try {
+      await Promise.all(
+        Array.from(selectedCardIds).map(cardId =>
+          api.updateCard(cardId, { archived: true } as any)
+        )
+      );
+      clearSelection();
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert(`Some cards failed to archive: ${error.message}`);
+      await loadBoard();
+      clearSelection();
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCardIds.size === 0) return;
+    if (!await confirm(`Permanently delete ${selectedCardIds.size} card${selectedCardIds.size > 1 ? 's' : ''}? This cannot be undone.`, { confirmLabel: 'Delete' })) return;
+    try {
+      await Promise.all(
+        Array.from(selectedCardIds).map(cardId => api.deleteCard(cardId))
+      );
+      clearSelection();
+      await loadBoard();
+      socket?.emit('board-updated', boardId);
+    } catch (error: any) {
+      alert(`Some cards failed to delete: ${error.message}`);
+      await loadBoard();
+      clearSelection();
+    }
+  };
+
   const handleExportCsv = async () => {
     setShowSettingsDropdown(false);
     setMobileMenuOpen(false);
@@ -673,6 +780,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!board) return <div>Board not found</div>;
+
+  const totalVisibleCards = board.columns?.reduce((sum, col) => sum + (col.cards || []).filter(filterCard).length, 0) || 0;
+  const allVisibleSelected = totalVisibleCards > 0 && selectedCardIds.size === totalVisibleCards;
 
   return (
     <div className="kanban-container">
@@ -1149,6 +1259,23 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
       )}
       {exportStatus && (
         <div className="csv-toast">{exportStatus}</div>
+      )}
+      {selectedCardIds.size > 0 && userRole !== 'READ' && (
+        <BulkActionToolbar
+          selectedCount={selectedCardIds.size}
+          totalVisible={totalVisibleCards}
+          columns={board.columns || []}
+          boardLabels={boardLabels}
+          boardMembers={boardMembers}
+          onMoveToColumn={handleBulkMoveToColumn}
+          onAssignMember={handleBulkAssignMember}
+          onAssignLabel={handleBulkAssignLabel}
+          onArchive={handleBulkArchive}
+          onDelete={handleBulkDelete}
+          onSelectAll={selectAllVisible}
+          onClearSelection={clearSelection}
+          allSelected={allVisibleSelected}
+        />
       )}
     </div>
   );
