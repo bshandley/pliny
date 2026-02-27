@@ -3034,13 +3034,12 @@ button:disabled {
 /* Remove button */
 
 .bm-remove {
-  opacity: 1;
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3049,12 +3048,9 @@ button:disabled {
   flex-shrink: 0;
 }
 
-.bm-member:hover .bm-remove {
-  opacity: 1;
-}
-
 .bm-remove:hover {
   background: var(--danger-subtle);
+  border-color: var(--danger);
   color: var(--danger);
 }
 
