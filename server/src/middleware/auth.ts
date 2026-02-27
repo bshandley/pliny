@@ -105,6 +105,148 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
+export type BoardRole = 'READ' | 'COLLABORATOR' | 'ADMIN';
+const ROLE_RANK: Record<BoardRole, number> = { READ: 0, COLLABORATOR: 1, ADMIN: 2 };
+
+async function resolveBoardId(req: AuthRequest): Promise<string | null> {
+  // Direct board routes: /boards/:id/... or /boards/:boardId/...
+  if (req.params.id && req.baseUrl.includes('/boards')) return req.params.id;
+  if (req.params.boardId) return req.params.boardId;
+
+  // Card-scoped routes (comments, checklists, labels with :cardId)
+  if (req.params.cardId) {
+    const result = await pool.query(
+      `SELECT col.board_id FROM cards c
+       JOIN columns col ON c.column_id = col.id
+       WHERE c.id = $1`,
+      [req.params.cardId]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // Card POST: column_id in body -> board
+  if (req.body?.column_id) {
+    const result = await pool.query(
+      'SELECT board_id FROM columns WHERE id = $1',
+      [req.body.column_id]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // Column POST: board_id in body
+  if (req.body?.board_id) return req.body.board_id;
+
+  // Custom fields with :fieldId param
+  if (req.params.fieldId) {
+    const result = await pool.query(
+      'SELECT board_id FROM board_custom_fields WHERE id = $1',
+      [req.params.fieldId]
+    );
+    if (result.rows.length > 0) return result.rows[0].board_id;
+  }
+
+  // For bare :id params, use baseUrl to determine entity type
+  if (req.params.id) {
+    const base = req.baseUrl + req.path;
+
+    // Comment routes: /comments/:id -> card -> column -> board
+    if (base.includes('/comments/')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM card_comments cc
+         JOIN cards c ON cc.card_id = c.id
+         JOIN columns col ON c.column_id = col.id
+         WHERE cc.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Checklist routes: /checklist/:id -> card -> column -> board
+    if (base.includes('/checklist/')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM card_checklist_items ci
+         JOIN cards c ON ci.card_id = c.id
+         JOIN columns col ON c.column_id = col.id
+         WHERE ci.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Label routes: /labels/:id -> board_labels
+    if (base.includes('/labels/')) {
+      const result = await pool.query(
+        'SELECT board_id FROM board_labels WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Card routes: card :id -> column -> board
+    if (req.baseUrl.includes('/cards')) {
+      const result = await pool.query(
+        `SELECT col.board_id FROM cards c
+         JOIN columns col ON c.column_id = col.id
+         WHERE c.id = $1`,
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Column routes: column :id -> board
+    if (req.baseUrl.includes('/columns')) {
+      const result = await pool.query(
+        'SELECT board_id FROM columns WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+
+    // Custom field routes: /custom-fields/:id -> board
+    if (base.includes('/custom-fields/')) {
+      const result = await pool.query(
+        'SELECT board_id FROM board_custom_fields WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length > 0) return result.rows[0].board_id;
+    }
+  }
+
+  return null;
+}
+
+export function requireBoardRole(minimumRole: BoardRole) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    // Global ADMIN always has full access
+    if (req.user?.role === 'ADMIN') {
+      req.boardRole = 'ADMIN';
+      return next();
+    }
+
+    const boardId = await resolveBoardId(req);
+    if (!boardId) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    const result = await pool.query(
+      'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+      [boardId, req.user!.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: 'Not a board member' });
+    }
+
+    const userBoardRole = result.rows[0].role as BoardRole;
+    if (ROLE_RANK[userBoardRole] < ROLE_RANK[minimumRole]) {
+      return res.status(403).json({ error: 'Insufficient board permissions' });
+    }
+
+    req.boardRole = userBoardRole;
+    next();
+  };
+}
+
 export const generateToken = (user: { id: string; username: string; role: 'READ' | 'COLLABORATOR' | 'ADMIN' }) => {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 };

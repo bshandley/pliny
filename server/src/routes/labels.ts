@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -21,7 +21,7 @@ router.get('/boards/:boardId/labels', authenticate, async (req: AuthRequest, res
 });
 
 // Create label
-router.post('/boards/:boardId/labels', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/boards/:boardId/labels', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
     const { name, color } = req.body;
@@ -48,7 +48,7 @@ router.post('/boards/:boardId/labels', authenticate, requireAdmin, async (req: A
 });
 
 // Update label
-router.put('/labels/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/labels/:id', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, color } = req.body;
@@ -78,7 +78,7 @@ router.put('/labels/:id', authenticate, requireAdmin, async (req: AuthRequest, r
 });
 
 // Delete label
-router.delete('/labels/:id', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/labels/:id', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
@@ -96,7 +96,7 @@ router.delete('/labels/:id', authenticate, requireAdmin, async (req: AuthRequest
 });
 
 // Add label to card
-router.post('/cards/:cardId/labels', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/cards/:cardId/labels', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const { label_id } = req.body;
@@ -112,7 +112,7 @@ router.post('/cards/:cardId/labels', authenticate, requireAdmin, async (req: Aut
 });
 
 // Remove label from card
-router.delete('/cards/:cardId/labels/:labelId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/cards/:cardId/labels/:labelId', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId, labelId } = req.params;
     await pool.query(

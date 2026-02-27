@@ -15,7 +15,7 @@ const upload = multer({
 });
 
 // Helper: get board_id from card_id and verify user has access
-async function getBoardIdForCard(cardId: string, userId: string, userRole: string): Promise<{ boardId: string } | null> {
+async function getBoardIdForCard(cardId: string, userId: string, userRole: string): Promise<{ boardId: string; boardRole: string } | null> {
   const result = await pool.query(
     `SELECT col.board_id FROM cards c
      JOIN columns col ON c.column_id = col.id
@@ -25,14 +25,16 @@ async function getBoardIdForCard(cardId: string, userId: string, userRole: strin
   if (result.rows.length === 0) return null;
   const boardId = result.rows[0].board_id;
 
-  if (userRole !== 'ADMIN') {
-    const member = await pool.query(
-      'SELECT 1 FROM board_members WHERE board_id = $1 AND user_id = $2',
-      [boardId, userId]
-    );
-    if (member.rows.length === 0) return null;
+  if (userRole === 'ADMIN') {
+    return { boardId, boardRole: 'ADMIN' };
   }
-  return { boardId };
+
+  const member = await pool.query(
+    'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+    [boardId, userId]
+  );
+  if (member.rows.length === 0) return null;
+  return { boardId, boardRole: member.rows[0].role };
 }
 
 // POST /api/cards/:cardId/attachments — upload file
@@ -44,6 +46,9 @@ router.post('/cards/:cardId/attachments', authenticate, upload.single('file'), a
     const access = await getBoardIdForCard(cardId, user.id, user.role);
     if (!access) {
       return res.status(404).json({ error: 'Card not found' });
+    }
+    if (access.boardRole === 'READ') {
+      return res.status(403).json({ error: 'Insufficient board permissions' });
     }
 
     if (!req.file) {
@@ -164,8 +169,13 @@ router.delete('/attachments/:id', authenticate, async (req: AuthRequest, res) =>
 
     const attachment = result.rows[0];
 
-    // Only uploader or ADMIN can delete
-    if (attachment.uploader_id?.toString() !== user.id && user.role !== 'ADMIN') {
+    const access = await getBoardIdForCard(attachment.card_id.toString(), user.id, user.role);
+    if (!access || access.boardRole === 'READ') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // Only uploader or board/global ADMIN can delete
+    if (attachment.uploader_id?.toString() !== user.id && access.boardRole !== 'ADMIN') {
       return res.status(403).json({ error: 'Permission denied' });
     }
 

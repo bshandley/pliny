@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -21,7 +21,7 @@ router.get('/boards/:boardId/custom-fields', authenticate, async (req: AuthReque
 });
 
 // POST /boards/:boardId/custom-fields — create field definition (admin only)
-router.post('/boards/:boardId/custom-fields', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/boards/:boardId/custom-fields', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
     const { name, field_type, options, show_on_card } = req.body;
@@ -55,7 +55,7 @@ router.post('/boards/:boardId/custom-fields', authenticate, requireAdmin, async 
 });
 
 // PUT /custom-fields/:fieldId — update field definition (admin only)
-router.put('/custom-fields/:fieldId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/custom-fields/:fieldId', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { fieldId } = req.params;
     const { name, options, position, show_on_card } = req.body;
@@ -99,7 +99,7 @@ router.put('/custom-fields/:fieldId', authenticate, requireAdmin, async (req: Au
 });
 
 // DELETE /custom-fields/:fieldId — delete field + all values (admin only)
-router.delete('/custom-fields/:fieldId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.delete('/custom-fields/:fieldId', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {
     const { fieldId } = req.params;
     const result = await pool.query('DELETE FROM board_custom_fields WHERE id = $1 RETURNING id', [fieldId]);
@@ -131,7 +131,7 @@ router.get('/cards/:cardId/custom-fields', authenticate, async (req: AuthRequest
 });
 
 // PUT /cards/:cardId/custom-fields — bulk set field values
-router.put('/cards/:cardId/custom-fields', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.put('/cards/:cardId/custom-fields', authenticate, requireBoardRole('COLLABORATOR'), async (req: AuthRequest, res) => {
   try {
     const { cardId } = req.params;
     const fields = req.body; // { fieldId: value, fieldId: value, ... }

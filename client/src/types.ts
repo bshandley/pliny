@@ -19,12 +19,14 @@ export interface Board {
   updated_at: string;
   columns?: Column[];
   custom_fields?: CustomField[];
+  currentUserRole?: 'READ' | 'COLLABORATOR' | 'ADMIN';
 }
 
 export interface BoardMember {
   id: string;
   username: string;
-  role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  global_role: 'READ' | 'COLLABORATOR' | 'ADMIN';
+  board_role: 'READ' | 'COLLABORATOR' | 'ADMIN';
   added_at: string;
 }
 

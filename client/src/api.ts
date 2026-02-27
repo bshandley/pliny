@@ -121,11 +121,18 @@ class ApiClient {
     return this.fetch(`/boards/${boardId}/members`, {}, 'getBoardMembers');
   }
 
-  async addBoardMember(boardId: string, userId: string): Promise<void> {
+  async addBoardMember(boardId: string, userId: string, role: string = 'COLLABORATOR'): Promise<void> {
     return this.fetch(`/boards/${boardId}/members`, {
       method: 'POST',
-      body: JSON.stringify({ user_id: userId }),
+      body: JSON.stringify({ user_id: userId, role }),
     }, 'addBoardMember');
+  }
+
+  async changeBoardMemberRole(boardId: string, userId: string, role: string): Promise<void> {
+    return this.fetch(`/boards/${boardId}/members/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    }, 'changeBoardMemberRole');
   }
 
   async removeBoardMember(boardId: string, userId: string): Promise<void> {
