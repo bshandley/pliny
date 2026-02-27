@@ -532,6 +532,52 @@ router.post('/:id/members', authenticate, requireAdmin, async (req: AuthRequest,
   }
 });
 
+// Generate public link for board (admin only)
+router.post('/:id/public-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE boards SET public_token = gen_random_uuid(), updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 RETURNING public_token`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    const token = result.rows[0].public_token;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    res.json({ token, publicUrl: `${clientUrl}/public/${token}` });
+  } catch (error) {
+    console.error('Generate public link error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Revoke public link for board (admin only)
+router.delete('/:id/public-link', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE boards SET public_token = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 RETURNING id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    res.json({ message: 'Public link revoked' });
+  } catch (error) {
+    console.error('Revoke public link error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Remove board member (admin only)
 router.delete('/:id/members/:userId', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {

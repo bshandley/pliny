@@ -52,6 +52,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
   const [unscheduledOrder, setUnscheduledOrder] = useState<string[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [publicLinkLoading, setPublicLinkLoading] = useState(false);
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   const newCardFormRef = useRef<HTMLFormElement>(null);
@@ -177,6 +180,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         return;
       }
       setBoard(data);
+      if (data.public_token) {
+        setPublicUrl(`${window.location.origin}/public/${data.public_token}`);
+      } else {
+        setPublicUrl(null);
+      }
     } catch (error: any) {
       console.error('Failed to load board:', error);
       // Board was deleted or we lost access — go back to board list
@@ -547,6 +555,31 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
     }
   };
 
+  const handleTogglePublicLink = async () => {
+    setPublicLinkLoading(true);
+    try {
+      if (publicUrl) {
+        await api.revokePublicLink(boardId);
+        setPublicUrl(null);
+      } else {
+        const result = await api.generatePublicLink(boardId);
+        setPublicUrl(`${window.location.origin}/public/${result.token}`);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update public link');
+    } finally {
+      setPublicLinkLoading(false);
+    }
+  };
+
+  const handleCopyPublicUrl = () => {
+    if (publicUrl) {
+      navigator.clipboard.writeText(publicUrl);
+      setPublicLinkCopied(true);
+      setTimeout(() => setPublicLinkCopied(false), 2000);
+    }
+  };
+
   const handleDashboardFilterNavigate = (filters: { assignee?: string; label?: string; due?: string; column?: string }) => {
     setFilterText('');
     setFilterAssignee(filters.assignee || '');
@@ -646,6 +679,20 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 <button onClick={handleExportCsv}>Export CSV</button>
                 <button onClick={handleExportJson} disabled={exportingJson}>{exportingJson ? 'Exporting...' : 'Export JSON'}</button>
                 <button onClick={() => { setShowCsvImport(true); setShowSettingsDropdown(false); setMobileMenuOpen(false); }}>Import CSV</button>
+                <div className="board-settings-divider" />
+                <div className="board-settings-section">
+                  <button onClick={handleTogglePublicLink} disabled={publicLinkLoading}>
+                    {publicLinkLoading ? 'Updating...' : publicUrl ? 'Disable Public Link' : 'Share Publicly'}
+                  </button>
+                  {publicUrl && (
+                    <div className="public-link-row" onClick={(e) => e.stopPropagation()}>
+                      <input type="text" value={publicUrl} readOnly className="public-link-input" />
+                      <button onClick={handleCopyPublicUrl} className="public-link-copy">
+                        {publicLinkCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

@@ -13,6 +13,7 @@ export interface Board {
   name: string;
   description?: string;
   archived?: boolean;
+  public_token?: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

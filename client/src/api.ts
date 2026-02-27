@@ -549,6 +549,24 @@ class ApiClient {
     }, 'deleteCardRelation');
   }
 
+  // Public Board Links
+  async generatePublicLink(boardId: string): Promise<{ token: string; publicUrl: string }> {
+    return this.fetch(`/boards/${boardId}/public-link`, { method: 'POST' }, 'generatePublicLink');
+  }
+
+  async revokePublicLink(boardId: string): Promise<void> {
+    return this.fetch(`/boards/${boardId}/public-link`, { method: 'DELETE' }, 'revokePublicLink');
+  }
+
+  async getPublicBoard(token: string): Promise<any> {
+    const response = await fetch(`/api/public/${token}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || 'Request failed');
+    }
+    return response.json();
+  }
+
   // JSON Export
   async exportBoardJson(boardId: string): Promise<any> {
     return this.fetch(`/boards/${boardId}/export`, {}, 'exportBoardJson');

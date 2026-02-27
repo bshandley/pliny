@@ -12,6 +12,7 @@ import ProfileSettings from './components/ProfileSettings';
 import DevConsole from './components/DevConsole';
 import AppBar from './components/AppBar';
 import GlobalSearchModal from './components/GlobalSearchModal';
+import PublicBoard from './components/PublicBoard';
 
 type Page = 'boards' | 'users' | 'board' | 'notifications' | 'profile';
 
@@ -40,6 +41,14 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function AppRouter() {
+  const publicMatch = window.location.pathname.match(/^\/public\/([0-9a-f-]+)$/i);
+  if (publicMatch) {
+    return <PublicBoard token={publicMatch[1]} />;
+  }
+  return <App />;
 }
 
 function App() {
@@ -571,4 +580,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppRouter;
