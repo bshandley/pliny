@@ -3034,7 +3034,7 @@ button:disabled {
 /* Remove button */
 
 .bm-remove {
-  opacity: 0;
+  opacity: 1;
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
@@ -5330,9 +5330,6 @@ button:disabled {
     gap: 0.25rem;
   }
 
-  .bm-remove {
-    opacity: 1;
-  }
 
 
   /* Kanban container */
