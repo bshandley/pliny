@@ -1356,6 +1356,7 @@ button:disabled {
   flex: 1;
   align-items: flex-start;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 
 .column {
@@ -1416,6 +1417,8 @@ button:disabled {
   flex: 1;
   min-height: 80px;
   scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* ---- Cards ---- */
@@ -1428,7 +1431,7 @@ button:disabled {
   margin-bottom: 0.5rem;
   cursor: grab;
   transition: all 0.2s var(--ease);
-  touch-action: none;
+  touch-action: manipulation;
   position: relative;
 }
 
@@ -5242,6 +5245,34 @@ button:disabled {
   font-size: 0.75rem;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* ---- Tablet (769px–1024px) ---- */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .columns-container {
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.5rem;
+  }
+
+  .column {
+    scroll-snap-align: start;
+    width: 260px;
+  }
+}
+
+/* ---- Touch targets for coarse pointers (touchscreens) ---- */
+
+@media (pointer: coarse) {
+  .column-header-actions button,
+  .card-kebab,
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 /* ---- Mobile ---- */

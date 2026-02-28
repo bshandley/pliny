@@ -6,6 +6,7 @@ import { Board, Card, Label, BoardMember } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useAppBar } from '../contexts/AppBarContext';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useIsTablet } from '../hooks/useIsTablet';
 import { useKeyboardShortcuts, Shortcut } from '../hooks/useKeyboardShortcuts';
 import KanbanCard from './KanbanCard';
 import BoardMembers from './BoardMembers';
@@ -77,6 +78,8 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
 
   const confirm = useConfirm();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const isTouchDevice = isMobile || isTablet;
   const appBarCtx = useAppBar();
   const isAdmin = boardRole === 'ADMIN';
   const canEdit = boardRole === 'EDITOR' || boardRole === 'ADMIN';
@@ -1126,10 +1129,10 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                 {board.columns?.filter(col => !filterColumn || col.id === filterColumn).map((column, index) => {
                   const visibleCards = column.cards?.filter(filterCard) || [];
                   return (
-                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin || isMobile}>
+                    <Draggable key={column.id} draggableId={column.id} index={index} isDragDisabled={!isAdmin || isTouchDevice}>
                       {(provided) => (
                         <div className="column" ref={provided.innerRef} {...provided.draggableProps}>
-                          <div className="column-header" {...(!isMobile ? provided.dragHandleProps : {})}>
+                          <div className="column-header" {...(!isTouchDevice ? provided.dragHandleProps : {})}>
                             {renamingColumnId === column.id ? (
                               <input
                                 className="column-rename-input"
@@ -1179,7 +1182,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                             {(provided) => (
                               <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
                                 {visibleCards.map((card, cardIndex) => (
-                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived || isMobile}>
+                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived || isTouchDevice}>
                                     {(provided) => (
                                       <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                                         {showArchived ? (
