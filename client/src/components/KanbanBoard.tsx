@@ -1084,7 +1084,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         )}
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragEnd={handleDragEnd} enableDefaultSensors={!isTouchDevice}>
         {viewMode === 'calendar' ? (
           <div className="calendar-layout">
             <CalendarView
