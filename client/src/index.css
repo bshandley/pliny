@@ -3635,10 +3635,11 @@ button:disabled {
 .btn-star svg {
   display: block;
   transition: transform 0.2s var(--ease);
+  transform: translateY(-1px);
 }
 
 .btn-star:active svg {
-  transform: scale(1.25);
+  transform: translateY(-1px) scale(1.25);
 }
 
 /* ---- Sort Controls ---- */
