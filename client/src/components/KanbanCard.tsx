@@ -8,6 +8,7 @@ import MentionText from './MentionText';
 import CustomFieldEditor from './CustomFieldEditor';
 import MarkdownRenderer from './MarkdownRenderer';
 import MarkdownEditor from './MarkdownEditor';
+import { useIsTablet } from '../hooks/useIsTablet';
 
 interface KanbanCardProps {
   card: Card;
@@ -140,6 +141,7 @@ function avatarInitial(name: string): string {
 }
 
 export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [], dragHandleProps }: KanbanCardProps) {
+  const isTouchDevice = useIsTablet();
   const canWrite = userRole === 'ADMIN' || userRole === 'EDITOR';
   const canComment = userRole === 'ADMIN' || userRole === 'EDITOR';
   const confirm = useConfirm();
@@ -1804,9 +1806,10 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
         }
       }}
       style={{ cursor: 'pointer' }}
+      {...(!isTouchDevice && dragHandleProps ? dragHandleProps : {})}
     >
       {dragHandleProps && (
-        <div className="card-drag-handle" {...dragHandleProps} onClick={(e) => e.stopPropagation()}>
+        <div className="card-drag-handle" {...(isTouchDevice ? dragHandleProps : {})} onClick={(e) => e.stopPropagation()}>
           <span className="drag-dots">⠿</span>
         </div>
       )}
