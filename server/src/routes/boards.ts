@@ -12,15 +12,19 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     const user = req.user!;
 
     if (user.role === 'ADMIN') {
-      // Admin sees all boards
+      // Admin sees all boards — left join to get personal star status
       const result = await pool.query(
-        'SELECT * FROM boards ORDER BY created_at DESC'
+        `SELECT b.*, COALESCE(bm.is_starred, false) AS is_starred
+         FROM boards b
+         LEFT JOIN board_members bm ON b.id = bm.board_id AND bm.user_id = $1
+         ORDER BY b.created_at DESC`,
+        [user.id]
       );
       res.json(result.rows);
     } else {
-      // READ users only see boards they're members of
+      // Non-admin users only see boards they're members of
       const result = await pool.query(
-        `SELECT b.* FROM boards b
+        `SELECT b.*, bm.is_starred FROM boards b
          INNER JOIN board_members bm ON b.id = bm.board_id
          WHERE bm.user_id = $1
          ORDER BY b.created_at DESC`,
@@ -30,6 +34,59 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     }
   } catch (error) {
     console.error('Get boards error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Star a board for the current user
+router.post('/:id/star', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const result = await pool.query(
+      `UPDATE board_members SET is_starred = true
+       WHERE board_id = $1 AND user_id = $2
+       RETURNING is_starred`,
+      [id, user.id]
+    );
+
+    if (result.rows.length === 0) {
+      // Admin may not have a board_members row — insert one
+      if (user.role === 'ADMIN') {
+        await pool.query(
+          `INSERT INTO board_members (board_id, user_id, role, is_starred)
+           VALUES ($1, $2, 'ADMIN', true)
+           ON CONFLICT (board_id, user_id) DO UPDATE SET is_starred = true`,
+          [id, user.id]
+        );
+        return res.json({ starred: true });
+      }
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    res.json({ starred: true });
+  } catch (error) {
+    console.error('Star board error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Unstar a board for the current user
+router.delete('/:id/star', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    await pool.query(
+      `UPDATE board_members SET is_starred = false
+       WHERE board_id = $1 AND user_id = $2`,
+      [id, user.id]
+    );
+
+    res.json({ starred: false });
+  } catch (error) {
+    console.error('Unstar board error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

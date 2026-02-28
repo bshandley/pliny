@@ -141,6 +141,14 @@ class ApiClient {
     return this.fetch(`/boards/${id}`, { method: 'DELETE' }, 'deleteBoard');
   }
 
+  async starBoard(id: string): Promise<{ starred: boolean }> {
+    return this.fetch(`/boards/${id}/star`, { method: 'POST' }, 'starBoard');
+  }
+
+  async unstarBoard(id: string): Promise<{ starred: boolean }> {
+    return this.fetch(`/boards/${id}/star`, { method: 'DELETE' }, 'unstarBoard');
+  }
+
   // Board Members
   async getBoardMembers(boardId: string): Promise<BoardMember[]> {
     return this.fetch(`/boards/${boardId}/members`, {}, 'getBoardMembers');

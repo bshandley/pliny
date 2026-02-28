@@ -17,6 +17,7 @@ export interface Board {
   created_by: string;
   created_at: string;
   updated_at: string;
+  is_starred?: boolean;
   columns?: Column[];
   custom_fields?: CustomField[];
   currentUserRole?: 'VIEWER' | 'EDITOR' | 'ADMIN';
