@@ -33,7 +33,7 @@ COMMIT_HASH=$(git rev-parse HEAD)
 # Rebuild with cache bust (forces fresh COPY on every deploy)
 echo "🐳 Rebuilding containers (cache bust: ${COMMIT_HASH:0:8})..."
 sudo docker compose build --build-arg CACHE_BUST="$COMMIT_HASH"
-sudo docker compose up -d --force-recreate
+sudo docker compose up -d --force-recreate --remove-orphans
 
 # Wait for db to be healthy
 echo "⏳ Waiting for database..."
