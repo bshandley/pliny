@@ -1418,7 +1418,10 @@ button:disabled {
   min-height: 80px;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  /* pan-x pan-y: allow BOTH directions so horizontal swipes can pass
+     through to the .columns-container scroll parent. pan-y alone would
+     block the browser from starting a horizontal pan on this subtree. */
+  touch-action: pan-x pan-y;
 }
 
 /* ---- Cards ---- */
@@ -1431,7 +1434,7 @@ button:disabled {
   margin-bottom: 0.5rem;
   cursor: grab;
   transition: all 0.2s var(--ease);
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   position: relative;
 }
 
