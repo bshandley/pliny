@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 
-const TABLET_BREAKPOINT = '(min-width: 769px) and (max-width: 1024px)';
-
+/**
+ * Returns true on any touch-capable device (phone, tablet, touch laptop).
+ * Uses navigator.maxTouchPoints which works across all modern browsers.
+ * This is more reliable than viewport-width breakpoints which fail on
+ * large tablets (iPad Pro landscape = 1366px, misses a 1024px cap).
+ */
 export function useIsTablet(): boolean {
-  const [isTablet, setIsTablet] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(TABLET_BREAKPOINT).matches : false
-  );
+  const [isTouchDevice, setIsTouchDevice] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  });
 
   useEffect(() => {
-    const mql = window.matchMedia(TABLET_BREAKPOINT);
-    const handler = (e: MediaQueryListEvent) => setIsTablet(e.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
+    // maxTouchPoints doesn't change at runtime, but re-check after mount
+    // in case SSR gave a wrong initial value
+    setIsTouchDevice(navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   }, []);
 
-  return isTablet;
+  return isTouchDevice;
 }
