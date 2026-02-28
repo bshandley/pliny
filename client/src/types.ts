@@ -260,6 +260,14 @@ export interface CardRelations {
   relates_to: CardRelation[];
 }
 
+export interface SharedBoard {
+  id: string;
+  name: string;
+  public_token: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface BoardTemplate {
   id: string;
   name: string;

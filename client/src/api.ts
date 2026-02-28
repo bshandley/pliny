@@ -1,4 +1,4 @@
-import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken, Webhook, WebhookDelivery } from './types';
+import { Board, Column, Card, User, BoardMember, Label, Comment, ChecklistItem, ActivityEntry, Notification, CustomField, BoardTemplate, SearchResponse, Attachment, ApiToken, Webhook, WebhookDelivery, SharedBoard } from './types';
 
 const API_URL = '/api';
 
@@ -602,6 +602,11 @@ class ApiClient {
     return this.fetch(`/cards/${cardId}/relations/${targetCardId}`, {
       method: 'DELETE',
     }, 'deleteCardRelation');
+  }
+
+  // Admin — shared boards
+  async getSharedBoards(): Promise<SharedBoard[]> {
+    return this.fetch('/boards/admin/shared', {}, 'getSharedBoards');
   }
 
   // Public Board Links

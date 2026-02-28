@@ -8170,6 +8170,93 @@ button:disabled {
   }
 }
 
+/* ---- Shared Boards (Admin) ---- */
+
+.shared-boards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.shared-boards-loading,
+.shared-boards-error {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.shared-boards-error {
+  color: var(--danger);
+}
+
+.shared-boards-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--text-secondary);
+}
+
+.shared-boards-empty p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.shared-board-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.shared-board-row:last-child {
+  border-bottom: none;
+}
+
+.shared-board-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.shared-board-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.shared-board-url {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.shared-board-url:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.btn-revoke {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  flex-shrink: 0;
+}
+
+.btn-revoke:hover:not(:disabled) {
+  background: var(--danger-subtle);
+}
+
 /* ---- Template Gallery ---- */
 
 .templates-grid {

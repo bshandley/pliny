@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db';
-import { authenticate, requireMember, requireBoardRole } from '../middleware/auth';
+import { authenticate, requireAdmin, requireMember, requireBoardRole } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { triggerWebhook } from '../services/webhookService';
 
@@ -34,6 +34,21 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     }
   } catch (error) {
     console.error('Get boards error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all publicly shared boards (admin only)
+router.get('/admin/shared', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, public_token, created_at, updated_at
+       FROM boards WHERE public_token IS NOT NULL
+       ORDER BY updated_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get shared boards error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
