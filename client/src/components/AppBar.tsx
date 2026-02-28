@@ -36,8 +36,8 @@ export default function AppBar({ title, onBack, showLogo, children }: AppBarProp
             </svg>
           </button>
         )}
-        {showLogo && <PlinyLogo size={24} />}
-        <h1 className="app-bar-title">{title}</h1>
+        {showLogo && <PlinyLogo size={24} showName />}
+        {!showLogo && <h1 className="app-bar-title">{title}</h1>}
       </div>
 
       <div className="app-bar-right">

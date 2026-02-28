@@ -38,8 +38,7 @@ export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) 
     <div className="login-container">
       <div className="login-card">
         <div className="login-logo">
-          <PlinyLogo size={48} />
-          <h1>Pliny</h1>
+          <PlinyLogo size={48} showName />
         </div>
 
         {success ? (

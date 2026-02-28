@@ -221,14 +221,35 @@ body {
   filter: drop-shadow(0 2px 8px rgba(87, 70, 175, 0.25));
 }
 
-.login-card h1 {
+/* Logo + name lockup */
+.pliny-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pliny-lockup-name {
   font-family: var(--font-display);
-  font-size: 2.25rem;
   font-weight: 700;
-  text-align: center;
   color: var(--primary);
-  margin-bottom: 0;
   letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* Login page: vertical lockup, large text */
+.login-logo .pliny-lockup {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-logo .pliny-lockup-name {
+  font-size: 2.25rem;
+}
+
+/* AppBar: horizontal lockup, matched to icon size */
+.app-bar-left .pliny-lockup-name {
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .login-card form button[type="submit"] {
@@ -5581,6 +5602,10 @@ button:disabled {
   /* Typography */
   .app-bar-title {
     font-size: 1rem;
+  }
+
+  .app-bar-left .pliny-lockup-name {
+    display: none;
   }
 
   /* Board list */

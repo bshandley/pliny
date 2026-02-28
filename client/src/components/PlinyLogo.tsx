@@ -1,17 +1,18 @@
 interface PlinyLogoProps {
   size?: number;
+  showName?: boolean;
   className?: string;
 }
 
-export default function PlinyLogo({ size = 32, className }: PlinyLogoProps) {
-  return (
+export default function PlinyLogo({ size = 32, showName, className }: PlinyLogoProps) {
+  const icon = (
     <svg
       width={size}
       height={size}
       viewBox="0 0 40 40"
       fill="none"
       className={className}
-      aria-label="Plank logo"
+      aria-label="Pliny logo"
     >
       {/* Plank 1 — short, left-leaning */}
       <g transform="rotate(-6 8 32)">
@@ -32,5 +33,14 @@ export default function PlinyLogo({ size = 32, className }: PlinyLogoProps) {
         <line x1="34" y1="2" x2="34" y2="36" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
       </g>
     </svg>
+  );
+
+  if (!showName) return icon;
+
+  return (
+    <span className="pliny-lockup">
+      {icon}
+      <span className="pliny-lockup-name">Pliny</span>
+    </span>
   );
 }

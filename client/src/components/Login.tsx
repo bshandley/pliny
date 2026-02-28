@@ -100,8 +100,7 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
       <div className="login-container">
         <div className="login-card">
           <div className="login-logo">
-            <PlinyLogo size={48} />
-            <h1>Pliny</h1>
+            <PlinyLogo size={48} showName />
           </div>
           <p className="login-subtitle">Enter the 6-digit code from your authenticator app</p>
           <form onSubmit={handleVerify2fa}>
@@ -145,8 +144,7 @@ export default function Login({ onLogin, onSsoLogin, ssoError, sso2faTicket, onS
     <div className="login-container">
       <div className="login-card">
         <div className="login-logo">
-          <PlinyLogo size={48} />
-          <h1>Pliny</h1>
+          <PlinyLogo size={48} showName />
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
