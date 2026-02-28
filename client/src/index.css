@@ -5273,6 +5273,15 @@ button:disabled {
     align-items: center;
     justify-content: center;
   }
+
+  /* Override any touch-action:none set by @hello-pangea/dnd inline styles.
+     On touch devices drag is disabled — cards must not block native scroll. */
+  .cards-list > * {
+    touch-action: pan-x pan-y !important;
+  }
+  .kanban-card {
+    touch-action: pan-x pan-y !important;
+  }
 }
 
 /* ---- Mobile ---- */

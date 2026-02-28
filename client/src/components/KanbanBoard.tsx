@@ -1184,7 +1184,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                 {visibleCards.map((card, cardIndex) => (
                                   <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived || isTouchDevice}>
                                     {(provided) => (
-                                      <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                      <div ref={provided.innerRef} {...provided.draggableProps} {...(!isTouchDevice ? provided.dragHandleProps : {})}>
                                         {showArchived ? (
                                           <div className="kanban-card archived">
                                             <div className="card-header">
