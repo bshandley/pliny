@@ -1431,16 +1431,73 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.75rem;
+  padding-left: 1.75rem;
   margin-bottom: 0.5rem;
-  cursor: grab;
+  cursor: pointer;
   transition: all 0.2s var(--ease);
   touch-action: pan-x pan-y;
   position: relative;
 }
 
+/* Drag handle */
+.card-drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  touch-action: none;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+  border-radius: var(--radius) 0 0 var(--radius);
+  user-select: none;
+  z-index: 1;
+}
+
+.card-drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-dots {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.kanban-card:hover .card-drag-handle {
+  opacity: 0.5;
+}
+
+.kanban-card:hover .card-drag-handle:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
+
+@media (pointer: coarse) {
+  .card-drag-handle {
+    opacity: 0.35;
+    min-width: 36px;
+    min-height: 44px;
+    width: 32px;
+  }
+
+  .kanban-card {
+    padding-left: 2rem;
+  }
+
+  .kanban-card:active .card-drag-handle {
+    opacity: 0.7;
+  }
+}
+
 .kanban-card.editing,
 .kanban-card.card-detail {
   padding: 1rem;
+  padding-left: 1rem;
 }
 
 .kanban-card:hover {
@@ -1450,7 +1507,7 @@ button:disabled {
 }
 
 .kanban-card:active {
-  cursor: grabbing;
+  cursor: pointer;
 }
 
 .kanban-card.editing {
@@ -5277,13 +5334,16 @@ button:disabled {
     justify-content: center;
   }
 
-  /* Override any touch-action:none set by @hello-pangea/dnd inline styles.
-     On touch devices drag is disabled — cards must not block native scroll. */
+  /* Override dnd inline touch-action:none on card wrappers so card body scrolls.
+     The .card-drag-handle keeps touch-action:none for drag initiation. */
   .cards-list > * {
     touch-action: pan-x pan-y !important;
   }
   .kanban-card {
     touch-action: pan-x pan-y !important;
+  }
+  .card-drag-handle {
+    touch-action: none !important;
   }
 }
 
@@ -5563,9 +5623,13 @@ button:disabled {
   /* Cards */
   .kanban-card {
     padding: 0.875rem;
+    padding-left: 2rem;
     margin-bottom: 0.625rem;
-    touch-action: auto;
-    cursor: default;
+    touch-action: pan-x pan-y !important;
+    cursor: pointer;
+  }
+  .card-drag-handle {
+    touch-action: none !important;
   }
 
     .bulk-action-toolbar {

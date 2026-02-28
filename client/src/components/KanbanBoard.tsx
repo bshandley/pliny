@@ -1084,7 +1084,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
         )}
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd} enableDefaultSensors={!isTouchDevice}>
+      <DragDropContext onDragEnd={handleDragEnd}>
         {viewMode === 'calendar' ? (
           <div className="calendar-layout">
             <CalendarView
@@ -1182,9 +1182,9 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                             {(provided) => (
                               <div className="cards-list" {...provided.droppableProps} ref={provided.innerRef}>
                                 {visibleCards.map((card, cardIndex) => (
-                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived || isTouchDevice}>
+                                  <Draggable key={card.id} draggableId={card.id} index={cardIndex} isDragDisabled={!canEdit || showArchived}>
                                     {(provided) => (
-                                      <div ref={provided.innerRef} {...provided.draggableProps} {...(!isTouchDevice ? provided.dragHandleProps : {})}>
+                                      <div ref={provided.innerRef} {...provided.draggableProps}>
                                         {showArchived ? (
                                           <div className="kanban-card archived">
                                             <div className="card-header">
@@ -1217,6 +1217,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                                             onMoveToColumn={handleMoveToColumn}
                                             boardMembers={boardMembers}
                                             customFields={board?.custom_fields}
+                                            dragHandleProps={provided.dragHandleProps}
                                           />
                                         )}
                                       </div>

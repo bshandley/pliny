@@ -28,6 +28,7 @@ interface KanbanCardProps {
   onMoveToColumn?: (cardId: string, columnId: string) => void;
   boardMembers?: BoardMember[];
   customFields?: CustomField[];
+  dragHandleProps?: Record<string, any> | null;
 }
 
 function getDueBadge(dueDateStr: string): { label: string; className: string } | null {
@@ -138,7 +139,7 @@ function avatarInitial(name: string): string {
   return (name || '?').charAt(0).toUpperCase();
 }
 
-export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [] }: KanbanCardProps) {
+export default function KanbanCard({ card, userRole, isEditing, isSelected = false, selectionActive = false, onToggleSelect, onEditStart, onEditEnd, onDelete, onArchive, onUpdate, boardLabels = [], boardId, isMobile = false, columns = [], onMoveToColumn, boardMembers = [], customFields = [], dragHandleProps }: KanbanCardProps) {
   const canWrite = userRole === 'ADMIN' || userRole === 'EDITOR';
   const canComment = userRole === 'ADMIN' || userRole === 'EDITOR';
   const confirm = useConfirm();
@@ -1804,6 +1805,11 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
       }}
       style={{ cursor: 'pointer' }}
     >
+      {dragHandleProps && (
+        <div className="card-drag-handle" {...dragHandleProps} onClick={(e) => e.stopPropagation()}>
+          <span className="drag-dots">⠿</span>
+        </div>
+      )}
       {/* Label color bars */}
       {card.labels && card.labels.length > 0 && (
         <div className="card-labels">
