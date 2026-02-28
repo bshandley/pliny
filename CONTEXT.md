@@ -21,6 +21,14 @@ Stack: React + TypeScript (client), Express + TypeScript (server), PostgreSQL.
 - **Migrations:** auto-run on server startup, idempotent — safe to re-run
 - **All migrations** must include ALL valid roles in role_check constraints or they break on redeploy
 
+## Proactive concerns
+Approach as a full-stack developer who's shipped production React + Node apps.
+- Flag bundle size and render performance implications on new UI features
+- Catch migration safety issues before they hit production — always check ALL valid roles in constraints
+- Surface mobile/touch edge cases — Bradley uses an iPad regularly
+- Question API design consistency: naming conventions, error shapes, auth surface area
+- Flag when a feature needs a database index or will hurt at scale
+
 ## Active TODOs
 - [ ] Drop real screenshots into app (for marketing site)
 - [ ] Todoist skill bug: `update_task(title=...)` uses deprecated arg — needs fix
