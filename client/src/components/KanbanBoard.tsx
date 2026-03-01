@@ -894,7 +894,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           className={`btn-icon mobile-only${mobileFiltersOpen ? ' mobile-active' : ''}${hasFilters ? ' has-filters' : ''}`}
           title="Filters"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M21 21l-5.2-5.2"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
         </button>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -904,6 +904,13 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
         </button>
         <div className={`header-actions-menu${mobileMenuOpen ? ' open' : ''}`}>
+          <div className="view-switch-mobile">
+            <button onClick={() => { onViewChange('board'); setMobileMenuOpen(false); }} className={viewMode === 'board' ? 'active' : ''}>Board</button>
+            <button onClick={() => { onViewChange('calendar'); setMobileMenuOpen(false); }} className={viewMode === 'calendar' ? 'active' : ''}>Calendar</button>
+            <button onClick={() => { onViewChange('table'); setMobileMenuOpen(false); }} className={viewMode === 'table' ? 'active' : ''}>Table</button>
+            <button onClick={() => { onViewChange('timeline'); setMobileMenuOpen(false); }} className={viewMode === 'timeline' ? 'active' : ''}>Timeline</button>
+            <button onClick={() => { onViewChange('dashboard'); setMobileMenuOpen(false); }} className={viewMode === 'dashboard' ? 'active' : ''}>Dashboard</button>
+          </div>
           <div className="board-settings">
             <button
               onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
