@@ -7,6 +7,39 @@ import { redeliverWebhook, WebhookEvent } from '../services/webhookService';
 
 const router = Router();
 
+// Block webhooks to private/internal IPs to prevent SSRF
+function isPrivateUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    const hostname = parsed.hostname;
+
+    // Block obvious private hostnames
+    if (hostname === 'localhost' || hostname === 'metadata.google.internal') return true;
+
+    // IPv6 loopback
+    if (hostname === '::1' || hostname === '[::1]') return true;
+
+    // Check IPv4 patterns
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const [, a, b] = ipv4Match.map(Number);
+      if (a === 127) return true;                    // 127.0.0.0/8 loopback
+      if (a === 10) return true;                     // 10.0.0.0/8 private
+      if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12 private
+      if (a === 192 && b === 168) return true;       // 192.168.0.0/16 private
+      if (a === 169 && b === 254) return true;       // 169.254.0.0/16 link-local / cloud metadata
+      if (a === 0) return true;                      // 0.0.0.0/8
+    }
+
+    // Block common Docker internal hostnames
+    if (['db', 'redis', 'server', 'client', 'postgres', 'mysql'].includes(hostname)) return true;
+
+    return false;
+  } catch {
+    return true; // If we can't parse it, block it
+  }
+}
+
 const VALID_EVENTS: WebhookEvent[] = [
   'card.created',
   'card.updated',
@@ -103,6 +136,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ error: 'Invalid URL format' });
   }
 
+  if (isPrivateUrl(url)) {
+    return res.status(400).json({ error: 'Webhook URLs must not point to private or internal addresses' });
+  }
+
   if (!events || !Array.isArray(events) || events.length === 0) {
     return res.status(400).json({ error: 'At least one event is required' });
   }
@@ -178,6 +215,9 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
         new URL(url);
       } catch {
         return res.status(400).json({ error: 'Invalid URL format' });
+      }
+      if (isPrivateUrl(url)) {
+        return res.status(400).json({ error: 'Webhook URLs must not point to private or internal addresses' });
       }
       updates.push(`url = $${paramIndex++}`);
       values.push(url);
@@ -271,6 +311,31 @@ router.get('/:id/deliveries', authenticate, async (req: AuthRequest, res: Respon
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
   try {
+    // Check ownership/admin/board admin
+    const check = await pool.query(
+      'SELECT * FROM webhooks WHERE id = $1',
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+
+    const webhook = check.rows[0];
+    const isOwner = webhook.created_by === req.user!.id;
+    const isGlobalAdmin = req.user!.role === 'ADMIN';
+    let isBoardAdmin = false;
+    if (webhook.board_id) {
+      const membership = await pool.query(
+        'SELECT role FROM board_members WHERE board_id = $1 AND user_id = $2',
+        [webhook.board_id, req.user!.id]
+      );
+      isBoardAdmin = membership.rows[0]?.role === 'ADMIN';
+    }
+    if (!isOwner && !isGlobalAdmin && !isBoardAdmin) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
     const result = await pool.query(
       `SELECT * FROM webhook_deliveries
        WHERE webhook_id = $1

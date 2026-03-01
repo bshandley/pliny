@@ -155,7 +155,7 @@ export function apiLoggerMiddleware(req: Request, res: Response, next: NextFunct
       userId: (req as any).user?.id ? parseInt((req as any).user.id, 10) : null,
       tokenId: (req as any).apiTokenId,
       requestBody: truncateBody(requestBody),
-      responseBody: truncateBody(responseBody),
+      responseBody: truncateBody(redactSensitiveFields(responseBody)),
       fnName: req.headers['x-client-fn'] as string | undefined,
     };
 

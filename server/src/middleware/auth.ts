@@ -4,11 +4,22 @@ import jwt from 'jsonwebtoken';
 import pool from '../db';
 import { AuthRequest } from '../types';
 
+// Known example/placeholder values that must never be used in production
+const INSECURE_SECRETS = new Set([
+  'change-me-use-openssl-rand-hex-32',
+  'change-me-use-a-long-random-string-at-least-32-chars',
+  'change-me',
+]);
+
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (secret && secret.length >= 16) return secret;
+  if (secret && secret.length >= 16 && !INSECURE_SECRETS.has(secret)) return secret;
   if (process.env.NODE_ENV === 'production') {
-    console.error('FATAL: JWT_SECRET must be set (>=16 chars) in production');
+    if (secret && INSECURE_SECRETS.has(secret)) {
+      console.error('FATAL: JWT_SECRET is set to a known example value. Generate a real secret: openssl rand -hex 32');
+    } else {
+      console.error('FATAL: JWT_SECRET must be set (>=16 chars) in production');
+    }
     process.exit(1);
   }
   // Generate a random secret for development (changes each restart)
@@ -90,6 +101,16 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     if ((decoded as any).purpose) {
       return res.status(401).json({ error: 'Invalid token' });
     }
+
+    // Re-check role from database to prevent stale JWT role escalation
+    const userCheck = await pool.query(
+      'SELECT role FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    if (userCheck.rows.length === 0) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    decoded.role = userCheck.rows[0].role;
 
     req.user = decoded;
     next();

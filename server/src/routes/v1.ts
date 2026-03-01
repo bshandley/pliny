@@ -12,17 +12,24 @@ import { AuthRequest } from '../types';
 
 const router = Router();
 
+type BoardRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
+const ROLE_RANK: Record<BoardRole, number> = { VIEWER: 0, EDITOR: 1, ADMIN: 2 };
+
 // Board access check for v1 routes.
-// Returns true if user can access the board, false otherwise.
-async function hasBoardAccess(userId: string, userRole: string, boardId: string): Promise<boolean> {
+// Returns true if user meets the minimum board role, false otherwise.
+async function hasBoardAccess(userId: string, userRole: string, boardId: string, minimumRole: BoardRole = 'VIEWER'): Promise<boolean> {
   if (userRole === 'ADMIN') return true;
   const result = await pool.query(
-    `SELECT 1 FROM boards b
+    `SELECT bm.role FROM boards b
      LEFT JOIN board_members bm ON b.id = bm.board_id AND bm.user_id = $1
      WHERE b.id = $2 AND (b.created_by = $1 OR bm.user_id IS NOT NULL)`,
     [userId, boardId]
   );
-  return result.rows.length > 0;
+  if (result.rows.length === 0) return false;
+  // Board creator without explicit membership gets full access
+  const boardRole = result.rows[0].role as BoardRole | null;
+  if (!boardRole) return true; // creator, no explicit membership row
+  return ROLE_RANK[boardRole] >= ROLE_RANK[minimumRole];
 }
 
 // Resolve board ID from a card ID
@@ -290,7 +297,7 @@ router.post('/boards/:id/columns', authenticate, requireMember, async (req: Auth
   }
 
   try {
-    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id, 'EDITOR')) {
       return res.status(404).json({ error: 'Board not found' });
     }
 
@@ -369,7 +376,7 @@ router.post('/boards/:id/cards', authenticate, requireMember, async (req: AuthRe
   }
 
   try {
-    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id, 'EDITOR')) {
       return res.status(404).json({ error: 'Board not found' });
     }
 
@@ -447,7 +454,7 @@ router.put('/cards/:id', authenticate, requireMember, async (req: AuthRequest, r
 
   try {
     const boardId = await getBoardIdFromCard(id);
-    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId, 'EDITOR')) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
@@ -516,7 +523,7 @@ router.delete('/cards/:id', authenticate, requireMember, async (req: AuthRequest
 
   try {
     const boardId = await getBoardIdFromCard(id);
-    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId, 'EDITOR')) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
@@ -547,7 +554,7 @@ router.post('/cards/:id/move', authenticate, requireMember, async (req: AuthRequ
 
   try {
     const boardId = await getBoardIdFromCard(id);
-    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId, 'EDITOR')) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
@@ -611,7 +618,7 @@ router.post('/cards/:id/comments', authenticate, requireMember, async (req: Auth
 
   try {
     const boardId = await getBoardIdFromCard(id);
-    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId, 'EDITOR')) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
@@ -680,7 +687,7 @@ router.post('/cards/:id/checklists', authenticate, requireMember, async (req: Au
 
   try {
     const boardId = await getBoardIdFromCard(id);
-    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId, 'EDITOR')) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
