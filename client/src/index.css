@@ -4269,8 +4269,8 @@ button:disabled {
   display: flex !important;
 }
 
-.btn-label-short {
-  display: none !important;
+.btn-new-board-icon {
+  display: none;
 }
 
 .view-switch-mobile {
@@ -5634,8 +5634,24 @@ button:disabled {
     display: none !important;
   }
 
-  .btn-label-short {
-    display: inline !important;
+  .btn-new-board-icon {
+    display: block !important;
+  }
+
+  .btn-new-board {
+    padding: 0.375rem !important;
+    min-width: unset;
+  }
+
+  /* Ensure logo is never crushed */
+  .app-bar-left {
+    flex-shrink: 0;
+  }
+
+  .app-bar-right {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
   }
 
   /* Hide view-toggle on mobile, use overflow menu instead */
