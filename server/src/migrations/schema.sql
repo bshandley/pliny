@@ -137,7 +137,3 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, read);
 
--- Insert default admin user (password: admin123)
-INSERT INTO users (username, password_hash, role)
-VALUES ('admin', '$2a$10$rN8qY4qVzYxKjVXg5pYGD.FQqYvV7YvZ3qYqYvZ3qYqYvZ3qYqYvZO', 'ADMIN')
-ON CONFLICT (username) DO NOTHING;
