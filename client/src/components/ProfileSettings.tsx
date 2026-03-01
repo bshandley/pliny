@@ -310,7 +310,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
           )}
         </section>
 
-        <section className="profile-section">
+        <section className="profile-section profile-edit-section">
           <h2>Profile</h2>
           <form onSubmit={handleSaveProfile}>
             <div className="form-group">
@@ -353,7 +353,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
           </form>
         </section>
 
-        <section className="profile-section">
+        <section className="profile-section password-section">
           <h2>Change Password</h2>
           <form onSubmit={handleChangePassword}>
             <div className="form-group">
@@ -570,7 +570,7 @@ export default function ProfileSettings({ user, onBack }: ProfileSettingsProps) 
           )}
         </section>
 
-        <section className="profile-section">
+        <section className="profile-section api-tokens-section">
           <h2>API Tokens</h2>
           <p className="profile-section-desc">Personal access tokens allow third-party applications to access the Plank API on your behalf.</p>
 

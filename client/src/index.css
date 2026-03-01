@@ -1294,6 +1294,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow: hidden;
+  max-width: 100vw;
 }
 
 .kanban-container > .app-bar {
@@ -1500,6 +1502,9 @@ button:disabled {
   transition: all 0.2s var(--ease);
   touch-action: pan-x pan-y;
   position: relative;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Drag handle */
@@ -5651,7 +5656,7 @@ button:disabled {
   .app-bar-right {
     flex-shrink: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   /* Hide view-toggle on mobile, use overflow menu instead */

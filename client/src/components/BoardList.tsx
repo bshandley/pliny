@@ -256,11 +256,11 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
       <AppBar title="Pliny" showLogo>
         {isAdmin && (
           <>
-            <button onClick={onGoToUsers} className="btn-secondary btn-sm btn-with-icon desktop-only">
+            <button onClick={onGoToUsers} className="btn-secondary btn-sm btn-with-icon btn-admin">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-              Admin
+              <span className="btn-label">Admin</span>
             </button>
             <div className="import-dropdown desktop-only" ref={importMenuRef}>
               <button
