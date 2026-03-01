@@ -67,6 +67,29 @@
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
+[data-theme="pliny"] {
+  --primary: #c97d3a;
+  --primary-hover: #e09a56;
+  --primary-subtle: rgba(201, 125, 58, 0.12);
+  --secondary: #8a7d6e;
+  --secondary-hover: #a09080;
+  --danger: #e05252;
+  --danger-hover: #c04040;
+  --danger-subtle: rgba(224, 82, 82, 0.1);
+  --success: #5a9e72;
+  --bg: #1a1714;
+  --bg-raised: #221e1b;
+  --card-bg: #2a2520;
+  --border: #3a342e;
+  --border-hover: #4a443c;
+  --text: #f0ebe3;
+  --text-secondary: #a89880;
+  --text-tertiary: #6e6058;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
 /* ---- View Transition (theme wipe) ---- */
 
 ::view-transition-old(root) {
