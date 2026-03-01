@@ -82,7 +82,7 @@ function App() {
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
-    return (saved as 'light' | 'dark') || 'dark';
+    return (saved as 'light' | 'dark') || 'light';
   });
 
   const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null, viewMode?: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard') => {
