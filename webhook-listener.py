@@ -75,6 +75,11 @@ def run_deploy(ctx):
         )
         elapsed = int(time.time() - start)
         print(result.stdout)
+        if result.stderr:
+            print(f"STDERR: {result.stderr[-500:]}")
+
+        # Last few lines of stdout have the health check result
+        stdout_tail = "\n".join(result.stdout.strip().splitlines()[-5:]) if result.stdout else ""
 
         if result.returncode == 0:
             msgs = "\n".join(f"  • {m}" for m in ctx["messages"]) if ctx["messages"] else ""
@@ -84,13 +89,17 @@ def run_deploy(ctx):
                 f"{msgs}"
             )
         else:
-            print(f"Deploy failed: {result.stderr}")
-            error_tail = (result.stderr or "unknown error")[-200:]
+            # deploy.sh health check sets exit code — if service is up it exits 0,
+            # so a non-zero exit here means the service is actually down.
+            error_detail = stdout_tail or (result.stderr or "unknown error")[-300:]
             send_telegram(
-                f"❌ <b>Pliny deploy FAILED</b>\n"
+                f"❌ <b>Pliny deploy FAILED — service may be down</b>\n"
                 f"By {ctx['pusher']} · {ctx['commits']} commit(s)\n"
-                f"<code>{error_tail}</code>"
+                f"<code>{error_detail}</code>\n"
+                f"Check: http://10.0.0.102:5175"
             )
+    except subprocess.TimeoutExpired:
+        send_telegram(f"❌ <b>Pliny deploy TIMED OUT</b> (>5min)\n<code>Check Wharf manually</code>")
     except Exception as e:
         print(f"Deploy error: {e}")
         send_telegram(f"❌ <b>Pliny deploy ERROR</b>\n<code>{e}</code>")
