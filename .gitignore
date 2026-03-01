@@ -14,3 +14,10 @@ webhook-listener.py
 deploy.sh
 deploy-from-github.sh
 STRATEGY.md
+PRICING.md
+DEPLOYMENT.md
+CLAUDE_CONTEXT.md
+CONTEXT.md
+webhook-listener.py
+deploy-from-github.sh
+.claude/
