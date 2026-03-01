@@ -8127,36 +8127,100 @@ button:disabled {
   letter-spacing: -0.01em;
 }
 
-/* Mobile: horizontal tabs */
+/* Mobile dropdown nav - hidden on desktop */
+.admin-mobile-nav {
+  display: none;
+  position: relative;
+}
+
+.admin-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.admin-dropdown-trigger .admin-tab-icon {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.admin-dropdown-chevron {
+  margin-left: auto;
+  color: var(--text-secondary);
+  transition: transform 0.2s var(--ease);
+}
+
+.admin-dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.admin-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s var(--ease);
+}
+
+.admin-dropdown-item:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.admin-dropdown-item.active {
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--primary-subtle);
+}
+
+.admin-dropdown-item.active .admin-tab-icon {
+  opacity: 1;
+  color: var(--primary);
+}
+
+/* Mobile: show dropdown, hide sidebar */
 @media (max-width: 768px) {
   .admin-layout {
     flex-direction: column;
   }
 
   .admin-sidebar {
-    width: 100%;
-    flex-direction: row;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 4px 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 2px;
+    display: none;
   }
 
-  .admin-tab {
-    white-space: nowrap;
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
-    justify-content: center;
-  }
-
-  .admin-tab-label {
-    font-size: 0.8rem;
-  }
-
-  .admin-tab.active {
-    background: var(--primary-subtle);
+  .admin-mobile-nav {
+    display: block;
   }
 
   .admin-content {
