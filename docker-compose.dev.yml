@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: plank
+      POSTGRES_USER: plank
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - plank_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plank -d plank"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: plank
+      DB_USER: plank
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      DATABASE_URL: postgres://plank:${DB_PASSWORD:?DB_PASSWORD must be set}@db:5432/plank
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      PORT: 3001
+      CLIENT_URL: https://pliny.handley.io
+      SERVER_URL: https://pliny.handley.io
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://pliny.handley.io/api
+        VITE_WS_URL: https://pliny.handley.io
+    ports:
+      - "5175:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  plank_pgdata:
+    external: true

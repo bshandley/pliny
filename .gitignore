@@ -8,3 +8,8 @@ coverage/
 .worktrees/
 docker-compose.yml.bak
 TASK.md
+
+# Personal deployment infrastructure (secrets inside — keep off public repo)
+webhook-listener.py
+deploy.sh
+deploy-from-github.sh
