@@ -21,3 +21,4 @@ CONTEXT.md
 webhook-listener.py
 deploy-from-github.sh
 .claude/
+deploy.sh
