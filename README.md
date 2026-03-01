@@ -41,22 +41,19 @@ cd pliny
 cp .env.example .env
 # Edit .env — set DB_PASSWORD, JWT_SECRET, and PLINY_URL at minimum
 docker compose up -d
-docker compose exec server npm run migrate
 ```
 
 Open `http://localhost` (or your `PLINY_URL`). Create your admin account on first launch.
 
-Images are pulled automatically from GitHub Container Registry — no build step needed.
+Images are pulled automatically from GitHub Container Registry. Migrations run automatically on startup — no extra steps.
 
 ### Updating
 
 ```bash
-docker compose pull
-docker compose up -d
-docker compose exec server npm run migrate
+docker compose pull && docker compose up -d
 ```
 
-Migrations are idempotent — safe to re-run on every update.
+Migrations run automatically on restart. That's it.
 
 ---
 

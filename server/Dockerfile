@@ -13,4 +13,4 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/migrations/*.sql ./dist/migrations/
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "node dist/migrations/run.js && node dist/index.js"]
