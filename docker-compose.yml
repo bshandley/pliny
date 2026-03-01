@@ -47,7 +47,7 @@ services:
   client:
     image: ghcr.io/bshandley/pliny-client:latest
     ports:
-      - "${PLINY_PORT:-80}:80"
+      - "${PLINY_PORT:-8080}:80"
     depends_on:
       - server
     restart: unless-stopped

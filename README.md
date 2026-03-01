@@ -43,7 +43,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open `http://localhost` (or your `PLINY_URL`). Create your admin account on first launch.
+Open `http://localhost:8080` (or your `PLINY_URL`). Create your admin account on first launch.
 
 Images are pulled automatically from GitHub Container Registry. Migrations run automatically on startup — no extra steps.
 
@@ -87,12 +87,12 @@ Migrations run automatically on restart. That's it.
 
 ## Reverse Proxy
 
-Point your reverse proxy to port `80` (the client container). WebSocket support is required — forward the `Upgrade` header.
+Point your reverse proxy to port `8080` (the client container). WebSocket support is required — forward the `Upgrade` header.
 
 **nginx example:**
 ```nginx
 location / {
-    proxy_pass http://localhost:80;
+    proxy_pass http://localhost:8080;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
