@@ -22,3 +22,5 @@ webhook-listener.py
 deploy-from-github.sh
 .claude/
 deploy.sh
+docs/plans/
+docker-compose.dev.yml

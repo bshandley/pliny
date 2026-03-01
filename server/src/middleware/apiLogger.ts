@@ -112,7 +112,7 @@ export function apiLoggerMiddleware(req: Request, res: Response, next: NextFunct
   }
 
   // Skip if X-Pliny-No-Log header is set
-  if (req.headers['x-plank-no-log']) {
+  if (req.headers['x-pliny-no-log']) {
     return next();
   }
 

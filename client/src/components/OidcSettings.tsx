@@ -187,7 +187,7 @@ export default function OidcSettings() {
               id="client-id"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
-              placeholder="plank"
+              placeholder="your-app"
               maxLength={255}
             />
           </div>
