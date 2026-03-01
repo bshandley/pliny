@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import {
@@ -53,19 +54,22 @@ export function setupDevConsoleWebSocket(io: any): void {
   const devNs = io.of('/dev');
 
   devNs.use((socket: any, next: any) => {
-    // Verify admin token
     const token = socket.handshake.auth?.token;
     if (!token) {
       return next(new Error('Authentication required'));
     }
 
-    // Import auth verification (will be set up in index.ts)
-    const verifyAdmin = socket.handshake.auth?.verifyAdmin;
-    if (!verifyAdmin) {
-      // For now, just pass through - the actual verification happens in the route
+    try {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) return next(new Error('Server misconfigured'));
+      const decoded = jwt.verify(token, secret) as { id: string; username: string; role: string };
+      if (decoded.role !== 'ADMIN') {
+        return next(new Error('Admin access required'));
+      }
+      (socket as any).userId = decoded.id;
       next();
-    } else {
-      next();
+    } catch {
+      return next(new Error('Invalid token'));
     }
   });
 

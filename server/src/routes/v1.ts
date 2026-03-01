@@ -7,10 +7,34 @@
 
 import { Router, Response } from 'express';
 import pool from '../db';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, requireMember } from '../middleware/auth';
 import { AuthRequest } from '../types';
 
 const router = Router();
+
+// Board access check for v1 routes.
+// Returns true if user can access the board, false otherwise.
+async function hasBoardAccess(userId: string, userRole: string, boardId: string): Promise<boolean> {
+  if (userRole === 'ADMIN') return true;
+  const result = await pool.query(
+    `SELECT 1 FROM boards b
+     LEFT JOIN board_members bm ON b.id = bm.board_id AND bm.user_id = $1
+     WHERE b.id = $2 AND (b.created_by = $1 OR bm.user_id IS NOT NULL)`,
+    [userId, boardId]
+  );
+  return result.rows.length > 0;
+}
+
+// Resolve board ID from a card ID
+async function getBoardIdFromCard(cardId: string): Promise<string | null> {
+  const result = await pool.query(
+    `SELECT col.board_id FROM cards c
+     JOIN columns col ON c.column_id = col.id
+     WHERE c.id = $1`,
+    [cardId]
+  );
+  return result.rows.length > 0 ? result.rows[0].board_id : null;
+}
 
 // ============ USERS ============
 
@@ -75,7 +99,7 @@ router.get('/boards', authenticate, async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/v1/boards - Create board
-router.post('/boards', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/boards', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { name, description } = req.body;
 
   if (!name || typeof name !== 'string') {
@@ -238,6 +262,10 @@ router.get('/boards/:id/columns', authenticate, async (req: AuthRequest, res: Re
   const { id } = req.params;
 
   try {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
     const result = await pool.query(
       'SELECT * FROM columns WHERE board_id = $1 ORDER BY position',
       [id]
@@ -250,7 +278,7 @@ router.get('/boards/:id/columns', authenticate, async (req: AuthRequest, res: Re
 });
 
 // POST /api/v1/boards/:id/columns - Create column
-router.post('/boards/:id/columns', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/boards/:id/columns', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { name, position } = req.body;
 
@@ -262,6 +290,10 @@ router.post('/boards/:id/columns', authenticate, async (req: AuthRequest, res: R
   }
 
   try {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
     const result = await pool.query(
       `INSERT INTO columns (board_id, name, position)
        VALUES ($1, $2, $3)
@@ -282,6 +314,10 @@ router.get('/boards/:id/cards', authenticate, async (req: AuthRequest, res: Resp
   const { id } = req.params;
 
   try {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
     const result = await pool.query(
       `SELECT c.*, col.name as column_name
        FROM cards c
@@ -321,7 +357,7 @@ router.get('/boards/:id/cards', authenticate, async (req: AuthRequest, res: Resp
 });
 
 // POST /api/v1/boards/:id/cards - Create card in board (uses first column by default)
-router.post('/boards/:id/cards', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/boards/:id/cards', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { title, description, column_id, position, due_date, start_date } = req.body;
 
@@ -333,6 +369,10 @@ router.post('/boards/:id/cards', authenticate, async (req: AuthRequest, res: Res
   }
 
   try {
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, id)) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
     let targetColumnId = column_id;
 
     if (!targetColumnId) {
@@ -377,6 +417,10 @@ router.get('/cards/:id', authenticate, async (req: AuthRequest, res: Response) =
       return res.status(404).json({ error: 'Card not found' });
     }
 
+    if (!await hasBoardAccess(req.user!.id, req.user!.role, result.rows[0].board_id)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     // Fetch assignees for this card
     const assigneesResult = await pool.query(
       `SELECT ca.id, ca.card_id, ca.user_id, u.username, ca.display_name
@@ -397,11 +441,16 @@ router.get('/cards/:id', authenticate, async (req: AuthRequest, res: Response) =
 });
 
 // PUT /api/v1/cards/:id - Update card
-router.put('/cards/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.put('/cards/:id', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { title, description, column_id, position, due_date, start_date, archived } = req.body;
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -462,10 +511,15 @@ router.put('/cards/:id', authenticate, async (req: AuthRequest, res: Response) =
 });
 
 // DELETE /api/v1/cards/:id - Delete card
-router.delete('/cards/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.delete('/cards/:id', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       'DELETE FROM cards WHERE id = $1 RETURNING id',
       [id]
@@ -483,7 +537,7 @@ router.delete('/cards/:id', authenticate, async (req: AuthRequest, res: Response
 });
 
 // POST /api/v1/cards/:id/move - Move card to column/position
-router.post('/cards/:id/move', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/cards/:id/move', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { column_id, position } = req.body;
 
@@ -492,6 +546,11 @@ router.post('/cards/:id/move', authenticate, async (req: AuthRequest, res: Respo
   }
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       `UPDATE cards
        SET column_id = $1, position = $2, updated_at = CURRENT_TIMESTAMP
@@ -518,6 +577,11 @@ router.get('/cards/:id/comments', authenticate, async (req: AuthRequest, res: Re
   const { id } = req.params;
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       `SELECT c.*, u.username
        FROM card_comments c
@@ -534,7 +598,7 @@ router.get('/cards/:id/comments', authenticate, async (req: AuthRequest, res: Re
 });
 
 // POST /api/v1/cards/:id/comments - Add comment
-router.post('/cards/:id/comments', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/cards/:id/comments', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { text } = req.body;
 
@@ -546,6 +610,11 @@ router.post('/cards/:id/comments', authenticate, async (req: AuthRequest, res: R
   }
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       `INSERT INTO card_comments (card_id, user_id, text)
        VALUES ($1, $2, $3)
@@ -576,6 +645,11 @@ router.get('/cards/:id/checklists', authenticate, async (req: AuthRequest, res: 
   const { id } = req.params;
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       `SELECT * FROM card_checklist_items
        WHERE card_id = $1
@@ -590,7 +664,7 @@ router.get('/cards/:id/checklists', authenticate, async (req: AuthRequest, res: 
 });
 
 // POST /api/v1/cards/:id/checklists - Add checklist item
-router.post('/cards/:id/checklists', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/cards/:id/checklists', authenticate, requireMember, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { text, position, assignee_name, assignee_user_id, due_date, priority } = req.body;
 
@@ -605,6 +679,11 @@ router.post('/cards/:id/checklists', authenticate, async (req: AuthRequest, res:
   }
 
   try {
+    const boardId = await getBoardIdFromCard(id);
+    if (!boardId || !await hasBoardAccess(req.user!.id, req.user!.role, boardId)) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
     const result = await pool.query(
       `INSERT INTO card_checklist_items (card_id, text, position, assignee_name, assignee_user_id, due_date, priority)
        VALUES ($1, $2, $3, $4, $5, $6, $7)

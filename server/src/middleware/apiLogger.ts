@@ -60,6 +60,23 @@ function addEvent(event: ApiEvent): void {
   }
 }
 
+// Redact sensitive fields from request/response bodies
+const REDACT_KEYS = new Set([
+  'password', 'newPassword', 'new_password', 'currentPassword', 'current_password',
+  'secret', 'client_secret', 'token', 'totp_code', 'smtp_password',
+]);
+
+function redactSensitiveFields(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
+  const clone: Record<string, unknown> = { ...(body as Record<string, unknown>) };
+  for (const key of Object.keys(clone)) {
+    if (REDACT_KEYS.has(key)) {
+      clone[key] = '[REDACTED]';
+    }
+  }
+  return clone;
+}
+
 // Truncate response body to 10KB
 function truncateBody(body: unknown): unknown {
   if (body === undefined || body === null) return body;
@@ -112,9 +129,9 @@ export function apiLoggerMiddleware(req: Request, res: Response, next: NextFunct
   const startTime = Date.now();
   const eventId = crypto.randomUUID();
 
-  // Capture request body (clone it to avoid issues)
+  // Capture request body (clone and redact sensitive fields)
   const requestBody = req.body && Object.keys(req.body).length > 0
-    ? JSON.parse(JSON.stringify(req.body))
+    ? redactSensitiveFields(JSON.parse(JSON.stringify(req.body)))
     : undefined;
 
   // Intercept response to capture body and status
