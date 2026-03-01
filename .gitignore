@@ -13,3 +13,4 @@ TASK.md
 webhook-listener.py
 deploy.sh
 deploy-from-github.sh
+STRATEGY.md
