@@ -4,7 +4,7 @@ import AppBarContext from '../contexts/AppBarContext';
 
 interface UserMenuProps {
   user: User;
-  theme: 'light' | 'dark' | 'pliny';
+  theme: 'light' | 'dark';
   onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
 }

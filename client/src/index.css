@@ -45,29 +45,6 @@
 }
 
 [data-theme="dark"] {
-  --primary: #8b7cf7;
-  --primary-hover: #a094f9;
-  --primary-subtle: rgba(139, 124, 247, 0.1);
-  --secondary: #8a847c;
-  --secondary-hover: #a09a92;
-  --danger: #fc8181;
-  --danger-hover: #feb2b2;
-  --danger-subtle: rgba(252, 129, 129, 0.1);
-  --success: #68d391;
-  --bg: #141210;
-  --bg-raised: #1e1c19;
-  --card-bg: #221f1c;
-  --border: #33302b;
-  --border-hover: #44403a;
-  --text: #e7e5e4;
-  --text-secondary: #a8a29e;
-  --text-tertiary: #78716c;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="pliny"] {
   --primary: #c97d3a;
   --primary-hover: #e09a56;
   --primary-subtle: rgba(201, 125, 58, 0.12);
