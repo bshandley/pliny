@@ -1,207 +1,229 @@
 # Pliny
 
 [![License: ELv2](https://img.shields.io/badge/License-Elastic_v2-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Fbshandley%2Fpliny-blue?logo=docker)](https://github.com/bshandley/pliny/pkgs/container/pliny-server)
 
-Self-hosted Kanban for teams who own their data. Built with React, TypeScript, Express, and PostgreSQL.
+Self-hosted kanban for teams who own their data. Built with React, TypeScript, Express, and PostgreSQL.
+
+**[getpliny.com](https://getpliny.com)** · [Self-hosting guide](https://getpliny.com/self-host)
+
+---
 
 ## Features
 
-- **Full Kanban board** with drag-and-drop (desktop & mobile)
-- **Mobile-responsive** design with touch-friendly UI
-- **User management** - ADMIN (full access) and READ (view-only) roles
-- **Board-level permissions** - READ users only see boards they're assigned to
+- **Full kanban board** with drag-and-drop (desktop & mobile touch)
+- **Multiple views** — board, calendar, list, and analytics dashboard
+- **Labels, assignees, due dates, checklists, and card descriptions**
+- **Board starring** and sort preferences
+- **Public board sharing** — shareable read-only links
+- **CSV import** — create boards from a spreadsheet in 3 steps
+- **User management** — ADMIN and READ roles with board-level permissions
+- **SSO / OIDC** — plug in any OIDC-compatible identity provider
+- **REST API** with personal access tokens
 - **Real-time updates** via WebSocket
-- **Docker-ready** deployment
-- **TypeScript** throughout (type-safe)
+- **Mobile-responsive** with touch-friendly drag handles
+- **Docker-ready** — pulls from GHCR, no build step required
+
+---
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- (Optional) Node.js 18+ for local development
+- Docker 20+
+- Docker Compose v2+
 
-### Deploy with Docker
-
-1. **Clone and configure:**
+### Deploy
 
 ```bash
+git clone https://github.com/bshandley/pliny
+cd pliny
 cp .env.example .env
-# Edit .env with your settings
+# Edit .env — set DB_PASSWORD, JWT_SECRET, and PLINY_URL at minimum
+docker compose up -d
+docker compose exec server npm run migrate
 ```
 
-2. **Start the stack:**
+Open `http://localhost` (or your `PLINY_URL`). Create your admin account on first launch.
+
+Images are pulled automatically from GitHub Container Registry — no build step needed.
+
+### Updating
 
 ```bash
-docker-compose up -d
+docker compose pull
+docker compose up -d
+docker compose exec server npm run migrate
 ```
 
-3. **Run database migrations:**
+Migrations are idempotent — safe to re-run on every update.
 
-```bash
-docker-compose exec server npm run migrate
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DB_PASSWORD` | ✅ | — | PostgreSQL password |
+| `JWT_SECRET` | ✅ | — | Secret for JWT signing — use a long random string |
+| `PLINY_URL` | ✅ | — | Public URL of your instance (e.g. `https://pliny.example.com`) |
+| `DB_HOST` | | `db` | PostgreSQL host |
+| `DB_PORT` | | `5432` | PostgreSQL port |
+| `DB_NAME` | | `pliny` | Database name |
+| `DB_USER` | | `pliny` | Database user |
+| `PORT` | | `3001` | Backend API port |
+| `SMTP_HOST` | | — | SMTP host for email notifications |
+| `SMTP_PORT` | | `587` | SMTP port |
+| `SMTP_USER` | | — | SMTP username |
+| `SMTP_PASS` | | — | SMTP password |
+| `SMTP_FROM` | | — | From address for outbound email |
+| `S3_ENDPOINT` | | — | S3-compatible storage endpoint (uses local disk by default) |
+| `S3_BUCKET` | | — | S3 bucket name |
+| `S3_ACCESS_KEY` | | — | S3 access key |
+| `S3_SECRET_KEY` | | — | S3 secret key |
+| `OIDC_ISSUER` | | — | OIDC provider URL for SSO |
+| `OIDC_CLIENT_ID` | | — | OIDC client ID |
+| `OIDC_CLIENT_SECRET` | | — | OIDC client secret |
+| `TOTP_ENCRYPTION_KEY` | | — | Encryption key for TOTP secrets |
+
+---
+
+## Reverse Proxy
+
+Point your reverse proxy to port `80` (the client container). WebSocket support is required — forward the `Upgrade` header.
+
+**nginx example:**
+```nginx
+location / {
+    proxy_pass http://localhost:80;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
 ```
 
-4. **Access the app:**
+Works with nginx, Caddy, Traefik, or any WebSocket-capable proxy.
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
-
-### Default Credentials
-
-- **Username:** admin
-- **Password:** admin123
-- **Role:** ADMIN
-
-**Change this immediately in production!**
+---
 
 ## Architecture
 
 ```
-plank/
-├── server/           # Express + TypeScript backend
+pliny/
+├── server/             # Express + TypeScript backend
 │   ├── src/
-│   │   ├── routes/   # API routes (auth, boards, columns, cards, users)
+│   │   ├── routes/     # API routes
 │   │   ├── middleware/ # Auth & RBAC
-│   │   ├── migrations/ # Database schema
-│   │   └── index.ts  # Main server + WebSocket
+│   │   ├── migrations/ # Database schema (idempotent)
+│   │   └── index.ts   # Server entry + WebSocket
 │   └── Dockerfile
-├── client/           # React + TypeScript frontend
+├── client/             # React + TypeScript frontend
 │   ├── src/
 │   │   ├── components/ # UI components
-│   │   ├── api.ts    # API client
-│   │   └── App.tsx   # Main app
+│   │   ├── api.ts      # API client
+│   │   └── App.tsx     # App root
 │   ├── Dockerfile
 │   └── nginx.conf
 └── docker-compose.yml
 ```
 
-## API Endpoints
+---
+
+## API
+
+All endpoints require a `Bearer` token (JWT from login, or a personal access token).
 
 ### Authentication
-- `POST /api/auth/login` - Login (returns JWT)
-- `POST /api/auth/register` - Register new user (ADMIN role required)
-
-### Users (ADMIN only)
-- `GET /api/users` - List all users
-- `PUT /api/users/:id` - Update user (username, password, role)
-- `DELETE /api/users/:id` - Delete user
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/auth/login` | Login — returns JWT |
+| `POST` | `/api/auth/register` | Register new user (ADMIN only) |
 
 ### Boards
-- `GET /api/boards` - List boards (ADMIN: all, READ: only assigned)
-- `GET /api/boards/:id` - Get board with columns & cards
-- `POST /api/boards` - Create board (ADMIN)
-- `PUT /api/boards/:id` - Update board (ADMIN)
-- `DELETE /api/boards/:id` - Delete board (ADMIN)
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/boards` | List boards |
+| `POST` | `/api/boards` | Create board (ADMIN) |
+| `GET` | `/api/boards/:id` | Get board with columns & cards |
+| `PUT` | `/api/boards/:id` | Update board (ADMIN) |
+| `DELETE` | `/api/boards/:id` | Delete board (ADMIN) |
+| `PUT` | `/api/boards/:id/star` | Star/unstar board |
+| `GET` | `/api/boards/:id/analytics` | Board analytics (activity, assignees) |
 
 ### Board Members (ADMIN only)
-- `GET /api/boards/:id/members` - List board members
-- `POST /api/boards/:id/members` - Add member to board
-- `DELETE /api/boards/:id/members/:userId` - Remove member from board
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/boards/:id/members` | List members |
+| `POST` | `/api/boards/:id/members` | Add member |
+| `DELETE` | `/api/boards/:id/members/:userId` | Remove member |
 
 ### Columns
-- `POST /api/columns` - Create column (ADMIN)
-- `PUT /api/columns/:id` - Update column (ADMIN)
-- `DELETE /api/columns/:id` - Delete column (ADMIN)
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/columns` | Create column (ADMIN) |
+| `PUT` | `/api/columns/:id` | Update column (ADMIN) |
+| `DELETE` | `/api/columns/:id` | Delete column (ADMIN) |
 
 ### Cards
-- `POST /api/cards` - Create card (ADMIN)
-- `PUT /api/cards/:id` - Update card (ADMIN)
-- `DELETE /api/cards/:id` - Delete card (ADMIN)
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/cards` | Create card (ADMIN) |
+| `GET` | `/api/cards/:id` | Get card detail |
+| `PUT` | `/api/cards/:id` | Update card (ADMIN) |
+| `DELETE` | `/api/cards/:id` | Delete card (ADMIN) |
 
-## RBAC & Permissions
+### Import
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/csv/board-import/preview` | Preview CSV import |
+| `POST` | `/api/csv/board-import/confirm` | Confirm and create board from CSV |
 
-- **ADMIN role:** Full access to all operations. Can manage users, boards, columns, and cards. Can add/remove READ users from boards.
-- **READ role:** View-only access to assigned boards only. Must be added to boards by an admin. Cannot see boards they are not assigned to.
+### Admin
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/users` | List users (ADMIN) |
+| `PUT` | `/api/users/:id` | Update user (ADMIN) |
+| `DELETE` | `/api/users/:id` | Delete user (ADMIN) |
+| `GET` | `/api/boards/admin/shared` | List all publicly shared boards (ADMIN) |
 
-Authentication required for all endpoints (except login).
+---
 
-## Real-time Updates
+## Permissions
 
-WebSocket events:
-- `join-board` - Join a board room
-- `leave-board` - Leave a board room
-- `board-updated` - Broadcast when board data changes
+- **ADMIN** — Full access. Manages users, boards, members, columns, and cards.
+- **READ** — View-only. Sees only boards they've been added to. Cannot modify anything.
 
-## Environment Variables
+---
 
-See `.env.example` for all configuration options.
-
-Key variables:
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` - PostgreSQL connection
-- `JWT_SECRET` - Secret for JWT signing (change in production!)
-- `PORT` - Server port (default: 3001)
-
-## Development
-
-### Local development (without Docker):
+## Local Development
 
 **Backend:**
 ```bash
 cd server
 npm install
-npm run dev
-# Run migrations: npm run migrate
+npm run dev        # starts with ts-node-dev
+npm run migrate    # run migrations against local DB
 ```
 
 **Frontend:**
 ```bash
 cd client
 npm install
-npm run dev
+npm run dev        # Vite dev server on :5173
 ```
 
 **Database:**
 ```bash
-# Use local PostgreSQL or Docker:
 docker run -d -p 5432:5432 \
-  -e POSTGRES_DB=plank \
-  -e POSTGRES_USER=plank \
+  -e POSTGRES_DB=pliny \
+  -e POSTGRES_USER=pliny \
   -e POSTGRES_PASSWORD=changeme \
   postgres:16
 ```
 
-## Deployment to Wharf
-
-1. **Copy project to Wharf:**
-
-```bash
-scp -r . bradley@10.0.0.102:/opt/stacks/plank
-```
-
-2. **SSH to Wharf and deploy:**
-
-```bash
-ssh bradley@10.0.0.102
-cd /opt/stacks/plank
-docker-compose up -d
-docker-compose exec server npm run migrate
-```
-
-3. **Access via Wharf:**
-
-Update `docker-compose.yml` ports if needed, or setup reverse proxy.
-
-## Mobile Support
-
-- Touch-friendly drag-and-drop using `react-beautiful-dnd`
-- Responsive breakpoints: 768px (tablet), 480px (phone)
-- Horizontal scroll for columns on mobile
-- Large touch targets for cards and buttons
-
-## Security Notes
-
-- Change default admin password immediately
-- Set strong `JWT_SECRET` in production
-- Use HTTPS in production (setup reverse proxy)
-- Consider rate limiting for API endpoints
-- Review CORS settings in production
+---
 
 ## License
 
-MIT
-# Webhook test - Fri Feb 13 05:42:22 AM UTC 2026
-# Webhook test 2 - Fri Feb 13 05:43:07 AM UTC 2026
-# Webhook fix: Fri Feb 13 05:45:28 AM UTC 2026
-# Deploy verified: 2026-02-13T05:46:16+00:00
-# Dummy commit: 2026-02-13T05:48:01+00:00
+[Elastic License 2.0](LICENSE) — free to self-host and modify; commercial redistribution and managed service offerings require a separate agreement.
