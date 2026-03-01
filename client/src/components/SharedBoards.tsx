@@ -49,23 +49,36 @@ export default function SharedBoards() {
 
   if (loading) {
     return (
-      <div className="shared-boards-list">
-        <div className="shared-boards-loading">Loading shared boards...</div>
+      <div className="shared-boards-page">
+        <div className="panel-header">
+          <h2>Sharing</h2>
+        </div>
+        <div className="shared-boards-list">
+          <div className="shared-boards-loading">Loading shared boards...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="shared-boards-list">
-        <div className="shared-boards-error">{error}</div>
+      <div className="shared-boards-page">
+        <div className="panel-header">
+          <h2>Sharing</h2>
+        </div>
+        <div className="shared-boards-list">
+          <div className="shared-boards-error">{error}</div>
+        </div>
       </div>
     );
   }
 
   if (boards.length === 0) {
     return (
-      <div className="shared-boards-list">
+      <div className="shared-boards-page">
+        <div className="panel-header">
+          <h2>Sharing</h2>
+        </div>
         <div className="shared-boards-empty">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -78,29 +91,34 @@ export default function SharedBoards() {
   }
 
   return (
-    <div className="shared-boards-list">
-      {boards.map(board => (
-        <div key={board.id} className="shared-board-row">
-          <div className="shared-board-info">
-            <span className="shared-board-name">{board.name}</span>
-            <a
-              className="shared-board-url"
-              href={getPublicUrl(board.public_token)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={getPublicUrl(board.public_token)}
+    <div className="shared-boards-page">
+      <div className="panel-header">
+        <h2>Sharing</h2>
+      </div>
+      <div className="shared-boards-list">
+        {boards.map(board => (
+          <div key={board.id} className="shared-board-row">
+            <div className="shared-board-info">
+              <span className="shared-board-name">{board.name}</span>
+              <a
+                className="shared-board-url"
+                href={getPublicUrl(board.public_token)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={getPublicUrl(board.public_token)}
+              >
+                {getPublicUrl(board.public_token)}
+              </a>
+            </div>
+            <button
+              className="btn btn-sm btn-revoke"
+              onClick={() => handleRevoke(board)}
             >
-              {getPublicUrl(board.public_token)}
-            </a>
+              Revoke
+            </button>
           </div>
-          <button
-            className="btn btn-sm btn-revoke"
-            onClick={() => handleRevoke(board)}
-          >
-            Revoke
-          </button>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

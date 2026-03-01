@@ -6873,9 +6873,7 @@ button:disabled {
 /* ---- OIDC Settings ---- */
 
 .oidc-settings {
-  padding: 0.5rem 1rem 2rem;
   max-width: 640px;
-  margin: 0 auto;
 }
 
 .oidc-card {
@@ -7160,10 +7158,6 @@ button:disabled {
 }
 
 @media (max-width: 600px) {
-  .oidc-settings {
-    padding: 0.25rem 0.75rem 2rem;
-  }
-
   .oidc-claim-grid {
     grid-template-columns: 1fr;
   }
@@ -8171,6 +8165,10 @@ button:disabled {
 }
 
 /* ---- Shared Boards (Admin) ---- */
+
+.shared-boards-page {
+  max-width: 640px;
+}
 
 .shared-boards-list {
   display: flex;

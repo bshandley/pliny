@@ -84,6 +84,10 @@ export default function OidcSettings() {
 
   return (
     <div className="oidc-settings">
+      <div className="panel-header">
+        <h2>SSO</h2>
+      </div>
+
       {/* Quick-start guide */}
       <div className="oidc-card oidc-quickstart">
         <div className="oidc-card-header">
