@@ -1122,6 +1122,20 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
             refreshKey={refreshKey}
             onFilterNavigate={handleDashboardFilterNavigate}
           />
+        ) : (!board.columns || board.columns.length === 0) ? (
+          <div className="empty-board">
+            <div className="empty-board-content">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                <rect x="14" y="3" width="7" height="10" rx="1.5" />
+              </svg>
+              <h3>This board is empty</h3>
+              <p>Add your first column to get started</p>
+              {isAdmin && (
+                <button className="btn-primary" onClick={() => setShowNewColumn(true)}>+ Add Column</button>
+              )}
+            </div>
+          </div>
         ) : (
           <Droppable droppableId="board" direction="horizontal" type="COLUMN" isDropDisabled={!isAdmin}>
             {(provided) => (

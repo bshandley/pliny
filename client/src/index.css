@@ -1380,6 +1380,42 @@ button:disabled {
   touch-action: pan-x;
 }
 
+.empty-board {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.empty-board-content {
+  text-align: center;
+  color: var(--text-secondary);
+  max-width: 320px;
+}
+
+.empty-board-content svg {
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.empty-board-content h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.empty-board-content p {
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+.empty-board-content .btn-primary {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+}
+
 .column {
   background: var(--bg-raised);
   border-radius: var(--radius-lg);
@@ -6332,6 +6368,14 @@ button:disabled {
   color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 1.5rem;
+}
+
+.setup-description {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  margin-top: -0.5rem;
 }
 
 .login-back-link {

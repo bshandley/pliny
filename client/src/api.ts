@@ -49,6 +49,21 @@ class ApiClient {
     return response.json();
   }
 
+  // Setup
+  async getSetupStatus(): Promise<{ needsSetup: boolean }> {
+    const response = await fetch(`${API_URL}/auth/setup-status`);
+    return response.json();
+  }
+
+  async setup(username: string, password: string): Promise<any> {
+    const data = await this.fetch('/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }, 'setup');
+    this.setToken(data.token);
+    return { user: data.user };
+  }
+
   // Auth
   async login(username: string, password: string): Promise<any> {
     const data = await this.fetch('/auth/login', {

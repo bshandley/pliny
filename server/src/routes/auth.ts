@@ -9,6 +9,71 @@ import { decrypt } from '../utils/crypto';
 
 const router = Router();
 
+// Setup status — check if any users exist (no auth required)
+router.get('/setup-status', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    res.json({ needsSetup: result.rows[0].count === 0 });
+  } catch (error) {
+    console.error('Setup status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Initial setup — create first admin user (no auth required, fails if users exist)
+router.post('/setup', registerLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    if (username.length > 255) {
+      return res.status(400).json({ error: 'Username must be 255 characters or fewer' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Check if any users already exist (race-condition safe with count check)
+    const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    if (countResult.rows[0].count > 0) {
+      return res.status(409).json({ error: 'Setup has already been completed' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      [username, hash, 'ADMIN']
+    );
+
+    const user = result.rows[0];
+    const token = generateToken({
+      id: user.id,
+      username: user.username,
+      role: user.role
+    });
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    console.error('Setup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Login
 router.post('/login', authLimiter, async (req, res) => {
   try {
