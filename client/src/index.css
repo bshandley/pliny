@@ -5676,54 +5676,25 @@ button:disabled {
     max-height: calc(100dvh - 110px);
   }
 
-  /* Bottom sheet modals */
+  /* Mobile modals — float near top so keyboard doesn't obscure */
   .modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: flex-start;
+    padding: 2rem 0.75rem;
   }
 
   .modal {
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-radius: var(--radius-xl);
     max-width: none;
     width: 100%;
-    max-height: 85vh;
-    max-height: 85dvh;
-    padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
-    animation: slideUpSheet 0.3s var(--ease-spring);
+    max-height: 80vh;
+    max-height: 80dvh;
+    padding: 1.25rem;
+    animation: modalIn 0.25s var(--ease-spring);
     overscroll-behavior: contain;
-  }
-
-  .modal::before {
-    content: '';
-    display: block;
-    width: 36px;
-    height: 4px;
-    background: var(--border-hover);
-    border-radius: 2px;
-    margin: 0 auto 0.75rem;
-    flex-shrink: 0;
   }
 
   .modal h2 {
     font-size: 1.25rem;
-  }
-
-  /* Centered modal variant — stays centered on mobile so keyboard doesn't obscure it */
-  .modal-overlay-centered {
-    align-items: center;
-    padding: 1rem;
-  }
-
-  .modal-centered {
-    border-radius: var(--radius-xl);
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    animation: modalIn 0.25s var(--ease-spring);
-  }
-
-  .modal-centered::before {
-    display: none;
   }
 
   /* Typography */
