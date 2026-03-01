@@ -9,7 +9,7 @@ export interface AppBarContextType {
   onMarkAllRead: () => Promise<void>;
   onNavigateToBoard: (boardId: string, cardId?: string) => void;
   onGoToNotifications: () => void;
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'pliny';
   onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
   onSearchOpen: () => void;
