@@ -57,7 +57,7 @@ router.get('/boards/:boardId/analytics', authenticate, requireBoardRole('VIEWER'
      LEFT JOIN card_assignees ca ON ca.card_id = c.id
      LEFT JOIN users u ON ca.user_id = u.id
      WHERE col.board_id = $1 AND c.archived = false
-     GROUP BY COALESCE(u.username, ca.display_name)
+     GROUP BY COALESCE(u.username, ca.display_name, 'Unassigned')
      ORDER BY total DESC`,
     [boardId, lastColumnId]
   );
