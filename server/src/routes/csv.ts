@@ -21,6 +21,348 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// POST /api/csv/board-import/preview — upload CSV for new board creation
+router.post('/csv/board-import/preview', authenticate, upload.single('file'), async (req: AuthRequest, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const csvContent = req.file.buffer.toString('utf-8');
+    let records: Record<string, string>[];
+    try {
+      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+    } catch (parseErr: any) {
+      return res.status(400).json({ error: `Invalid CSV: ${parseErr.message}` });
+    }
+
+    if (records.length === 0) {
+      return res.status(400).json({ error: 'CSV file is empty (no data rows)' });
+    }
+
+    const headers = Object.keys(records[0]);
+
+    // Auto-map headers to Pliny fields
+    const fieldAliases: Record<string, string[]> = {
+      title: ['title', 'name', 'card', 'card title', 'card name', 'task', 'task name'],
+      description: ['description', 'desc', 'details', 'body', 'notes'],
+      column: ['column', 'list', 'status', 'stage', 'column name'],
+      assignees: ['assignees', 'assignee', 'assigned', 'assigned to', 'owner', 'owners'],
+      labels: ['labels', 'label', 'tags', 'tag', 'category', 'categories'],
+      due_date: ['due date', 'due_date', 'duedate', 'deadline', 'due'],
+      start_date: ['start date', 'start_date', 'startdate', 'start'],
+      position: ['position', 'order', 'sort', 'index'],
+      parent_card: ['parent card', 'parent_card', 'parent', 'parent card title', 'parent_card_title'],
+    };
+
+    const suggestedMapping: Record<string, string> = {};
+    for (const header of headers) {
+      const lowerHeader = header.toLowerCase().trim();
+      let matched = false;
+      for (const [field, aliases] of Object.entries(fieldAliases)) {
+        if (aliases.includes(lowerHeader)) {
+          suggestedMapping[header] = field;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        suggestedMapping[header] = 'skip';
+      }
+    }
+
+    const importId = crypto.randomUUID();
+    pendingImports.set(importId, {
+      rows: records,
+      headers,
+      boardId: '',
+      userId: req.user!.id,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+
+    res.json({
+      importId,
+      headers,
+      suggestedMapping,
+      sampleRows: records.slice(0, 5),
+      rowCount: records.length,
+    });
+  } catch (error) {
+    console.error('CSV board-import preview error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/csv/board-import/confirm — create board + columns + cards from CSV
+router.post('/csv/board-import/confirm', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { importId, mapping, boardName } = req.body as { importId: string; mapping: Record<string, string>; boardName: string };
+
+    if (!importId || !mapping) {
+      return res.status(400).json({ error: 'importId and mapping are required' });
+    }
+    if (!boardName || typeof boardName !== 'string' || boardName.trim().length === 0 || boardName.trim().length > 100) {
+      return res.status(400).json({ error: 'boardName is required (1-100 characters)' });
+    }
+
+    const pending = pendingImports.get(importId);
+    if (!pending) {
+      return res.status(400).json({ error: 'Import session expired or not found. Please re-upload the file.' });
+    }
+    if (pending.boardId !== '' || pending.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Import session mismatch' });
+    }
+
+    pendingImports.delete(importId);
+
+    // Verify title mapping exists
+    const titleHeader = Object.entries(mapping).find(([_, field]) => field === 'title')?.[0];
+    if (!titleHeader) {
+      return res.status(400).json({ error: 'A column must be mapped to Title' });
+    }
+
+    // Find the header mapped to 'column'
+    const columnHeader = Object.entries(mapping).find(([_, field]) => field === 'column')?.[0];
+
+    // Collect unique non-empty column values in order of first appearance
+    const uniqueColumnValues: string[] = [];
+    if (columnHeader) {
+      const seen = new Set<string>();
+      for (const row of pending.rows) {
+        const val = (row[columnHeader] || '').trim();
+        if (val && !seen.has(val)) {
+          seen.add(val);
+          uniqueColumnValues.push(val);
+        }
+      }
+    }
+
+    const client = await pool.connect();
+    const errors: { row: number; field: string; message: string }[] = [];
+    let created = 0;
+    let boardId = '';
+
+    try {
+      await client.query('BEGIN');
+
+      // 1. Create board
+      const boardResult = await client.query(
+        'INSERT INTO boards (name, created_by) VALUES ($1, $2) RETURNING id',
+        [boardName.trim(), req.user!.id]
+      );
+      boardId = boardResult.rows[0].id;
+
+      // 2. Add creator as ADMIN member
+      await client.query(
+        'INSERT INTO board_members (board_id, user_id, role) VALUES ($1, $2, $3)',
+        [boardId, req.user!.id, 'ADMIN']
+      );
+
+      // 3. Create columns
+      const columnByName = new Map<string, string>();
+      let firstColumnId = '';
+
+      if (uniqueColumnValues.length > 0) {
+        for (let i = 0; i < uniqueColumnValues.length; i++) {
+          const colResult = await client.query(
+            'INSERT INTO columns (board_id, name, position) VALUES ($1, $2, $3) RETURNING id',
+            [boardId, uniqueColumnValues[i], i]
+          );
+          columnByName.set(uniqueColumnValues[i].toLowerCase(), colResult.rows[0].id);
+          if (i === 0) firstColumnId = colResult.rows[0].id;
+        }
+      } else {
+        // Default column
+        const colResult = await client.query(
+          'INSERT INTO columns (board_id, name, position) VALUES ($1, $2, $3) RETURNING id',
+          [boardId, 'Tasks', 0]
+        );
+        firstColumnId = colResult.rows[0].id;
+      }
+
+      // 4. Import cards
+      const maxPositions = new Map<string, number>();
+      const titleToId = new Map<string, string>();
+      const pendingParents: { cardId: string; parentTitle: string; rowNum: number }[] = [];
+
+      // Fetch existing labels (board is new, so none yet — but keep the map for auto-creation)
+      const labelByName = new Map<string, string>();
+
+      for (let i = 0; i < pending.rows.length; i++) {
+        const row = pending.rows[i];
+        const rowNum = i + 2;
+
+        let title = '';
+        let description = '';
+        let columnName = '';
+        let assigneesStr = '';
+        let labelsStr = '';
+        let dueDate: string | null = null;
+        let startDate: string | null = null;
+        let position: number | null = null;
+        let parentCardTitle = '';
+
+        for (const [header, field] of Object.entries(mapping)) {
+          if (field === 'skip') continue;
+          const value = (row[header] || '').trim();
+          if (!value) continue;
+
+          switch (field) {
+            case 'title': title = value; break;
+            case 'description': description = value; break;
+            case 'column': columnName = value; break;
+            case 'assignees': assigneesStr = value; break;
+            case 'labels': labelsStr = value; break;
+            case 'parent_card': parentCardTitle = value; break;
+            case 'due_date': {
+              const d = new Date(value);
+              if (isNaN(d.getTime())) {
+                errors.push({ row: rowNum, field: 'due_date', message: `Invalid date: "${value}"` });
+              } else {
+                dueDate = d.toISOString().split('T')[0];
+              }
+              break;
+            }
+            case 'start_date': {
+              const d = new Date(value);
+              if (isNaN(d.getTime())) {
+                errors.push({ row: rowNum, field: 'start_date', message: `Invalid date: "${value}"` });
+              } else {
+                startDate = d.toISOString().split('T')[0];
+              }
+              break;
+            }
+            case 'position': {
+              const p = parseInt(value, 10);
+              if (!isNaN(p)) position = p;
+              break;
+            }
+          }
+        }
+
+        if (!title) {
+          errors.push({ row: rowNum, field: 'title', message: 'Missing title, row skipped' });
+          continue;
+        }
+
+        if (title.length > 255) {
+          title = title.substring(0, 255);
+          errors.push({ row: rowNum, field: 'title', message: 'Title truncated to 255 characters' });
+        }
+
+        if (description.length > 10000) {
+          description = description.substring(0, 10000);
+          errors.push({ row: rowNum, field: 'description', message: 'Description truncated to 10000 characters' });
+        }
+
+        // Resolve column
+        const columnId = columnName ? (columnByName.get(columnName.toLowerCase()) || firstColumnId) : firstColumnId;
+        if (columnName && !columnByName.has(columnName.toLowerCase())) {
+          errors.push({ row: rowNum, field: 'column', message: `Column "${columnName}" not found, using first column` });
+        }
+
+        // Determine position
+        if (position === null) {
+          const maxPos = maxPositions.get(columnId) ?? -1;
+          position = maxPos + 1;
+          maxPositions.set(columnId, position);
+        }
+
+        // Insert card
+        const cardResult = await client.query(
+          `INSERT INTO cards (column_id, title, description, position, due_date, start_date)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [columnId, title, description, position, dueDate, startDate]
+        );
+        const cardId = cardResult.rows[0].id;
+        titleToId.set(title, cardId);
+
+        if (parentCardTitle) {
+          pendingParents.push({ cardId, parentTitle: parentCardTitle, rowNum });
+        }
+
+        // Handle assignees — new board, no members besides creator, use display_name
+        if (assigneesStr) {
+          const assigneeNames = assigneesStr.split(',').map(n => n.trim()).filter(Boolean);
+          for (const name of assigneeNames) {
+            // Check if it's the creator
+            const memberMatch = await client.query(
+              `SELECT u.id FROM board_members bm
+               JOIN users u ON bm.user_id = u.id
+               WHERE bm.board_id = $1 AND LOWER(u.username) = LOWER($2)`,
+              [boardId, name]
+            );
+            if (memberMatch.rows.length > 0) {
+              await client.query(
+                'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [cardId, memberMatch.rows[0].id]
+              );
+            } else {
+              await client.query(
+                'INSERT INTO card_assignees (card_id, display_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [cardId, name]
+              );
+            }
+          }
+        }
+
+        // Handle labels
+        if (labelsStr) {
+          const labelNames = labelsStr.split(',').map(n => n.trim()).filter(Boolean);
+          for (const labelName of labelNames) {
+            let labelId = labelByName.get(labelName.toLowerCase());
+            if (!labelId) {
+              const colors = ['#5746af', '#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+              const color = colors[labelByName.size % colors.length];
+              const newLabel = await client.query(
+                'INSERT INTO board_labels (board_id, name, color) VALUES ($1, $2, $3) RETURNING id',
+                [boardId, labelName, color]
+              );
+              labelId = newLabel.rows[0].id;
+              labelByName.set(labelName.toLowerCase(), labelId!);
+            }
+            await client.query(
+              'INSERT INTO card_labels (card_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [cardId, labelId!]
+            );
+          }
+        }
+
+        created++;
+      }
+
+      // Pass 2: Set parent_id
+      for (const { cardId, parentTitle, rowNum } of pendingParents) {
+        const parentId = titleToId.get(parentTitle);
+        if (parentId) {
+          const parentCheck = await client.query('SELECT parent_id FROM cards WHERE id = $1', [parentId]);
+          if (parentCheck.rows.length > 0 && parentCheck.rows[0].parent_id) {
+            errors.push({ row: rowNum, field: 'parent_card', message: `Parent "${parentTitle}" is itself a subtask; sub-subtasks not allowed` });
+          } else {
+            await client.query('UPDATE cards SET parent_id = $1 WHERE id = $2', [parentId, cardId]);
+          }
+        } else {
+          errors.push({ row: rowNum, field: 'parent_card', message: `Parent card "${parentTitle}" not found` });
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      throw txError;
+    } finally {
+      client.release();
+    }
+
+    const columnCount = uniqueColumnValues.length > 0 ? uniqueColumnValues.length : 1;
+
+    res.json({ boardId, boardName: boardName.trim(), created, columnCount, errors });
+  } catch (error) {
+    console.error('CSV board-import confirm error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/boards/:boardId/csv/export
 router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'), async (req: AuthRequest, res) => {
   try {

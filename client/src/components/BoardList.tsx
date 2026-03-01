@@ -4,6 +4,7 @@ import { Board, User } from '../types';
 import { useConfirm } from '../contexts/ConfirmContext';
 import AppBar from './AppBar';
 import TrelloImportModal from './TrelloImportModal';
+import CSVBoardImportModal from './CSVBoardImportModal';
 
 type SortOption = 'recent' | 'name' | 'created';
 
@@ -28,6 +29,7 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
   const [saveTemplateName, setSaveTemplateName] = useState('');
   const [saveTemplateDesc, setSaveTemplateDesc] = useState('');
   const [showTrelloImport, setShowTrelloImport] = useState(false);
+  const [showCSVBoardImport, setShowCSVBoardImport] = useState(false);
   const [showImportMenu, setShowImportMenu] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     return (localStorage.getItem('pliny-board-sort') as SortOption) || 'recent';
@@ -272,6 +274,9 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
                   <button onClick={() => { setShowImportMenu(false); setShowTrelloImport(true); }}>
                     Import from Trello
                   </button>
+                  <button onClick={() => { setShowImportMenu(false); setShowCSVBoardImport(true); }}>
+                    Import from CSV
+                  </button>
                 </div>
               )}
             </div>
@@ -498,6 +503,18 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
           onClose={() => setShowTrelloImport(false)}
           onImportComplete={loadBoards}
           onSelectBoard={onSelectBoard}
+        />
+      )}
+
+      {/* CSV Board Import Modal */}
+      {showCSVBoardImport && (
+        <CSVBoardImportModal
+          onClose={() => setShowCSVBoardImport(false)}
+          onImportComplete={loadBoards}
+          onSelectBoard={(boardId, boardName) => {
+            setShowCSVBoardImport(false);
+            onSelectBoard(boardId, boardName);
+          }}
         />
       )}
     </div>
