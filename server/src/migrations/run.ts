@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import pool from '../db';
 
 export async function runMigrations() {
@@ -39,6 +40,22 @@ export async function runMigrations() {
   }
 
   console.log(`Migrations completed (${ran} new, ${appliedSet.size} already applied)`);
+
+  // Seed initial admin if no users exist and env vars are provided
+  const adminUsername = process.env.INITIAL_ADMIN_USERNAME;
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+
+  if (adminUsername && adminPassword) {
+    const { rows } = await pool.query('SELECT COUNT(*) FROM users');
+    if (parseInt(rows[0].count, 10) === 0) {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await pool.query(
+        'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
+        [adminUsername, hash, 'ADMIN']
+      );
+      console.log(`Initial admin created: ${adminUsername}`);
+    }
+  }
 }
 
 // Allow running as standalone script

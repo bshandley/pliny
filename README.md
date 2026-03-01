@@ -39,7 +39,7 @@ Self-hosted kanban for teams who own their data. Built with React, TypeScript, E
 git clone https://github.com/bshandley/pliny
 cd pliny
 cp .env.example .env
-# Edit .env — set DB_PASSWORD, JWT_SECRET, and PLINY_URL at minimum
+# Edit .env — set DB_PASSWORD, JWT_SECRET, PLINY_URL, and initial admin credentials
 docker compose up -d
 ```
 
@@ -69,6 +69,8 @@ Migrations run automatically on restart. That's it.
 | `DB_NAME` | | `pliny` | Database name |
 | `DB_USER` | | `pliny` | Database user |
 | `PORT` | | `3001` | Backend API port |
+| `INITIAL_ADMIN_USERNAME` | | `admin` | Username for the initial admin account (only used when no users exist) |
+| `INITIAL_ADMIN_PASSWORD` | | — | Password for the initial admin account |
 | `SMTP_HOST` | | — | SMTP host for email notifications |
 | `SMTP_PORT` | | `587` | SMTP port |
 | `SMTP_USER` | | — | SMTP username |
