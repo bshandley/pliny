@@ -54,6 +54,7 @@ const io = new Server(httpServer, {
 });
 
 // Middleware
+app.set("trust proxy", 1);
 app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 app.use(cookieParser());
