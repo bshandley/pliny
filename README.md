@@ -1,6 +1,8 @@
 # Pliny
 
-A production-ready Kanban project management application built with React, TypeScript, Express, and PostgreSQL.
+[![License: ELv2](https://img.shields.io/badge/License-Elastic_v2-blue.svg)](LICENSE)
+
+Self-hosted Kanban for teams who own their data. Built with React, TypeScript, Express, and PostgreSQL.
 
 ## Features
 
