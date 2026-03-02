@@ -5884,6 +5884,19 @@ button:disabled {
     touch-action: none !important;
   }
 
+  /* Card badge overflow fix: wrap badges instead of clipping */
+  .card-footer {
+    flex-wrap: wrap;
+  }
+  .card-footer-right {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+  }
+  .card-detail-labels,
+  .card-detail-chips {
+    padding-right: 0.25rem;
+  }
+
     .bulk-action-toolbar {
     bottom: 0.75rem;
     left: 0.75rem;
