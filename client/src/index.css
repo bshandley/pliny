@@ -1757,6 +1757,8 @@ button:disabled {
 
 .md-editor-header {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem;
@@ -1766,12 +1768,18 @@ button:disabled {
 
 .md-editor-tabs {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .md-tab-btn {
   font-size: 0.75rem;
   padding: 0.25rem 0.625rem;
+  white-space: nowrap;
+  min-width: fit-content;
+  min-height: unset !important;
 }
 
 .md-tab-btn.active {
@@ -1782,8 +1790,11 @@ button:disabled {
 
 .md-editor-toolbar {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 2px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .md-toolbar-btn {
@@ -1798,6 +1809,8 @@ button:disabled {
   line-height: 1;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   transition: background 0.1s var(--ease), color 0.1s var(--ease);
+  white-space: nowrap;
+  min-height: unset !important;
 }
 
 .md-toolbar-btn:hover {
