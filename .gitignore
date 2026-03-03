@@ -24,3 +24,4 @@ deploy-from-github.sh
 deploy.sh
 docs/plans/
 docker-compose.dev.yml
+scripts/
