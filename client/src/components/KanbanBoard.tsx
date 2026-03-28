@@ -1269,6 +1269,11 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
                   );
                 })}
                 {provided.placeholder}
+                {isAdmin && !showArchived && (
+                  <button className="add-column-btn" onClick={() => setShowNewColumn(true)}>
+                    + Add Column
+                  </button>
+                )}
               </div>
             )}
           </Droppable>

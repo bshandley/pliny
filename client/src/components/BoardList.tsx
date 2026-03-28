@@ -82,11 +82,11 @@ export default function BoardList({ onSelectBoard, onGoToUsers, user }: BoardLis
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.createBoard(newBoardName, newBoardDesc);
+      const board = await api.createBoard(newBoardName, newBoardDesc);
       setNewBoardName('');
       setNewBoardDesc('');
       setShowCreateModal(false);
-      loadBoards();
+      onSelectBoard(board.id, board.name);
     } catch (error: any) {
       alert('Failed to create board: ' + error.message);
     }

@@ -1388,6 +1388,25 @@ button:disabled {
   touch-action: pan-x;
 }
 
+.add-column-btn {
+  min-width: 220px;
+  height: 40px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  align-self: flex-start;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.add-column-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
 .empty-board {
   flex: 1;
   display: flex;
