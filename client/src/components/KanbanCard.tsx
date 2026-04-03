@@ -337,6 +337,10 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
   const loadRelations = async () => {
     try {
       const data = await api.getCardRelations(card.id);
+      // Guard: ensure response is the expected shape (not a rate-limit error object)
+      if (!data || !Array.isArray(data.blocks) || !Array.isArray(data.blocked_by) || !Array.isArray(data.relates_to)) {
+        return;
+      }
       setRelations(data);
       if (data.blocks.length > 0 || data.blocked_by.length > 0 || data.relates_to.length > 0) {
         setShowRelations(true);

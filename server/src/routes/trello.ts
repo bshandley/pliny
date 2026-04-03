@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import pool from '../db';
 import { authenticate, requireMember } from '../middleware/auth';
+import { uploadLimiter } from '../middleware/rateLimiter';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -86,7 +87,7 @@ interface MemberMatch {
 }
 
 // POST /api/trello/preview - Parse Trello JSON and return summary
-router.post('/preview', authenticate, requireMember, upload.single('file'), async (req: AuthRequest, res) => {
+router.post('/preview', uploadLimiter, authenticate, requireMember, upload.single('file'), async (req: AuthRequest, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

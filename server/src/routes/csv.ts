@@ -5,6 +5,7 @@ import multer from 'multer';
 import crypto from 'crypto';
 import pool from '../db';
 import { authenticate, requireBoardRole } from '../middleware/auth';
+import { uploadLimiter } from '../middleware/rateLimiter';
 import { AuthRequest } from '../types';
 
 const router = Router();
@@ -22,7 +23,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // POST /api/csv/board-import/preview — upload CSV for new board creation
-router.post('/csv/board-import/preview', authenticate, upload.single('file'), async (req: AuthRequest, res) => {
+router.post('/csv/board-import/preview', uploadLimiter, authenticate, upload.single('file'), async (req: AuthRequest, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -499,7 +500,7 @@ router.get('/boards/:boardId/csv/export', authenticate, requireBoardRole('ADMIN'
 });
 
 // POST /api/boards/:boardId/csv/import/preview
-router.post('/boards/:boardId/csv/import/preview', authenticate, requireBoardRole('ADMIN'), upload.single('file'), async (req: AuthRequest, res) => {
+router.post('/boards/:boardId/csv/import/preview', uploadLimiter, authenticate, requireBoardRole('ADMIN'), upload.single('file'), async (req: AuthRequest, res) => {
   try {
     const { boardId } = req.params;
 
