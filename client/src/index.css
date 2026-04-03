@@ -2475,6 +2475,10 @@ button:disabled {
   border-color: var(--primary);
 }
 
+.checklist-input::placeholder {
+  color: var(--text-muted);
+}
+
 /* Checklist badge on card face */
 .checklist-badge {
   display: inline-block;
@@ -2656,7 +2660,12 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--card-bg);
+  color: var(--text);
   font-size: 0.8125rem;
+}
+
+.subtask-input::placeholder {
+  color: var(--text-muted);
 }
 
 .subtask-input:focus {
