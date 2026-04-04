@@ -287,6 +287,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
     setLoadingComments(true);
     try {
       const data = await api.getCardComments(card.id);
+      if (!Array.isArray(data)) return;
       setComments(data);
       if (data.length > 0) setShowComments(true);
     } catch (err) {
@@ -300,6 +301,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
     setLoadingChecklist(true);
     try {
       const data = await api.getCardChecklist(card.id);
+      if (!Array.isArray(data)) return;
       setChecklistItems(data);
       if (data.length > 0) setShowChecklist(true);
     } catch (err) {
@@ -313,6 +315,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
     setLoadingActivity(true);
     try {
       const data = await api.getCardActivity(card.id);
+      if (!Array.isArray(data)) return;
       setActivityEntries(data);
     } catch (err) {
       console.error('Failed to load activity:', err);
@@ -325,6 +328,7 @@ export default function KanbanCard({ card, userRole, isEditing, isSelected = fal
     setLoadingAttachments(true);
     try {
       const data = await api.getAttachments(card.id);
+      if (!Array.isArray(data)) return;
       setAttachments(data);
       if (data.length > 0) setShowAttachments(true);
     } catch (err) {

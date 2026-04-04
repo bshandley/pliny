@@ -175,7 +175,7 @@ function App() {
   const loadNotifications = useCallback(async () => {
     try {
       const data = await api.getNotifications();
-      setNotifications(data);
+      if (Array.isArray(data)) setNotifications(data);
     } catch (err) {
       console.error('Failed to load notifications:', err);
     }

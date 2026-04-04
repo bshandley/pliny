@@ -243,7 +243,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const loadLabels = async () => {
     try {
       const data = await api.getBoardLabels(boardId);
-      setBoardLabels(data);
+      if (Array.isArray(data)) setBoardLabels(data);
     } catch (error) {
       console.error('Failed to load labels:', error);
     }
@@ -252,7 +252,7 @@ export default function KanbanBoard({ boardId, onBack, userRole, viewMode, onVie
   const loadBoardMembers = async () => {
     try {
       const data = await api.getBoardMembers(boardId);
-      setBoardMembers(data);
+      if (Array.isArray(data)) setBoardMembers(data);
     } catch (error) {
       console.error('Failed to load board members:', error);
     }

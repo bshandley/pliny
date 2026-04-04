@@ -74,21 +74,21 @@ export default function DevConsole({ isOpen, onClose }: DevConsoleProps) {
     fetch('/api/dev/events', {
       headers: { Authorization: `Bearer ${api.getToken()}` },
     })
-      .then(r => r.json())
-      .then(setEvents)
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(data => { if (Array.isArray(data)) setEvents(data); })
       .catch(() => {});
 
     fetch('/api/dev/fn-map', {
       headers: { Authorization: `Bearer ${api.getToken()}` },
     })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(setFnMap)
       .catch(() => {});
 
     fetch('/api/dev/status', {
       headers: { Authorization: `Bearer ${api.getToken()}` },
     })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(data => setLoggingEnabled(data.enabled))
       .catch(() => {});
   }, [isOpen]);
