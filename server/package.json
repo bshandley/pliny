@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "ts-node src/migrations/run.ts",
-    "generate-bom": "cyclonedx-npm --output-file dist/.well-known/sbom --omit dev"
+    "generate-bom": "cyclonedx-npm --output-file dist/.well-known/sbom --output-file dist/cyclonedx/bom.json --omit dev"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
