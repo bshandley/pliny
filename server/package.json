@@ -20,7 +20,7 @@
     "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.0",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^9.0.1",
     "openid-client": "^6.8.2",
     "otpauth": "^9.5.0",
     "pg": "^8.12.0",
