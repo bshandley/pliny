@@ -298,3 +298,5 @@ export interface BoardTemplate {
   created_by?: string;
   created_at: string;
 }
+
+export type Theme = 'light' | 'dark' | 'system';
