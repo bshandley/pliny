@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { io, Socket } from 'socket.io-client';
 import { api } from './api';
-import { User, Notification } from './types';
+import { User, Notification, Theme } from './types';
 import AppBarContext from './contexts/AppBarContext';
 import { useKeyboardShortcuts, Shortcut } from './hooks/useKeyboardShortcuts';
 import Login from './components/Login';
@@ -80,9 +80,9 @@ function App() {
     return 'login';
   });
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('theme');
-    return (saved as 'light' | 'dark') || 'light';
+    return (saved as Theme) || 'system';
   });
 
   const navigateTo = useCallback((newPage: Page, boardId?: string | null, boardName?: string, adminSub?: string | null, viewMode?: 'board' | 'calendar' | 'table' | 'timeline' | 'dashboard') => {
@@ -304,9 +304,43 @@ function App() {
   }, [notifSocket]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    let effectiveTheme: string;
+    let mediaQueryList: MediaQueryList | null = null;
+    if (theme === "system") {
+      mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
+      effectiveTheme = mediaQueryList.matches ? 'dark' : 'light';
+    } else {
+      effectiveTheme = theme;
+    }
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
     localStorage.setItem('theme', theme);
+
+    if (theme !== "system") return;
+
+    // setup listener for system theme change
+    let handler = (ev: MediaQueryListEvent) => {
+      document.documentElement.setAttribute('data-theme', ev.matches ? 'dark' : 'light');
+    };
+    mediaQueryList!.addEventListener("change", handler)
+
+    return () => {
+      mediaQueryList!.removeEventListener("change", handler);
+    };
   }, [theme]);
+
+
+  const determineNewTheme = (prev: Theme): Theme => {
+    switch (prev) {
+      case 'light':
+        return 'dark';
+      case 'dark':
+        return 'system';
+      case 'system':
+        return 'light';
+      default:
+        return 'system';
+    }
+  }
 
   const toggleTheme = async (e?: React.MouseEvent) => {
     // Fallback for browsers without View Transitions API or reduced motion
@@ -314,7 +348,7 @@ function App() {
       !(document as any).startViewTransition ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+      setTheme(prev => determineNewTheme(prev));
       return;
     }
 
@@ -329,7 +363,7 @@ function App() {
 
     const transition = (document as any).startViewTransition(() => {
       flushSync(() => {
-        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+        setTheme(prev => determineNewTheme(prev));
       });
     });
 

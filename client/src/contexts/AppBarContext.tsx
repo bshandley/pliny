@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { User, Notification } from '../types';
+import { User, Notification, Theme } from '../types';
 
 export interface AppBarContextType {
   user: User | null;
@@ -9,7 +9,7 @@ export interface AppBarContextType {
   onMarkAllRead: () => Promise<void>;
   onNavigateToBoard: (boardId: string, cardId?: string) => void;
   onGoToNotifications: () => void;
-  theme: 'light' | 'dark';
+  theme: Theme;
   onToggleTheme: (e?: React.MouseEvent) => void;
   onLogout: () => void;
   onSearchOpen: () => void;
